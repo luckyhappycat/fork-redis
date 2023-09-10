@@ -1,0 +1,1 @@
+find ./ "(" -name "*.h" -or -name "*.c" -or -name "*.hh" -or -name "*.cc" -or -name "*.hpp" -or -name "*.cpp" ")" -print | xargs wc -l
