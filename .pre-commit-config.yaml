@@ -5,7 +5,7 @@ repos:
     hooks:
       - id: clang-format
         args: ["-i", "-style=file:.clang-format"]
-      # - id: clang-tidy
+      - id: clang-tidy
       # - id: oclint
       # - id: uncrustify
       # - id: cppcheck
