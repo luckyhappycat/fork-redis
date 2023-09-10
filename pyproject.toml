@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "fork-redis"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "fork_redis"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pre-commit = "^3.4.0"
+clang-format = "^16.0.6"
+clang-tidy = "^15.0.2.1"
+
+
+[[tool.poetry.source]]
+name = "mirrors"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
+default = false
+secondary = false
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
