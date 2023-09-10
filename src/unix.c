@@ -97,16 +97,15 @@ static void connUnixAcceptHandler(aeEventLoop *el, int fd, void *privdata, int m
     UNUSED(mask);
     UNUSED(privdata);
 
-    while(max--) {
+    while (max--) {
         cfd = anetUnixAccept(server.neterr, fd);
         if (cfd == ANET_ERR) {
             if (errno != EWOULDBLOCK)
-                serverLog(LL_WARNING,
-                    "Accepting client connection: %s", server.neterr);
+                serverLog(LL_WARNING, "Accepting client connection: %s", server.neterr);
             return;
         }
-        serverLog(LL_VERBOSE,"Accepted connection to %s", server.unixsocket);
-        acceptCommonHandler(connCreateAcceptedUnix(cfd, NULL),CLIENT_UNIX_SOCKET,NULL);
+        serverLog(LL_VERBOSE, "Accepted connection to %s", server.unixsocket);
+        acceptCommonHandler(connCreateAcceptedUnix(cfd, NULL), CLIENT_UNIX_SOCKET, NULL);
     }
 }
 
@@ -201,7 +200,6 @@ static ConnectionType CT_Unix = {
     .process_pending_data = NULL,
 };
 
-int RedisRegisterConnectionTypeUnix(void)
-{
+int RedisRegisterConnectionTypeUnix(void) {
     return connTypeRegister(&CT_Unix);
 }

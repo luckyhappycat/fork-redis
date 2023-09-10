@@ -18,23 +18,23 @@ typedef struct redisModuleEvents {
 } redisModuleEvents;
 
 static inline void redisModuleReadEvent(int fd, void *privdata, int mask) {
-    (void) fd;
-    (void) mask;
+    (void)fd;
+    (void)mask;
 
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     redisAsyncHandleRead(e->context);
 }
 
 static inline void redisModuleWriteEvent(int fd, void *privdata, int mask) {
-    (void) fd;
-    (void) mask;
+    (void)fd;
+    (void)mask;
 
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     redisAsyncHandleWrite(e->context);
 }
 
 static inline void redisModuleAddRead(void *privdata) {
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     if (!e->reading) {
         e->reading = 1;
         RedisModule_EventLoopAdd(e->fd, REDISMODULE_EVENTLOOP_READABLE, redisModuleReadEvent, e);
@@ -42,7 +42,7 @@ static inline void redisModuleAddRead(void *privdata) {
 }
 
 static inline void redisModuleDelRead(void *privdata) {
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     if (e->reading) {
         e->reading = 0;
         RedisModule_EventLoopDel(e->fd, REDISMODULE_EVENTLOOP_READABLE);
@@ -50,7 +50,7 @@ static inline void redisModuleDelRead(void *privdata) {
 }
 
 static inline void redisModuleAddWrite(void *privdata) {
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     if (!e->writing) {
         e->writing = 1;
         RedisModule_EventLoopAdd(e->fd, REDISMODULE_EVENTLOOP_WRITABLE, redisModuleWriteEvent, e);
@@ -58,7 +58,7 @@ static inline void redisModuleAddWrite(void *privdata) {
 }
 
 static inline void redisModuleDelWrite(void *privdata) {
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     if (e->writing) {
         e->writing = 0;
         RedisModule_EventLoopDel(e->fd, REDISMODULE_EVENTLOOP_WRITABLE);
@@ -66,7 +66,7 @@ static inline void redisModuleDelWrite(void *privdata) {
 }
 
 static inline void redisModuleStopTimer(void *privdata) {
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     if (e->timer_active) {
         RedisModule_StopTimer(e->module_ctx, e->timer_id, NULL);
     }
@@ -74,7 +74,7 @@ static inline void redisModuleStopTimer(void *privdata) {
 }
 
 static inline void redisModuleCleanup(void *privdata) {
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     redisModuleDelRead(privdata);
     redisModuleDelWrite(privdata);
     redisModuleStopTimer(privdata);
@@ -82,15 +82,15 @@ static inline void redisModuleCleanup(void *privdata) {
 }
 
 static inline void redisModuleTimeout(RedisModuleCtx *ctx, void *privdata) {
-    (void) ctx;
+    (void)ctx;
 
-    redisModuleEvents *e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
     e->timer_active = 0;
     redisAsyncHandleTimeout(e->context);
 }
 
 static inline void redisModuleSetTimeout(void *privdata, struct timeval tv) {
-    redisModuleEvents* e = (redisModuleEvents*)privdata;
+    redisModuleEvents *e = (redisModuleEvents *)privdata;
 
     redisModuleStopTimer(privdata);
 
@@ -101,10 +101,7 @@ static inline void redisModuleSetTimeout(void *privdata, struct timeval tv) {
 
 /* Check if Redis version is compatible with the adapter. */
 static inline int redisModuleCompatibilityCheck(void) {
-    if (!RedisModule_EventLoopAdd ||
-        !RedisModule_EventLoopDel ||
-        !RedisModule_CreateTimer ||
-        !RedisModule_StopTimer) {
+    if (!RedisModule_EventLoopAdd || !RedisModule_EventLoopDel || !RedisModule_CreateTimer || !RedisModule_StopTimer) {
         return REDIS_ERR;
     }
     return REDIS_OK;
@@ -119,7 +116,7 @@ static inline int redisModuleAttach(redisAsyncContext *ac, RedisModuleCtx *modul
         return REDIS_ERR;
 
     /* Create container for context and r/w events */
-    e = (redisModuleEvents*)hi_malloc(sizeof(*e));
+    e = (redisModuleEvents *)hi_malloc(sizeof(*e));
     if (e == NULL)
         return REDIS_ERR;
 

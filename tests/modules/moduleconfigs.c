@@ -25,7 +25,7 @@ int setBoolConfigCommand(const char *name, int new, void *privdata, RedisModuleS
 
 long long getNumericConfigCommand(const char *name, void *privdata) {
     REDISMODULE_NOT_USED(name);
-    return (*(long long *) privdata);
+    return (*(long long *)privdata);
 }
 
 int setNumericConfigCommand(const char *name, long long new, void *privdata, RedisModuleString **err) {
@@ -49,7 +49,8 @@ int setStringConfigCommand(const char *name, RedisModuleString *new, void *privd
         *err = RedisModule_CreateString(NULL, "Cannot set string to 'rejectisfreed'", 36);
         return REDISMODULE_ERR;
     }
-    if (strval) RedisModule_FreeString(NULL, strval);
+    if (strval)
+        RedisModule_FreeString(NULL, strval);
     RedisModule_RetainString(NULL, new);
     strval = new;
     return REDISMODULE_OK;
@@ -107,23 +108,31 @@ int registerBlockCheck(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
     int response_ok = 0;
-    int result = RedisModule_RegisterBoolConfig(ctx, "mutable_bool", 1, REDISMODULE_CONFIG_DEFAULT, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &mutable_bool_val);
+    int result = RedisModule_RegisterBoolConfig(
+        ctx, "mutable_bool", 1, REDISMODULE_CONFIG_DEFAULT, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &mutable_bool_val
+    );
     response_ok |= (result == REDISMODULE_OK);
 
-    result = RedisModule_RegisterStringConfig(ctx, "string", "secret password", REDISMODULE_CONFIG_DEFAULT, getStringConfigCommand, setStringConfigCommand, NULL, NULL);
+    result = RedisModule_RegisterStringConfig(
+        ctx, "string", "secret password", REDISMODULE_CONFIG_DEFAULT, getStringConfigCommand, setStringConfigCommand, NULL, NULL
+    );
     response_ok |= (result == REDISMODULE_OK);
 
     const char *enum_vals[] = {"none", "five", "one", "two", "four"};
     const int int_vals[] = {0, 5, 1, 2, 4};
-    result = RedisModule_RegisterEnumConfig(ctx, "enum", 1, REDISMODULE_CONFIG_DEFAULT, enum_vals, int_vals, 5, getEnumConfigCommand, setEnumConfigCommand, NULL, NULL);
+    result = RedisModule_RegisterEnumConfig(
+        ctx, "enum", 1, REDISMODULE_CONFIG_DEFAULT, enum_vals, int_vals, 5, getEnumConfigCommand, setEnumConfigCommand, NULL, NULL
+    );
     response_ok |= (result == REDISMODULE_OK);
 
-    result = RedisModule_RegisterNumericConfig(ctx, "numeric", -1, REDISMODULE_CONFIG_DEFAULT, -5, 2000, getNumericConfigCommand, setNumericConfigCommand, longlongApplyFunc, &longval);
+    result = RedisModule_RegisterNumericConfig(
+        ctx, "numeric", -1, REDISMODULE_CONFIG_DEFAULT, -5, 2000, getNumericConfigCommand, setNumericConfigCommand, longlongApplyFunc, &longval
+    );
     response_ok |= (result == REDISMODULE_OK);
 
     result = RedisModule_LoadConfigs(ctx);
     response_ok |= (result == REDISMODULE_OK);
-    
+
     /* This validates that it's not possible to register/load configs outside OnLoad,
      * thus returns an error if they succeed. */
     if (response_ok) {
@@ -138,16 +147,23 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "moduleconfigs", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) return REDISMODULE_ERR;
+    if (RedisModule_Init(ctx, "moduleconfigs", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
 
-    if (RedisModule_RegisterBoolConfig(ctx, "mutable_bool", 1, REDISMODULE_CONFIG_DEFAULT, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &mutable_bool_val) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterBoolConfig(
+            ctx, "mutable_bool", 1, REDISMODULE_CONFIG_DEFAULT, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &mutable_bool_val
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
     /* Immutable config here. */
-    if (RedisModule_RegisterBoolConfig(ctx, "immutable_bool", 0, REDISMODULE_CONFIG_IMMUTABLE, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &immutable_bool_val) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterBoolConfig(
+            ctx, "immutable_bool", 0, REDISMODULE_CONFIG_IMMUTABLE, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &immutable_bool_val
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
-    if (RedisModule_RegisterStringConfig(ctx, "string", "secret password", REDISMODULE_CONFIG_DEFAULT, getStringConfigCommand, setStringConfigCommand, NULL, NULL) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterStringConfig(
+            ctx, "string", "secret password", REDISMODULE_CONFIG_DEFAULT, getStringConfigCommand, setStringConfigCommand, NULL, NULL
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
 
@@ -155,17 +171,27 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     const char *enum_vals[] = {"none", "five", "one", "two", "four"};
     const int int_vals[] = {0, 5, 1, 2, 4};
 
-    if (RedisModule_RegisterEnumConfig(ctx, "enum", 1, REDISMODULE_CONFIG_DEFAULT, enum_vals, int_vals, 5, getEnumConfigCommand, setEnumConfigCommand, NULL, NULL) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterEnumConfig(
+            ctx, "enum", 1, REDISMODULE_CONFIG_DEFAULT, enum_vals, int_vals, 5, getEnumConfigCommand, setEnumConfigCommand, NULL, NULL
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
-    if (RedisModule_RegisterEnumConfig(ctx, "flags", 3, REDISMODULE_CONFIG_DEFAULT | REDISMODULE_CONFIG_BITFLAGS, enum_vals, int_vals, 5, getFlagsConfigCommand, setFlagsConfigCommand, NULL, NULL) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterEnumConfig(
+            ctx, "flags", 3, REDISMODULE_CONFIG_DEFAULT | REDISMODULE_CONFIG_BITFLAGS, enum_vals, int_vals, 5, getFlagsConfigCommand,
+            setFlagsConfigCommand, NULL, NULL
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
     /* Memory config here. */
-    if (RedisModule_RegisterNumericConfig(ctx, "memory_numeric", 1024, REDISMODULE_CONFIG_DEFAULT | REDISMODULE_CONFIG_MEMORY, 0, 3000000, getNumericConfigCommand, setNumericConfigCommand, longlongApplyFunc, &memval) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterNumericConfig(
+            ctx, "memory_numeric", 1024, REDISMODULE_CONFIG_DEFAULT | REDISMODULE_CONFIG_MEMORY, 0, 3000000, getNumericConfigCommand,
+            setNumericConfigCommand, longlongApplyFunc, &memval
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
-    if (RedisModule_RegisterNumericConfig(ctx, "numeric", -1, REDISMODULE_CONFIG_DEFAULT, -5, 2000, getNumericConfigCommand, setNumericConfigCommand, longlongApplyFunc, &longval) == REDISMODULE_ERR) {
+    if (RedisModule_RegisterNumericConfig(
+            ctx, "numeric", -1, REDISMODULE_CONFIG_DEFAULT, -5, 2000, getNumericConfigCommand, setNumericConfigCommand, longlongApplyFunc, &longval
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
     }
     size_t len;
@@ -179,9 +205,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
     /* Creates a command which registers configs outside OnLoad() function. */
-    if (RedisModule_CreateCommand(ctx,"block.register.configs.outside.onload", registerBlockCheck, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.register.configs.outside.onload", registerBlockCheck, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
-  
+
     return REDISMODULE_OK;
 }
 

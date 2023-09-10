@@ -34,10 +34,10 @@
 
 #define KEY_COUNT 5
 
-#define panicAbort(fmt, ...) \
-    do { \
+#define panicAbort(fmt, ...)                                                            \
+    do {                                                                                \
         fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__, __LINE__, __func__, __VA_ARGS__); \
-        exit(-1); \
+        exit(-1);                                                                       \
     } while (0)
 
 static void assertReplyAndFree(redisContext *context, redisReply *reply, int type) {
@@ -63,8 +63,7 @@ static void enableClientTracking(redisContext *c) {
 
     if (reply->type != REDIS_REPLY_MAP) {
         fprintf(stderr, "Error: Can't send HELLO 3 command.  Are you sure you're ");
-        fprintf(stderr, "connected to redis-server >= 6.0.0?\nRedis error: %s\n",
-                        reply->type == REDIS_REPLY_ERROR ? reply->str : "(unknown)");
+        fprintf(stderr, "connected to redis-server >= 6.0.0?\nRedis error: %s\n", reply->type == REDIS_REPLY_ERROR ? reply->str : "(unknown)");
         exit(-1);
     }
 
@@ -80,18 +79,15 @@ void pushReplyHandler(void *privdata, void *r) {
     int *invalidations = privdata;
 
     /* Sanity check on the invalidation reply */
-    if (reply->type != REDIS_REPLY_PUSH || reply->elements != 2 ||
-        reply->element[1]->type != REDIS_REPLY_ARRAY ||
-        reply->element[1]->element[0]->type != REDIS_REPLY_STRING)
-    {
+    if (reply->type != REDIS_REPLY_PUSH || reply->elements != 2 || reply->element[1]->type != REDIS_REPLY_ARRAY ||
+        reply->element[1]->element[0]->type != REDIS_REPLY_STRING) {
         panicAbort("%s", "Can't parse PUSH message!");
     }
 
     /* Increment our invalidation count */
     *invalidations += 1;
 
-    printf("pushReplyHandler(): INVALIDATE '%s' (invalidation count: %d)\n",
-           reply->element[1]->element[0]->str, *invalidations);
+    printf("pushReplyHandler(): INVALIDATE '%s' (invalidation count: %d)\n", reply->element[1]->element[0]->str, *invalidations);
 
     freeReplyObject(reply);
 }

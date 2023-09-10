@@ -46,12 +46,12 @@
 #include <sys/mman.h>
 #endif
 
-
 #ifdef __linux__
 static sds read_sysfs_line(char *path) {
     char buf[256];
     FILE *f = fopen(path, "r");
-    if (!f) return NULL;
+    if (!f)
+        return NULL;
     if (!fgets(buf, sizeof(buf), f)) {
         fclose(f);
         return NULL;
@@ -89,25 +89,30 @@ static int checkClocksource(sds *error_msg) {
         if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0)
             return 0;
         d = (ts.tv_sec * 1000000 + ts.tv_nsec / 1000) - start_us;
-        if (d >= test_time_us) break;
+        if (d >= test_time_us)
+            break;
     }
     if (getrusage(RUSAGE_SELF, &ru_end) != 0)
         return 0;
 
-    long long stime_us = (ru_end.ru_stime.tv_sec * 1000000 + ru_end.ru_stime.tv_usec) - (ru_start.ru_stime.tv_sec * 1000000 + ru_start.ru_stime.tv_usec);
-    long long utime_us = (ru_end.ru_utime.tv_sec * 1000000 + ru_end.ru_utime.tv_usec) - (ru_start.ru_utime.tv_sec * 1000000 + ru_start.ru_utime.tv_usec);
+    long long stime_us =
+        (ru_end.ru_stime.tv_sec * 1000000 + ru_end.ru_stime.tv_usec) - (ru_start.ru_stime.tv_sec * 1000000 + ru_start.ru_stime.tv_usec);
+    long long utime_us =
+        (ru_end.ru_utime.tv_sec * 1000000 + ru_end.ru_utime.tv_usec) - (ru_start.ru_utime.tv_sec * 1000000 + ru_start.ru_utime.tv_usec);
 
     /* If more than 10% of the process time was in system calls we probably have an inefficient clocksource, print a warning */
     if (stime_us * 10 > stime_us + utime_us) {
         sds avail = read_sysfs_line("/sys/devices/system/clocksource/clocksource0/available_clocksource");
         sds curr = read_sysfs_line("/sys/devices/system/clocksource/clocksource0/current_clocksource");
-        *error_msg = sdscatprintf(sdsempty(),
-           "Slow system clocksource detected. This can result in degraded performance. "
-           "Consider changing the system's clocksource. "
-           "Current clocksource: %s. Available clocksources: %s. "
-           "For example: run the command 'echo tsc > /sys/devices/system/clocksource/clocksource0/current_clocksource' as root. "
-           "To permanently change the system's clocksource you'll need to set the 'clocksource=' kernel command line parameter.",
-           curr ? curr : "", avail ? avail : "");
+        *error_msg = sdscatprintf(
+            sdsempty(),
+            "Slow system clocksource detected. This can result in degraded performance. "
+            "Consider changing the system's clocksource. "
+            "Current clocksource: %s. Available clocksources: %s. "
+            "For example: run the command 'echo tsc > /sys/devices/system/clocksource/clocksource0/current_clocksource' as root. "
+            "To permanently change the system's clocksource you'll need to set the 'clocksource=' kernel command line parameter.",
+            curr ? curr : "", avail ? avail : ""
+        );
         sdsfree(avail);
         sdsfree(curr);
         return -1;
@@ -128,7 +133,8 @@ int checkXenClocksource(sds *error_msg) {
         *error_msg = sdsnew(
             "Your system is configured to use the 'xen' clocksource which might lead to degraded performance. "
             "Check the result of the [slow-clocksource] system check: run 'redis-server --check-system' to check if "
-            "the system's clocksource isn't degrading performance.");
+            "the system's clocksource isn't degrading performance."
+        );
         res = -1;
     }
     sdsfree(curr);
@@ -140,11 +146,12 @@ int checkXenClocksource(sds *error_msg) {
  * if we don't have enough free memory to satisfy double the current memory usage even though
  * the forked child uses copy-on-write to reduce its actual memory usage. */
 int checkOvercommit(sds *error_msg) {
-    FILE *fp = fopen("/proc/sys/vm/overcommit_memory","r");
+    FILE *fp = fopen("/proc/sys/vm/overcommit_memory", "r");
     char buf[64];
 
-    if (!fp) return 0;
-    if (fgets(buf,64,fp) == NULL) {
+    if (!fp)
+        return 0;
+    if (fgets(buf, 64, fp) == NULL) {
         fclose(fp);
         return 0;
     }
@@ -157,7 +164,8 @@ int checkOvercommit(sds *error_msg) {
             "Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. "
 #endif
             "To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the "
-            "command 'sysctl vm.overcommit_memory=1' for this to take effect.");
+            "command 'sysctl vm.overcommit_memory=1' for this to take effect."
+        );
         return -1;
     } else {
         return 1;
@@ -169,21 +177,23 @@ int checkOvercommit(sds *error_msg) {
 int checkTHPEnabled(sds *error_msg) {
     char buf[1024];
 
-    FILE *fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled","r");
-    if (!fp) return 0;
-    if (fgets(buf,sizeof(buf),fp) == NULL) {
+    FILE *fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled", "r");
+    if (!fp)
+        return 0;
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
         fclose(fp);
         return 0;
     }
     fclose(fp);
 
-    if (strstr(buf,"[always]") != NULL) {
+    if (strstr(buf, "[always]") != NULL) {
         *error_msg = sdsnew(
             "You have Transparent Huge Pages (THP) support enabled in your kernel. "
             "This will create latency and memory usage issues with Redis. "
             "To fix this issue run the command 'echo madvise > /sys/kernel/mm/transparent_hugepage/enabled' as root, "
             "and add it to your /etc/rc.local in order to retain the setting after a reboot. "
-            "Redis must be restarted after THP is disabled (set to 'madvise' or 'never').");
+            "Redis must be restarted after THP is disabled (set to 'madvise' or 'never')."
+        );
         return -1;
     } else {
         return 1;
@@ -200,7 +210,8 @@ static int smapsGetSharedDirty(unsigned long addr) {
     FILE *f;
 
     f = fopen("/proc/self/smaps", "r");
-    if (!f) return -1;
+    if (!f)
+        return -1;
 
     while (1) {
         if (!fgets(buf, sizeof(buf), f))
@@ -228,7 +239,7 @@ static int smapsGetSharedDirty(unsigned long addr) {
  * titled: "arm64: pgtable: Ensure dirty bit is preserved across pte_wrprotect()"
  */
 int checkLinuxMadvFreeForkBug(sds *error_msg) {
-    int ret, pipefd[2] = { -1, -1 };
+    int ret, pipefd[2] = {-1, -1};
     pid_t pid;
     char *p = NULL, *q;
     int res = 1;
@@ -252,7 +263,7 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
     }
 
     /* Write to the page once to make it resident */
-    *(volatile char*)q = 0;
+    *(volatile char *)q = 0;
 
     /* Tell the kernel that this page is free to be reclaimed. */
 #ifndef MADV_FREE
@@ -262,7 +273,8 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
     if (ret < 0) {
         /* MADV_FREE is not available on older kernels that are presumably
          * not affected. */
-        if (errno == EINVAL) goto exit;
+        if (errno == EINVAL)
+            goto exit;
 
         res = 0;
         goto exit;
@@ -270,7 +282,7 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
 
     /* Write to the page after being marked for freeing, this is supposed to take
      * ownership of that page again. */
-    *(volatile char*)q = 0;
+    *(volatile char *)q = 0;
 
     /* Create a pipe for the child to return the info to the parent. */
     ret = anetPipe(pipefd, 0, 0);
@@ -287,10 +299,10 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
     } else if (!pid) {
         /* Child: check if the page is marked as dirty, page_size in kb.
          * A value of 0 means the kernel is affected by the bug. */
-        ret = smapsGetSharedDirty((unsigned long) q);
+        ret = smapsGetSharedDirty((unsigned long)q);
         if (!ret)
             res = -1;
-        else if (ret == -1)     /* Failed to read */
+        else if (ret == -1) /* Failed to read */
             res = 0;
 
         ret = write(pipefd[1], &res, sizeof(res)); /* Assume success, ignore return value*/
@@ -308,14 +320,18 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
 
 exit:
     /* Cleanup */
-    if (pipefd[0] != -1) close(pipefd[0]);
-    if (pipefd[1] != -1) close(pipefd[1]);
-    if (p != NULL) munmap(p, map_size);
+    if (pipefd[0] != -1)
+        close(pipefd[0]);
+    if (pipefd[1] != -1)
+        close(pipefd[1]);
+    if (p != NULL)
+        munmap(p, map_size);
 
     if (res == -1)
         *error_msg = sdsnew(
             "Your kernel has a bug that could lead to data corruption during background save. "
-            "Please upgrade to the latest stable kernel.");
+            "Please upgrade to the latest stable kernel."
+        );
 
     return res;
 }
@@ -334,20 +350,20 @@ exit:
  */
 typedef struct {
     const char *name;
-    int (*check_fn)(sds*);
+    int (*check_fn)(sds *);
 } check;
 
 check checks[] = {
 #ifdef __linux__
-    {.name = "slow-clocksource", .check_fn = checkClocksource},
-    {.name = "xen-clocksource", .check_fn = checkXenClocksource},
-    {.name = "overcommit", .check_fn = checkOvercommit},
-    {.name = "THP", .check_fn = checkTHPEnabled},
+    {.name = "slow-clocksource",      .check_fn = checkClocksource         },
+    {.name = "xen-clocksource",       .check_fn = checkXenClocksource      },
+    {.name = "overcommit",            .check_fn = checkOvercommit          },
+    {.name = "THP",                   .check_fn = checkTHPEnabled          },
 #ifdef __arm64__
     {.name = "madvise-free-fork-bug", .check_fn = checkLinuxMadvFreeForkBug},
 #endif
 #endif
-    {.name = NULL, .check_fn = NULL}
+    {.name = NULL,                    .check_fn = NULL                     }
 };
 
 /* Performs various system checks, returns 0 if any check fails, 1 otherwise. */

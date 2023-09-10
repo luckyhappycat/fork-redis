@@ -6,8 +6,8 @@
 #include "../async.h"
 
 typedef struct redisLibhvEvents {
-    hio_t *io;
-    htimer_t *timer;
+    hio_t* io;
+    htimer_t* timer;
 } redisLibhvEvents;
 
 static void redisLibhvHandleEvents(hio_t* io) {
@@ -22,27 +22,27 @@ static void redisLibhvHandleEvents(hio_t* io) {
     }
 }
 
-static void redisLibhvAddRead(void *privdata) {
+static void redisLibhvAddRead(void* privdata) {
     redisLibhvEvents* events = (redisLibhvEvents*)privdata;
     hio_add(events->io, redisLibhvHandleEvents, HV_READ);
 }
 
-static void redisLibhvDelRead(void *privdata) {
+static void redisLibhvDelRead(void* privdata) {
     redisLibhvEvents* events = (redisLibhvEvents*)privdata;
     hio_del(events->io, HV_READ);
 }
 
-static void redisLibhvAddWrite(void *privdata) {
+static void redisLibhvAddWrite(void* privdata) {
     redisLibhvEvents* events = (redisLibhvEvents*)privdata;
     hio_add(events->io, redisLibhvHandleEvents, HV_WRITE);
 }
 
-static void redisLibhvDelWrite(void *privdata) {
+static void redisLibhvDelWrite(void* privdata) {
     redisLibhvEvents* events = (redisLibhvEvents*)privdata;
     hio_del(events->io, HV_WRITE);
 }
 
-static void redisLibhvCleanup(void *privdata) {
+static void redisLibhvCleanup(void* privdata) {
     redisLibhvEvents* events = (redisLibhvEvents*)privdata;
 
     if (events->timer)
@@ -59,7 +59,7 @@ static void redisLibhvTimeout(htimer_t* timer) {
     redisAsyncHandleTimeout((redisAsyncContext*)hevent_userdata(io));
 }
 
-static void redisLibhvSetTimeout(void *privdata, struct timeval tv) {
+static void redisLibhvSetTimeout(void* privdata, struct timeval tv) {
     redisLibhvEvents* events;
     uint32_t millis;
     hloop_t* loop;
@@ -85,8 +85,8 @@ static void redisLibhvSetTimeout(void *privdata, struct timeval tv) {
 }
 
 static int redisLibhvAttach(redisAsyncContext* ac, hloop_t* loop) {
-    redisContext *c = &(ac->c);
-    redisLibhvEvents *events;
+    redisContext* c = &(ac->c);
+    redisLibhvEvents* events;
     hio_t* io = NULL;
 
     if (ac->ev.data != NULL) {
@@ -110,11 +110,11 @@ static int redisLibhvAttach(redisAsyncContext* ac, hloop_t* loop) {
     events->io = io;
     events->timer = NULL;
 
-    ac->ev.addRead  = redisLibhvAddRead;
-    ac->ev.delRead  = redisLibhvDelRead;
+    ac->ev.addRead = redisLibhvAddRead;
+    ac->ev.delRead = redisLibhvDelRead;
     ac->ev.addWrite = redisLibhvAddWrite;
     ac->ev.delWrite = redisLibhvDelWrite;
-    ac->ev.cleanup  = redisLibhvCleanup;
+    ac->ev.cleanup = redisLibhvCleanup;
     ac->ev.scheduleTimer = redisLibhvSetTimeout;
     ac->ev.data = events;
 

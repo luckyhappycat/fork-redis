@@ -30,9 +30,15 @@ int hash_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     int flags = REDISMODULE_HASH_NONE;
     for (size_t i = 0; i < flags_len; i++) {
         switch (flags_str[i]) {
-        case 'n': flags |= REDISMODULE_HASH_NX; break;
-        case 'x': flags |= REDISMODULE_HASH_XX; break;
-        case 'a': flags |= REDISMODULE_HASH_COUNT_ALL; break;
+            case 'n':
+                flags |= REDISMODULE_HASH_NX;
+                break;
+            case 'x':
+                flags |= REDISMODULE_HASH_XX;
+                break;
+            case 'a':
+                flags |= REDISMODULE_HASH_COUNT_ALL;
+                break;
         }
     }
 
@@ -40,27 +46,18 @@ int hash_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     int result;
     errno = 0;
     if (argc == 5) {
-        result = RedisModule_HashSet(key, flags,
-                                     argv[3], value_or_delete(argv[4]),
-                                     NULL);
+        result = RedisModule_HashSet(key, flags, argv[3], value_or_delete(argv[4]), NULL);
     } else if (argc == 7) {
-        result = RedisModule_HashSet(key, flags,
-                                     argv[3], value_or_delete(argv[4]),
-                                     argv[5], value_or_delete(argv[6]),
-                                     NULL);
+        result = RedisModule_HashSet(key, flags, argv[3], value_or_delete(argv[4]), argv[5], value_or_delete(argv[6]), NULL);
     } else if (argc == 9) {
-        result = RedisModule_HashSet(key, flags,
-                                     argv[3], value_or_delete(argv[4]),
-                                     argv[5], value_or_delete(argv[6]),
-                                     argv[7], value_or_delete(argv[8]),
-                                     NULL);
+        result = RedisModule_HashSet(
+            key, flags, argv[3], value_or_delete(argv[4]), argv[5], value_or_delete(argv[6]), argv[7], value_or_delete(argv[8]), NULL
+        );
     } else if (argc == 11) {
-        result = RedisModule_HashSet(key, flags,
-                                     argv[3], value_or_delete(argv[4]),
-                                     argv[5], value_or_delete(argv[6]),
-                                     argv[7], value_or_delete(argv[8]),
-                                     argv[9], value_or_delete(argv[10]),
-                                     NULL);
+        result = RedisModule_HashSet(
+            key, flags, argv[3], value_or_delete(argv[4]), argv[5], value_or_delete(argv[6]), argv[7], value_or_delete(argv[8]), argv[9],
+            value_or_delete(argv[10]), NULL
+        );
     } else {
         return RedisModule_ReplyWithError(ctx, "ERR too many fields");
     }
@@ -79,10 +76,8 @@ int hash_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
-    if (RedisModule_Init(ctx, "hash", 1, REDISMODULE_APIVER_1) ==
-        REDISMODULE_OK &&
-        RedisModule_CreateCommand(ctx, "hash.set", hash_set, "write",
-                                  1, 1, 1) == REDISMODULE_OK) {
+    if (RedisModule_Init(ctx, "hash", 1, REDISMODULE_APIVER_1) == REDISMODULE_OK &&
+        RedisModule_CreateCommand(ctx, "hash.set", hash_set, "write", 1, 1, 1) == REDISMODULE_OK) {
         return REDISMODULE_OK;
     } else {
         return REDISMODULE_ERR;

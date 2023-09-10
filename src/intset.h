@@ -54,4 +54,4 @@ int intsetValidateIntegrity(const unsigned char *is, size_t size, int deep);
 int intsetTest(int argc, char *argv[], int flags);
 #endif
 
-#endif // __INTSET_H
+#endif  // __INTSET_H

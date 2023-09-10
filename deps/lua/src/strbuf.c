@@ -30,8 +30,7 @@
 
 #include "strbuf.h"
 
-static void die(const char *fmt, ...)
-{
+static void die(const char *fmt, ...) {
     va_list arg;
 
     va_start(arg, fmt);
@@ -42,8 +41,7 @@ static void die(const char *fmt, ...)
     abort();
 }
 
-void strbuf_init(strbuf_t *s, size_t len)
-{
+void strbuf_init(strbuf_t *s, size_t len) {
     size_t size;
 
     if (!len)
@@ -66,8 +64,7 @@ void strbuf_init(strbuf_t *s, size_t len)
     strbuf_ensure_null(s);
 }
 
-strbuf_t *strbuf_new(size_t len)
-{
+strbuf_t *strbuf_new(size_t len) {
     strbuf_t *s;
 
     s = malloc(sizeof(strbuf_t));
@@ -82,18 +79,15 @@ strbuf_t *strbuf_new(size_t len)
     return s;
 }
 
-static inline void debug_stats(strbuf_t *s)
-{
+static inline void debug_stats(strbuf_t *s) {
     if (s->debug) {
-        fprintf(stderr, "strbuf(%lx) reallocs: %d, length: %zd, size: %zd\n",
-                (long)s, s->reallocs, s->length, s->size);
+        fprintf(stderr, "strbuf(%lx) reallocs: %d, length: %zd, size: %zd\n", (long)s, s->reallocs, s->length, s->size);
     }
 }
 
 /* If strbuf_t has not been dynamically allocated, strbuf_free() can
  * be called any number of times strbuf_init() */
-void strbuf_free(strbuf_t *s)
-{
+void strbuf_free(strbuf_t *s) {
     debug_stats(s);
 
     if (s->buf) {
@@ -104,8 +98,7 @@ void strbuf_free(strbuf_t *s)
         free(s);
 }
 
-char *strbuf_free_to_string(strbuf_t *s, size_t *len)
-{
+char *strbuf_free_to_string(strbuf_t *s, size_t *len) {
     char *buf;
 
     debug_stats(s);
@@ -122,8 +115,7 @@ char *strbuf_free_to_string(strbuf_t *s, size_t *len)
     return buf;
 }
 
-static size_t calculate_new_size(strbuf_t *s, size_t len)
-{
+static size_t calculate_new_size(strbuf_t *s, size_t len) {
     size_t reqsize, newsize;
 
     if (len <= 0)
@@ -153,18 +145,15 @@ static size_t calculate_new_size(strbuf_t *s, size_t len)
     return newsize;
 }
 
-
 /* Ensure strbuf can handle a string length bytes long (ignoring NULL
  * optional termination). */
-void strbuf_resize(strbuf_t *s, size_t len)
-{
+void strbuf_resize(strbuf_t *s, size_t len) {
     size_t newsize;
 
     newsize = calculate_new_size(s, len);
 
     if (s->debug > 1) {
-        fprintf(stderr, "strbuf(%lx) resize: %zd => %zd\n",
-                (long)s, s->size, newsize);
+        fprintf(stderr, "strbuf(%lx) resize: %zd => %zd\n", (long)s, s->size, newsize);
     }
 
     s->size = newsize;
@@ -174,8 +163,7 @@ void strbuf_resize(strbuf_t *s, size_t len)
     s->reallocs++;
 }
 
-void strbuf_append_string(strbuf_t *s, const char *str)
-{
+void strbuf_append_string(strbuf_t *s, const char *str) {
     size_t i, space;
 
     space = strbuf_empty_length(s);
@@ -191,7 +179,6 @@ void strbuf_append_string(strbuf_t *s, const char *str)
         space--;
     }
 }
-
 
 /* vi:ai et sw=4 ts=4:
  */

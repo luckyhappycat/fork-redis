@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <strings.h>
 
-#define UNUSED(V) ((void) V)
+#define UNUSED(V) ((void)V)
 
 /* used to test processing events during slow bg operation */
 static volatile int g_slow_bg_operation = 0;
@@ -61,21 +61,18 @@ void *worker(void *arg) {
     return NULL;
 }
 
-int acquire_gil(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
-{
+int acquire_gil(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
 
     int flags = RedisModule_GetContextFlags(ctx);
     int allFlags = RedisModule_GetContextFlagsAll();
-    if ((allFlags & REDISMODULE_CTX_FLAGS_MULTI) &&
-        (flags & REDISMODULE_CTX_FLAGS_MULTI)) {
+    if ((allFlags & REDISMODULE_CTX_FLAGS_MULTI) && (flags & REDISMODULE_CTX_FLAGS_MULTI)) {
         RedisModule_ReplyWithSimpleString(ctx, "Blocked client is not supported inside multi");
         return REDISMODULE_OK;
     }
 
-    if ((allFlags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING) &&
-        (flags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING)) {
+    if ((allFlags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING) && (flags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING)) {
         RedisModule_ReplyWithSimpleString(ctx, "Blocked client is not allowed");
         return REDISMODULE_OK;
     }
@@ -150,7 +147,7 @@ void *bg_call_worker(void *arg) {
     RedisModule_UnblockClient(bg->bc, NULL);
 
     /* Free the arguments */
-    for (int i=0; i<bg->argc; i++)
+    for (int i = 0; i < bg->argc; i++)
         RedisModule_FreeString(ctx, bg->argv[i]);
     RedisModule_Free(bg->argv);
     RedisModule_Free(bg);
@@ -161,30 +158,27 @@ void *bg_call_worker(void *arg) {
     return NULL;
 }
 
-int do_bg_rm_call(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
-{
+int do_bg_rm_call(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
 
     /* Make sure we're not trying to block a client when we shouldn't */
     int flags = RedisModule_GetContextFlags(ctx);
     int allFlags = RedisModule_GetContextFlagsAll();
-    if ((allFlags & REDISMODULE_CTX_FLAGS_MULTI) &&
-        (flags & REDISMODULE_CTX_FLAGS_MULTI)) {
+    if ((allFlags & REDISMODULE_CTX_FLAGS_MULTI) && (flags & REDISMODULE_CTX_FLAGS_MULTI)) {
         RedisModule_ReplyWithSimpleString(ctx, "Blocked client is not supported inside multi");
         return REDISMODULE_OK;
     }
-    if ((allFlags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING) &&
-        (flags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING)) {
+    if ((allFlags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING) && (flags & REDISMODULE_CTX_FLAGS_DENY_BLOCKING)) {
         RedisModule_ReplyWithSimpleString(ctx, "Blocked client is not allowed");
         return REDISMODULE_OK;
     }
 
     /* Make a copy of the arguments and pass them to the thread. */
     bg_call_data *bg = RedisModule_Alloc(sizeof(bg_call_data));
-    bg->argv = RedisModule_Alloc(sizeof(RedisModuleString*)*argc);
+    bg->argv = RedisModule_Alloc(sizeof(RedisModuleString *) * argc);
     bg->argc = argc;
-    for (int i=0; i<argc; i++)
+    for (int i = 0; i < argc; i++)
         bg->argv[i] = RedisModule_HoldString(ctx, argv[i]);
 
     /* Block the client */
@@ -198,20 +192,20 @@ int do_bg_rm_call(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
     return REDISMODULE_OK;
 }
 
-int do_rm_call(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
+int do_rm_call(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
 
-    if(argc < 2){
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
     }
 
-    const char* cmd = RedisModule_StringPtrLen(argv[1], NULL);
+    const char *cmd = RedisModule_StringPtrLen(argv[1], NULL);
 
-    RedisModuleCallReply* rep = RedisModule_Call(ctx, cmd, "Ev", argv + 2, argc - 2);
-    if(!rep){
+    RedisModuleCallReply *rep = RedisModule_Call(ctx, cmd, "Ev", argv + 2, argc - 2);
+    if (!rep) {
         RedisModule_ReplyWithError(ctx, "NULL reply returned");
-    }else{
+    } else {
         RedisModule_ReplyWithCallReply(ctx, rep);
         RedisModule_FreeCallReply(rep);
     }
@@ -235,18 +229,18 @@ static void rm_call_async_on_unblocked(RedisModuleCtx *ctx, RedisModuleCallReply
     RedisModule_UnblockClient(bc, RedisModule_BlockClientGetPrivateData(bc));
 }
 
-int do_rm_call_async_fire_and_forget(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
+int do_rm_call_async_fire_and_forget(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
 
-    if(argc < 2){
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
     }
-    const char* cmd = RedisModule_StringPtrLen(argv[1], NULL);
+    const char *cmd = RedisModule_StringPtrLen(argv[1], NULL);
 
-    RedisModuleCallReply* rep = RedisModule_Call(ctx, cmd, "!KEv", argv + 2, argc - 2);
+    RedisModuleCallReply *rep = RedisModule_Call(ctx, cmd, "!KEv", argv + 2, argc - 2);
 
-    if(RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
+    if (RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
         RedisModule_ReplyWithCallReply(ctx, rep);
     } else {
         RedisModule_ReplyWithSimpleString(ctx, "Blocked");
@@ -256,14 +250,14 @@ int do_rm_call_async_fire_and_forget(RedisModuleCtx *ctx, RedisModuleString **ar
     return REDISMODULE_OK;
 }
 
-static void do_rm_call_async_free_pd(RedisModuleCtx * ctx, void *pd) {
+static void do_rm_call_async_free_pd(RedisModuleCtx *ctx, void *pd) {
     UNUSED(ctx);
     RedisModule_FreeCallReply(pd);
 }
 
 static void do_rm_call_async_disconnect(RedisModuleCtx *ctx, struct RedisModuleBlockedClient *bc) {
     UNUSED(ctx);
-    RedisModuleCallReply* rep = RedisModule_BlockClientGetPrivateData(bc);
+    RedisModuleCallReply *rep = RedisModule_BlockClientGetPrivateData(bc);
     RedisModule_CallReplyPromiseAbort(rep, NULL);
     RedisModule_FreeCallReply(rep);
     RedisModule_AbortBlock(bc);
@@ -276,11 +270,11 @@ static void do_rm_call_async_disconnect(RedisModuleCtx *ctx, struct RedisModuleB
  * If the command got blocked, blocks the client and unblock it when the command gets unblocked,
  * this allows check the K (allow blocking) argument to RM_Call.
  */
-int do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
+int do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
 
-    if(argc < 2){
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
     }
 
@@ -292,7 +286,7 @@ int do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
         format[format_len++] = 'K';
     }
 
-    const char* invoked_cmd = RedisModule_StringPtrLen(argv[0], NULL);
+    const char *invoked_cmd = RedisModule_StringPtrLen(argv[0], NULL);
     if (strcasecmp(invoked_cmd, "do_rm_call_async_script_mode") == 0) {
         format[format_len++] = 'S';
     }
@@ -305,11 +299,11 @@ int do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
         format[format_len++] = '!';
     }
 
-    const char* cmd = RedisModule_StringPtrLen(argv[1], NULL);
+    const char *cmd = RedisModule_StringPtrLen(argv[1], NULL);
 
-    RedisModuleCallReply* rep = RedisModule_Call(ctx, cmd, format, argv + 2, argc - 2);
+    RedisModuleCallReply *rep = RedisModule_Call(ctx, cmd, format, argv + 2, argc - 2);
 
-    if(RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
+    if (RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
         rm_call_async_send_reply(ctx, rep);
     } else {
         RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, do_rm_call_async_free_pd, 0);
@@ -321,7 +315,7 @@ int do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
     return REDISMODULE_OK;
 }
 
-typedef struct ThreadedAsyncRMCallCtx{
+typedef struct ThreadedAsyncRMCallCtx {
     RedisModuleBlockedClient *bc;
     RedisModuleCallReply *reply;
 } ThreadedAsyncRMCallCtx;
@@ -354,19 +348,19 @@ static void rm_call_async_reply_on_thread(RedisModuleCtx *ctx, RedisModuleCallRe
  * that passes to unblock handler is owned by the handler and are not attached to any
  * context that might be freed after the callback ends.
  */
-int do_rm_call_async_on_thread(RedisModuleCtx *ctx, RedisModuleString **argv, int argc){
+int do_rm_call_async_on_thread(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
 
-    if(argc < 2){
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
     }
 
-    const char* cmd = RedisModule_StringPtrLen(argv[1], NULL);
+    const char *cmd = RedisModule_StringPtrLen(argv[1], NULL);
 
-    RedisModuleCallReply* rep = RedisModule_Call(ctx, cmd, "KEv", argv + 2, argc - 2);
+    RedisModuleCallReply *rep = RedisModule_Call(ctx, cmd, "KEv", argv + 2, argc - 2);
 
-    if(RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
+    if (RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
         rm_call_async_send_reply(ctx, rep);
     } else {
         RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
@@ -403,11 +397,11 @@ static void wait_and_do_rm_call_async_on_unblocked(RedisModuleCtx *ctx, RedisMod
     RedisModule_FreeCallReply(reply);
     reply = NULL;
 
-    const char* cmd = RedisModule_StringPtrLen(wctx->argv[0], NULL);
+    const char *cmd = RedisModule_StringPtrLen(wctx->argv[0], NULL);
     reply = RedisModule_Call(ctx, cmd, "!EKv", wctx->argv + 1, wctx->argc - 1);
 
 done:
-    if(RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_PROMISE) {
+    if (RedisModule_CallReplyType(reply) != REDISMODULE_REPLY_PROMISE) {
         RedisModuleCtx *bctx = RedisModule_GetThreadSafeContext(wctx->bc);
         rm_call_async_send_reply(bctx, reply);
         RedisModule_FreeThreadSafeContext(bctx);
@@ -416,7 +410,7 @@ done:
         RedisModule_CallReplyPromiseSetUnblockHandler(reply, rm_call_async_on_unblocked, wctx->bc);
         RedisModule_FreeCallReply(reply);
     }
-    for (int i = 0 ; i < wctx->argc ; ++i) {
+    for (int i = 0; i < wctx->argc; ++i) {
         RedisModule_FreeString(NULL, wctx->argv[i]);
     }
     RedisModule_Free(wctx->argv);
@@ -433,7 +427,7 @@ int wait_and_do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int
     UNUSED(argv);
     UNUSED(argc);
 
-    if(argc < 2){
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
     }
 
@@ -442,19 +436,19 @@ int wait_and_do_rm_call_async(RedisModuleCtx *ctx, RedisModuleString **argv, int
         return RedisModule_ReplyWithError(ctx, "Err can not run wait, blocking is not allowed.");
     }
 
-    RedisModuleCallReply* rep = RedisModule_Call(ctx, "wait", "!EKcc", "1", "0");
-    if(RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
+    RedisModuleCallReply *rep = RedisModule_Call(ctx, "wait", "!EKcc", "1", "0");
+    if (RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
         rm_call_async_send_reply(ctx, rep);
     } else {
         RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
         WaitAndDoRMCallCtx *wctx = RedisModule_Alloc(sizeof(*wctx));
         *wctx = (WaitAndDoRMCallCtx){
-                .bc = bc,
-                .argv = RedisModule_Alloc((argc - 1) * sizeof(RedisModuleString*)),
-                .argc = argc - 1,
+            .bc = bc,
+            .argv = RedisModule_Alloc((argc - 1) * sizeof(RedisModuleString *)),
+            .argc = argc - 1,
         };
 
-        for (int i = 1 ; i < argc ; ++i) {
+        for (int i = 1; i < argc; ++i) {
             wctx->argv[i - 1] = RedisModule_HoldString(NULL, argv[i]);
         }
         RedisModule_CallReplyPromiseSetUnblockHandler(rep, wait_and_do_rm_call_async_on_unblocked, wctx);
@@ -468,8 +462,8 @@ static void blpop_and_set_multiple_keys_on_unblocked(RedisModuleCtx *ctx, RedisM
     /* ignore the reply */
     RedisModule_FreeCallReply(reply);
     WaitAndDoRMCallCtx *wctx = private_data;
-    for (int i = 0 ; i < wctx->argc ; i += 2) {
-        RedisModuleCallReply* rep = RedisModule_Call(ctx, "set", "!ss", wctx->argv[i], wctx->argv[i + 1]);
+    for (int i = 0; i < wctx->argc; i += 2) {
+        RedisModuleCallReply *rep = RedisModule_Call(ctx, "set", "!ss", wctx->argv[i], wctx->argv[i + 1]);
         RedisModule_FreeCallReply(rep);
     }
 
@@ -478,12 +472,11 @@ static void blpop_and_set_multiple_keys_on_unblocked(RedisModuleCtx *ctx, RedisM
     RedisModule_FreeThreadSafeContext(bctx);
     RedisModule_UnblockClient(wctx->bc, NULL);
 
-    for (int i = 0 ; i < wctx->argc ; ++i) {
+    for (int i = 0; i < wctx->argc; ++i) {
         RedisModule_FreeString(NULL, wctx->argv[i]);
     }
     RedisModule_Free(wctx->argv);
     RedisModule_Free(wctx);
-
 }
 
 /*
@@ -495,7 +488,7 @@ int blpop_and_set_multiple_keys(RedisModuleCtx *ctx, RedisModuleString **argv, i
     UNUSED(argv);
     UNUSED(argc);
 
-    if(argc < 2 || argc % 2 != 0){
+    if (argc < 2 || argc % 2 != 0) {
         return RedisModule_WrongArity(ctx);
     }
 
@@ -504,19 +497,19 @@ int blpop_and_set_multiple_keys(RedisModuleCtx *ctx, RedisModuleString **argv, i
         return RedisModule_ReplyWithError(ctx, "Err can not run wait, blocking is not allowed.");
     }
 
-    RedisModuleCallReply* rep = RedisModule_Call(ctx, "blpop", "!EKsc", argv[1], "0");
-    if(RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
+    RedisModuleCallReply *rep = RedisModule_Call(ctx, "blpop", "!EKsc", argv[1], "0");
+    if (RedisModule_CallReplyType(rep) != REDISMODULE_REPLY_PROMISE) {
         rm_call_async_send_reply(ctx, rep);
     } else {
         RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
         WaitAndDoRMCallCtx *wctx = RedisModule_Alloc(sizeof(*wctx));
         *wctx = (WaitAndDoRMCallCtx){
-                .bc = bc,
-                .argv = RedisModule_Alloc((argc - 2) * sizeof(RedisModuleString*)),
-                .argc = argc - 2,
+            .bc = bc,
+            .argv = RedisModule_Alloc((argc - 2) * sizeof(RedisModuleString *)),
+            .argc = argc - 2,
         };
 
-        for (int i = 0 ; i < argc - 2 ; ++i) {
+        for (int i = 0; i < argc - 2; ++i) {
             wctx->argv[i] = RedisModule_HoldString(NULL, argv[i + 2]);
         }
         RedisModule_CallReplyPromiseSetUnblockHandler(rep, blpop_and_set_multiple_keys_on_unblocked, wctx);
@@ -542,7 +535,6 @@ int do_fake_bg_true(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     return REDISMODULE_OK;
 }
 
-
 /* this flag is used to work with busy commands, that might take a while
  * and ability to stop the busy work with a different command*/
 static volatile int abort_flag = 0;
@@ -560,7 +552,7 @@ int slow_fg_command(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     uint64_t start_time = RedisModule_MonotonicMicroseconds();
     /* when not blocking indefinitely, we don't process client commands in this test. */
-    int yield_flags = block_time? REDISMODULE_YIELD_FLAG_NONE: REDISMODULE_YIELD_FLAG_CLIENTS;
+    int yield_flags = block_time ? REDISMODULE_YIELD_FLAG_NONE : REDISMODULE_YIELD_FLAG_CLIENTS;
     while (!abort_flag) {
         RedisModule_Yield(ctx, yield_flags, "Slow module operation");
         usleep(1000);
@@ -609,8 +601,7 @@ static int is_in_slow_bg_operation(RedisModuleCtx *ctx, RedisModuleString **argv
     return REDISMODULE_OK;
 }
 
-static void timer_callback(RedisModuleCtx *ctx, void *data)
-{
+static void timer_callback(RedisModuleCtx *ctx, void *data) {
     UNUSED(ctx);
 
     RedisModuleBlockedClient *bc = data;
@@ -628,14 +619,13 @@ static void timer_callback(RedisModuleCtx *ctx, void *data)
     RedisModule_FreeThreadSafeContext(reply_ctx);
 }
 
-int unblock_by_timer(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
-{
+int unblock_by_timer(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     if (argc != 2)
         return RedisModule_WrongArity(ctx);
 
     long long period;
-    if (RedisModule_StringToLongLong(argv[1],&period) != REDISMODULE_OK)
-        return RedisModule_ReplyWithError(ctx,"ERR invalid period");
+    if (RedisModule_StringToLongLong(argv[1], &period) != REDISMODULE_OK)
+        return RedisModule_ReplyWithError(ctx, "ERR invalid period");
 
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     RedisModule_CreateTimer(ctx, period, timer_callback, bc);
@@ -646,42 +636,34 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "blockedclient", 1, REDISMODULE_APIVER_1)== REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "blockedclient", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
     if (RedisModule_CreateCommand(ctx, "acquire_gil", acquire_gil, "", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call", do_rm_call,
-                                  "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call", do_rm_call, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async", do_rm_call_async,
-                                  "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_on_thread", do_rm_call_async_on_thread,
-                                      "write", 0, 0, 0) == REDISMODULE_ERR)
-            return REDISMODULE_ERR;
-
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_script_mode", do_rm_call_async,
-                                  "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_on_thread", do_rm_call_async_on_thread, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_no_replicate", do_rm_call_async,
-                                  "write", 0, 0, 0) == REDISMODULE_ERR)
-            return REDISMODULE_ERR;
-
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_fire_and_forget", do_rm_call_async_fire_and_forget,
-                                  "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_script_mode", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "wait_and_do_rm_call", wait_and_do_rm_call_async,
-                                  "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_no_replicate", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "blpop_and_set_multiple_keys", blpop_and_set_multiple_keys,
-                                      "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_fire_and_forget", do_rm_call_async_fire_and_forget, "write", 0, 0, 0) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
+
+    if (RedisModule_CreateCommand(ctx, "wait_and_do_rm_call", wait_and_do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
+
+    if (RedisModule_CreateCommand(ctx, "blpop_and_set_multiple_keys", blpop_and_set_multiple_keys, "write", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
     if (RedisModule_CreateCommand(ctx, "do_bg_rm_call", do_bg_rm_call, "", 0, 0, 0) == REDISMODULE_ERR)
@@ -693,10 +675,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     if (RedisModule_CreateCommand(ctx, "do_fake_bg_true", do_fake_bg_true, "", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "slow_fg_command", slow_fg_command,"", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "slow_fg_command", slow_fg_command, "", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
-    if (RedisModule_CreateCommand(ctx, "stop_slow_fg_command", stop_slow_fg_command,"allow-busy", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "stop_slow_fg_command", stop_slow_fg_command, "allow-busy", 0, 0, 0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
     if (RedisModule_CreateCommand(ctx, "set_slow_bg_operation", set_slow_bg_operation, "allow-busy", 0, 0, 0) == REDISMODULE_ERR)

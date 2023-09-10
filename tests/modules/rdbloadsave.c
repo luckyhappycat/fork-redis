@@ -45,7 +45,7 @@ int sanity(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     RedisModule_ReplyWithSimpleString(ctx, "OK");
 
- out:
+out:
     RedisModule_RdbStreamFree(s);
     return REDISMODULE_OK;
 }

@@ -51,33 +51,33 @@
 #define absv(n) ((n) < 0 ? -(n) : (n))
 #define minv(a, b) ((a) < (b) ? (a) : (b))
 
-static uint64_t tens[] = { 10000000000000000000U,
-                           1000000000000000000U,
-                           100000000000000000U,
-                           10000000000000000U,
-                           1000000000000000U,
-                           100000000000000U,
-                           10000000000000U,
-                           1000000000000U,
-                           100000000000U,
-                           10000000000U,
-                           1000000000U,
-                           100000000U,
-                           10000000U,
-                           1000000U,
-                           100000U,
-                           10000U,
-                           1000U,
-                           100U,
-                           10U,
-                           1U };
+static uint64_t tens[] = {
+    10000000000000000000U,
+    1000000000000000000U,
+    100000000000000000U,
+    10000000000000000U,
+    1000000000000000U,
+    100000000000000U,
+    10000000000000U,
+    1000000000000U,
+    100000000000U,
+    10000000000U,
+    1000000000U,
+    100000000U,
+    10000000U,
+    1000000U,
+    100000U,
+    10000U,
+    1000U,
+    100U,
+    10U,
+    1U};
 
 static inline uint64_t get_dbits(double d) {
-    union
-    {
+    union {
         double dbl;
         uint64_t i;
-    } dbl_bits = { d };
+    } dbl_bits = {d};
 
     return dbl_bits.i;
 }
@@ -146,19 +146,13 @@ static Fp multiply(Fp *a, Fp *b) {
     /* round up */
     tmp += 1U << 31;
 
-    Fp fp = { ah_bh + (ah_bl >> 32) + (al_bh >> 32) + (tmp >> 32), a->exp + b->exp + 64 };
+    Fp fp = {ah_bh + (ah_bl >> 32) + (al_bh >> 32) + (tmp >> 32), a->exp + b->exp + 64};
 
     return fp;
 }
 
-static void round_digit(char *digits,
-                        int ndigits,
-                        uint64_t delta,
-                        uint64_t rem,
-                        uint64_t kappa,
-                        uint64_t frac) {
-    while (rem < frac && delta - rem >= kappa &&
-           (rem + kappa < frac || frac - rem > rem + kappa - frac)) {
+static void round_digit(char *digits, int ndigits, uint64_t delta, uint64_t rem, uint64_t kappa, uint64_t frac) {
+    while (rem < frac && delta - rem >= kappa && (rem + kappa < frac || frac - rem > rem + kappa - frac)) {
         digits[ndigits - 1]--;
         rem += kappa;
     }

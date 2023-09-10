@@ -36,7 +36,7 @@
 /* The maximum number of characters needed to represent a long double
  * as a string (long double has a huge range of some 4952 chars, see LDBL_MAX).
  * This should be the size of the buffer given to ld2string */
-#define MAX_LONG_DOUBLE_CHARS 5*1024
+#define MAX_LONG_DOUBLE_CHARS 5 * 1024
 
 /* The maximum number of characters needed to represent a double
  * as a string (double has a huge range of some 328 chars, see DBL_MAX).
@@ -48,13 +48,13 @@
 #define MAX_D2STRING_CHARS 128
 
 /* Bytes needed for long -> str + '\0' */
-#define LONG_STR_SIZE      21
+#define LONG_STR_SIZE 21
 
 /* long double to string conversion options */
 typedef enum {
-    LD_STR_AUTO,     /* %.17Lg */
-    LD_STR_HUMAN,    /* %.17Lf + Trimming of trailing zeros */
-    LD_STR_HEX       /* %La */
+    LD_STR_AUTO,  /* %.17Lg */
+    LD_STR_HUMAN, /* %.17Lf + Trimming of trailing zeros */
+    LD_STR_HEX    /* %La */
 } ld2string_mode;
 
 int stringmatchlen(const char *p, int plen, const char *s, int slen, int nocase);

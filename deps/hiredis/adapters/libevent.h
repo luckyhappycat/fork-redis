@@ -52,12 +52,13 @@ static void redisLibeventDestroy(redisLibeventEvents *e) {
 
 static void redisLibeventHandler(evutil_socket_t fd, short event, void *arg) {
     ((void)fd);
-    redisLibeventEvents *e = (redisLibeventEvents*)arg;
+    redisLibeventEvents *e = (redisLibeventEvents *)arg;
     e->state |= REDIS_LIBEVENT_ENTERED;
 
-    #define CHECK_DELETED() if (e->state & REDIS_LIBEVENT_DELETED) {\
-        redisLibeventDestroy(e);\
-        return; \
+#define CHECK_DELETED()                      \
+    if (e->state & REDIS_LIBEVENT_DELETED) { \
+        redisLibeventDestroy(e);             \
+        return;                              \
     }
 
     if ((event & EV_TIMEOUT) && (e->state & REDIS_LIBEVENT_DELETED) == 0) {
@@ -76,7 +77,7 @@ static void redisLibeventHandler(evutil_socket_t fd, short event, void *arg) {
     }
 
     e->state &= ~REDIS_LIBEVENT_ENTERED;
-    #undef CHECK_DELETED
+#undef CHECK_DELETED
 }
 
 static void redisLibeventUpdate(void *privdata, short flag, int isRemove) {
@@ -98,8 +99,7 @@ static void redisLibeventUpdate(void *privdata, short flag, int isRemove) {
     }
 
     event_del(e->ev);
-    event_assign(e->ev, e->base, e->context->c.fd, e->flags | EV_PERSIST,
-                 redisLibeventHandler, privdata);
+    event_assign(e->ev, e->base, e->context->c.fd, e->flags | EV_PERSIST, redisLibeventHandler, privdata);
     event_add(e->ev, tv);
 }
 
@@ -120,7 +120,7 @@ static void redisLibeventDelWrite(void *privdata) {
 }
 
 static void redisLibeventCleanup(void *privdata) {
-    redisLibeventEvents *e = (redisLibeventEvents*)privdata;
+    redisLibeventEvents *e = (redisLibeventEvents *)privdata;
     if (!e) {
         return;
     }
@@ -152,7 +152,7 @@ static int redisLibeventAttach(redisAsyncContext *ac, struct event_base *base) {
         return REDIS_ERR;
 
     /* Create container for context and r/w events */
-    e = (redisLibeventEvents*)hi_calloc(1, sizeof(*e));
+    e = (redisLibeventEvents *)hi_calloc(1, sizeof(*e));
     if (e == NULL)
         return REDIS_ERR;
 

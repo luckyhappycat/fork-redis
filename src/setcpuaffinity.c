@@ -47,7 +47,7 @@
 #include "config.h"
 
 #ifdef USE_SETCPUAFFINITY
-static const char *next_token(const char *q,  int sep) {
+static const char *next_token(const char *q, int sep) {
     if (q)
         q = strchr(q, sep);
     if (q)
@@ -76,7 +76,7 @@ void setcpuaffinity(const char *cpulist) {
 #ifdef __linux__
     cpu_set_t cpuset;
 #endif
-#if defined (__FreeBSD__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
     cpuset_t cpuset;
 #endif
 #ifdef __NetBSD__

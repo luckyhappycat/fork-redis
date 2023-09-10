@@ -8,7 +8,7 @@
 #include <adapters/redismoduleapi.h>
 
 void debugCallback(redisAsyncContext *c, void *r, void *privdata) {
-    (void)privdata; //unused
+    (void)privdata;  // unused
     redisReply *reply = r;
     if (reply == NULL) {
         /* The DEBUG SLEEP command will almost always fail, because we have set a 1 second timeout */
@@ -27,7 +27,7 @@ void getCallback(redisAsyncContext *c, void *r, void *privdata) {
         }
         return;
     }
-    printf("argv[%s]: %s\n", (char*)privdata, reply->str);
+    printf("argv[%s]: %s\n", (char *)privdata, reply->str);
 
     /* start another request that demonstrate timeout */
     redisAsyncCommand(c, debugCallback, NULL, "DEBUG SLEEP %f", 1.5);
@@ -60,7 +60,6 @@ void disconnectCallback(const redisAsyncContext *c, int status) {
  *       redis-server --loadmodule ./example-redismoduleapi.so value
  */
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-
     int ret = RedisModule_Init(ctx, "example-redismoduleapi", 1, REDISMODULE_APIVER_1);
     if (ret != REDISMODULE_OK) {
         printf("error module init \n");
@@ -80,13 +79,13 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     }
 
     size_t len;
-    const char *val = RedisModule_StringPtrLen(argv[argc-1], &len);
+    const char *val = RedisModule_StringPtrLen(argv[argc - 1], &len);
 
     RedisModuleCtx *module_ctx = RedisModule_GetDetachedThreadSafeContext(ctx);
     redisModuleAttach(c, module_ctx);
-    redisAsyncSetConnectCallback(c,connectCallback);
-    redisAsyncSetDisconnectCallback(c,disconnectCallback);
-    redisAsyncSetTimeout(c, (struct timeval){ .tv_sec = 1, .tv_usec = 0});
+    redisAsyncSetConnectCallback(c, connectCallback);
+    redisAsyncSetDisconnectCallback(c, disconnectCallback);
+    redisAsyncSetTimeout(c, (struct timeval){.tv_sec = 1, .tv_usec = 0});
 
     /*
     In this demo, we first `set key`, then `get key` to demonstrate the basic usage of the adapter.
@@ -96,6 +95,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     */
 
     redisAsyncCommand(c, NULL, NULL, "SET key %b", val, len);
-    redisAsyncCommand(c, getCallback, (char*)"end-1", "GET key");
+    redisAsyncCommand(c, getCallback, (char *)"end-1", "GET key");
     return 0;
 }

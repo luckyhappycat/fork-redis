@@ -52,7 +52,7 @@ const char *redisBuildIdRaw(void) {
 uint64_t redisBuildId(void) {
     char *buildid = REDIS_BUILD_ID_RAW;
 
-    return crc64(0,(unsigned char*)buildid,strlen(buildid));
+    return crc64(0, (unsigned char *)buildid, strlen(buildid));
 }
 
 /* Return a cached value of the build string in order to avoid recomputing
@@ -62,7 +62,7 @@ char *redisBuildIdString(void) {
     static char buf[32];
     static int cached = 0;
     if (!cached) {
-        snprintf(buf,sizeof(buf),"%llx",(unsigned long long) redisBuildId());
+        snprintf(buf, sizeof(buf), "%llx", (unsigned long long)redisBuildId());
         cached = 1;
     }
     return buf;

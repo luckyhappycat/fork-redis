@@ -88,7 +88,7 @@ static void luaEngineLoadHook(lua_State *lua, lua_Debug *ar) {
     if (load_ctx->timeout > 0 && duration > load_ctx->timeout) {
         lua_sethook(lua, luaEngineLoadHook, LUA_MASKLINE, 0);
 
-        luaPushError(lua,"FUNCTION LOAD timeout");
+        luaPushError(lua, "FUNCTION LOAD timeout");
         luaError(lua);
     }
 }
@@ -111,7 +111,7 @@ static int luaEngineCreate(void *engine_ctx, functionLibInfo *li, sds blob, size
     lua_getfield(lua, LUA_REGISTRYINDEX, LIBRARY_API_NAME);
     lua_setfield(lua, -2, "__index");
     lua_enablereadonlytable(lua, LUA_GLOBALSINDEX, 1); /* enable global protection */
-    lua_pop(lua, 1); /* pop the metatable */
+    lua_pop(lua, 1);                                   /* pop the metatable */
 
     /* compile the code */
     if (luaL_loadbuffer(lua, blob, sdslen(blob), "@user_function")) {
@@ -128,9 +128,9 @@ static int luaEngineCreate(void *engine_ctx, functionLibInfo *li, sds blob, size
     };
     luaSaveOnRegistry(lua, REGISTRY_LOAD_CTX_NAME, &load_ctx);
 
-    lua_sethook(lua,luaEngineLoadHook,LUA_MASKCOUNT,100000);
+    lua_sethook(lua, luaEngineLoadHook, LUA_MASKCOUNT, 100000);
     /* Run the compiled code to allow it to register functions */
-    if (lua_pcall(lua,0,0,0)) {
+    if (lua_pcall(lua, 0, 0, 0)) {
         errorInfo err_info = {0};
         luaExtractErrorInformation(lua, &err_info);
         *err = sdscatprintf(sdsempty(), "Error registering functions: %s", err_info.msg);
@@ -148,9 +148,9 @@ done:
     lua_getfield(lua, LUA_REGISTRYINDEX, GLOBALS_API_NAME);
     lua_setfield(lua, -2, "__index");
     lua_enablereadonlytable(lua, LUA_GLOBALSINDEX, 1); /* enable global protection */
-    lua_pop(lua, 1); /* pop the metatable */
+    lua_pop(lua, 1);                                   /* pop the metatable */
 
-    lua_sethook(lua,NULL,0,0); /* Disable hook */
+    lua_sethook(lua, NULL, 0, 0); /* Disable hook */
     luaSaveOnRegistry(lua, REGISTRY_LOAD_CTX_NAME, NULL);
     return ret;
 }
@@ -158,14 +158,7 @@ done:
 /*
  * Invole the give function with the given keys and args
  */
-static void luaEngineCall(scriptRunCtx *run_ctx,
-                          void *engine_ctx,
-                          void *compiled_function,
-                          robj **keys,
-                          size_t nkeys,
-                          robj **args,
-                          size_t nargs)
-{
+static void luaEngineCall(scriptRunCtx *run_ctx, void *engine_ctx, void *compiled_function, robj **keys, size_t nkeys, robj **args, size_t nargs) {
     luaEngineCtx *lua_engine_ctx = engine_ctx;
     lua_State *lua = lua_engine_ctx->lua;
     luaFunctionCtx *f_ctx = compiled_function;
@@ -204,12 +197,7 @@ static void luaEngineFreeFunction(void *engine_ctx, void *compiled_function) {
     zfree(f_ctx);
 }
 
-static void luaRegisterFunctionArgsInitialize(registerFunctionArgs *register_f_args,
-    sds name,
-    sds desc,
-    luaFunctionCtx *lua_f_ctx,
-    uint64_t flags)
-{
+static void luaRegisterFunctionArgsInitialize(registerFunctionArgs *register_f_args, sds name, sds desc, luaFunctionCtx *lua_f_ctx, uint64_t flags) {
     *register_f_args = (registerFunctionArgs){
         .name = name,
         .desc = desc,
@@ -220,7 +208,8 @@ static void luaRegisterFunctionArgsInitialize(registerFunctionArgs *register_f_a
 
 static void luaRegisterFunctionArgsDispose(lua_State *lua, registerFunctionArgs *register_f_args) {
     sdsfree(register_f_args->name);
-    if (register_f_args->desc) sdsfree(register_f_args->desc);
+    if (register_f_args->desc)
+        sdsfree(register_f_args->desc);
     lua_unref(lua, register_f_args->lua_f_ctx->lua_function_ref);
     zfree(register_f_args->lua_f_ctx);
 }
@@ -232,22 +221,22 @@ static int luaRegisterFunctionReadFlags(lua_State *lua, uint64_t *flags) {
     int j = 1;
     int ret = C_ERR;
     int f_flags = 0;
-    while(1) {
-        lua_pushnumber(lua,j++);
-        lua_gettable(lua,-2);
-        int t = lua_type(lua,-1);
+    while (1) {
+        lua_pushnumber(lua, j++);
+        lua_gettable(lua, -2);
+        int t = lua_type(lua, -1);
         if (t == LUA_TNIL) {
-            lua_pop(lua,1);
+            lua_pop(lua, 1);
             break;
         }
         if (!lua_isstring(lua, -1)) {
-            lua_pop(lua,1);
+            lua_pop(lua, 1);
             goto done;
         }
 
         const char *flag_str = lua_tostring(lua, -1);
         int found = 0;
-        for (scriptFlag *flag = scripts_flags_def; flag->str ; ++flag) {
+        for (scriptFlag *flag = scripts_flags_def; flag->str; ++flag) {
             if (!strcasecmp(flag->str, flag_str)) {
                 f_flags |= flag->flag;
                 found = 1;
@@ -255,7 +244,7 @@ static int luaRegisterFunctionReadFlags(lua_State *lua, uint64_t *flags) {
             }
         }
         /* pops the value to continue the iteration */
-        lua_pop(lua,1);
+        lua_pop(lua, 1);
         if (!found) {
             /* flag not found */
             goto done;
@@ -341,8 +330,10 @@ static int luaRegisterFunctionReadNamedArgs(lua_State *lua, registerFunctionArgs
     return C_OK;
 
 error:
-    if (name) sdsfree(name);
-    if (desc) sdsfree(desc);
+    if (name)
+        sdsfree(name);
+    if (desc)
+        sdsfree(desc);
     if (lua_f_ctx) {
         lua_unref(lua, lua_f_ctx->lua_function_ref);
         zfree(lua_f_ctx);
@@ -376,8 +367,10 @@ static int luaRegisterFunctionReadPositionalArgs(lua_State *lua, registerFunctio
     return C_OK;
 
 error:
-    if (name) sdsfree(name);
-    if (desc) sdsfree(desc);
+    if (name)
+        sdsfree(name);
+    if (desc)
+        sdsfree(desc);
     luaPushError(lua, err);
     return C_ERR;
 }
@@ -410,7 +403,9 @@ static int luaRegisterFunction(lua_State *lua) {
     }
 
     sds err = NULL;
-    if (functionLibCreateFunction(register_f_args.name, register_f_args.lua_f_ctx, load_ctx->li, register_f_args.desc, register_f_args.f_flags, &err) != C_OK) {
+    if (functionLibCreateFunction(
+            register_f_args.name, register_f_args.lua_f_ctx, load_ctx->li, register_f_args.desc, register_f_args.f_flags, &err
+        ) != C_OK) {
         luaRegisterFunctionArgsDispose(lua, &register_f_args);
         luaPushError(lua, err);
         sdsfree(err);
@@ -447,25 +442,26 @@ int luaEngineInitEngine(void) {
 
     /* Save error handler to registry */
     lua_pushstring(lua_engine_ctx->lua, REGISTRY_ERROR_HANDLER_NAME);
-    char *errh_func =       "local dbg = debug\n"
-                            "debug = nil\n"
-                            "local error_handler = function (err)\n"
-                            "  local i = dbg.getinfo(2,'nSl')\n"
-                            "  if i and i.what == 'C' then\n"
-                            "    i = dbg.getinfo(3,'nSl')\n"
-                            "  end\n"
-                            "  if type(err) ~= 'table' then\n"
-                            "    err = {err='ERR ' .. tostring(err)}"
-                            "  end"
-                            "  if i then\n"
-                            "    err['source'] = i.source\n"
-                            "    err['line'] = i.currentline\n"
-                            "  end"
-                            "  return err\n"
-                            "end\n"
-                            "return error_handler";
+    char *errh_func =
+        "local dbg = debug\n"
+        "debug = nil\n"
+        "local error_handler = function (err)\n"
+        "  local i = dbg.getinfo(2,'nSl')\n"
+        "  if i and i.what == 'C' then\n"
+        "    i = dbg.getinfo(3,'nSl')\n"
+        "  end\n"
+        "  if type(err) ~= 'table' then\n"
+        "    err = {err='ERR ' .. tostring(err)}"
+        "  end"
+        "  if i then\n"
+        "    err['source'] = i.source\n"
+        "    err['line'] = i.currentline\n"
+        "  end"
+        "  return err\n"
+        "end\n"
+        "return error_handler";
     luaL_loadbuffer(lua_engine_ctx->lua, errh_func, strlen(errh_func), "@err_handler_def");
-    lua_pcall(lua_engine_ctx->lua,0,1,0);
+    lua_pcall(lua_engine_ctx->lua, 0, 1, 0);
     lua_settable(lua_engine_ctx->lua, LUA_REGISTRYINDEX);
 
     lua_pushvalue(lua_engine_ctx->lua, LUA_GLOBALSINDEX);
@@ -489,11 +485,10 @@ int luaEngineInitEngine(void) {
     lua_enablereadonlytable(lua_engine_ctx->lua, -1, 1); /* protect the metatable */
     lua_setmetatable(lua_engine_ctx->lua, -2);
     lua_enablereadonlytable(lua_engine_ctx->lua, -1, 1); /* protect the new global table */
-    lua_replace(lua_engine_ctx->lua, LUA_GLOBALSINDEX); /* set new global table as the new globals */
-
+    lua_replace(lua_engine_ctx->lua, LUA_GLOBALSINDEX);  /* set new global table as the new globals */
 
     engine *lua_engine = zmalloc(sizeof(*lua_engine));
-    *lua_engine = (engine) {
+    *lua_engine = (engine){
         .engine_ctx = lua_engine_ctx,
         .create = luaEngineCreate,
         .call = luaEngineCall,

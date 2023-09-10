@@ -101,9 +101,8 @@ static connection *connCreateAcceptedSocket(int fd, void *priv) {
     return conn;
 }
 
-static int connSocketConnect(connection *conn, const char *addr, int port, const char *src_addr,
-        ConnectionCallbackFunc connect_handler) {
-    int fd = anetTcpNonBlockBestEffortBindConnect(NULL,addr,port,src_addr);
+static int connSocketConnect(connection *conn, const char *addr, int port, const char *src_addr, ConnectionCallbackFunc connect_handler) {
+    int fd = anetTcpNonBlockBestEffortBindConnect(NULL, addr, port, src_addr);
     if (fd == -1) {
         conn->state = CONN_STATE_ERROR;
         conn->last_errno = errno;
@@ -114,8 +113,7 @@ static int connSocketConnect(connection *conn, const char *addr, int port, const
     conn->state = CONN_STATE_CONNECTING;
 
     conn->conn_handler = connect_handler;
-    aeCreateFileEvent(server.el, conn->fd, AE_WRITABLE,
-            conn->type->ae_handler, conn);
+    aeCreateFileEvent(server.el, conn->fd, AE_WRITABLE, conn->type->ae_handler, conn);
 
     return C_OK;
 }
@@ -127,7 +125,8 @@ static int connSocketConnect(connection *conn, const char *addr, int port, const
  */
 
 static void connSocketShutdown(connection *conn) {
-    if (conn->fd == -1) return;
+    if (conn->fd == -1)
+        return;
 
     shutdown(conn->fd, SHUT_RDWR);
 }
@@ -135,7 +134,7 @@ static void connSocketShutdown(connection *conn) {
 /* Close the connection and free resources. */
 static void connSocketClose(connection *conn) {
     if (conn->fd != -1) {
-        aeDeleteFileEvent(server.el,conn->fd, AE_READABLE | AE_WRITABLE);
+        aeDeleteFileEvent(server.el, conn->fd, AE_READABLE | AE_WRITABLE);
         close(conn->fd);
         conn->fd = -1;
     }
@@ -201,11 +200,13 @@ static int connSocketRead(connection *conn, void *buf, size_t buf_len) {
 static int connSocketAccept(connection *conn, ConnectionCallbackFunc accept_handler) {
     int ret = C_OK;
 
-    if (conn->state != CONN_STATE_ACCEPTING) return C_ERR;
+    if (conn->state != CONN_STATE_ACCEPTING)
+        return C_ERR;
     conn->state = CONN_STATE_CONNECTED;
 
     connIncrRefs(conn);
-    if (!callHandler(conn, accept_handler)) ret = C_ERR;
+    if (!callHandler(conn, accept_handler))
+        ret = C_ERR;
     connDecrRefs(conn);
 
     return ret;
@@ -220,7 +221,8 @@ static int connSocketAccept(connection *conn, ConnectionCallbackFunc accept_hand
  * loop.
  */
 static int connSocketSetWriteHandler(connection *conn, ConnectionCallbackFunc func, int barrier) {
-    if (func == conn->write_handler) return C_OK;
+    if (func == conn->write_handler)
+        return C_OK;
 
     conn->write_handler = func;
     if (barrier)
@@ -228,10 +230,9 @@ static int connSocketSetWriteHandler(connection *conn, ConnectionCallbackFunc fu
     else
         conn->flags &= ~CONN_FLAG_WRITE_BARRIER;
     if (!conn->write_handler)
-        aeDeleteFileEvent(server.el,conn->fd,AE_WRITABLE);
-    else
-        if (aeCreateFileEvent(server.el,conn->fd,AE_WRITABLE,
-                    conn->type->ae_handler,conn) == AE_ERR) return C_ERR;
+        aeDeleteFileEvent(server.el, conn->fd, AE_WRITABLE);
+    else if (aeCreateFileEvent(server.el, conn->fd, AE_WRITABLE, conn->type->ae_handler, conn) == AE_ERR)
+        return C_ERR;
     return C_OK;
 }
 
@@ -239,14 +240,14 @@ static int connSocketSetWriteHandler(connection *conn, ConnectionCallbackFunc fu
  * If NULL, the existing handler is removed.
  */
 static int connSocketSetReadHandler(connection *conn, ConnectionCallbackFunc func) {
-    if (func == conn->read_handler) return C_OK;
+    if (func == conn->read_handler)
+        return C_OK;
 
     conn->read_handler = func;
     if (!conn->read_handler)
-        aeDeleteFileEvent(server.el,conn->fd,AE_READABLE);
-    else
-        if (aeCreateFileEvent(server.el,conn->fd,
-                    AE_READABLE,conn->type->ae_handler,conn) == AE_ERR) return C_ERR;
+        aeDeleteFileEvent(server.el, conn->fd, AE_READABLE);
+    else if (aeCreateFileEvent(server.el, conn->fd, AE_READABLE, conn->type->ae_handler, conn) == AE_ERR)
+        return C_ERR;
     return C_OK;
 }
 
@@ -254,15 +255,12 @@ static const char *connSocketGetLastError(connection *conn) {
     return strerror(conn->last_errno);
 }
 
-static void connSocketEventHandler(struct aeEventLoop *el, int fd, void *clientData, int mask)
-{
+static void connSocketEventHandler(struct aeEventLoop *el, int fd, void *clientData, int mask) {
     UNUSED(el);
     UNUSED(fd);
     connection *conn = clientData;
 
-    if (conn->state == CONN_STATE_CONNECTING &&
-            (mask & AE_WRITABLE) && conn->conn_handler) {
-
+    if (conn->state == CONN_STATE_CONNECTING && (mask & AE_WRITABLE) && conn->conn_handler) {
         int conn_error = anetGetError(conn->fd);
         if (conn_error) {
             conn->last_errno = conn_error;
@@ -271,9 +269,11 @@ static void connSocketEventHandler(struct aeEventLoop *el, int fd, void *clientD
             conn->state = CONN_STATE_CONNECTED;
         }
 
-        if (!conn->write_handler) aeDeleteFileEvent(server.el,conn->fd,AE_WRITABLE);
+        if (!conn->write_handler)
+            aeDeleteFileEvent(server.el, conn->fd, AE_WRITABLE);
 
-        if (!callHandler(conn, conn->conn_handler)) return;
+        if (!callHandler(conn, conn->conn_handler))
+            return;
         conn->conn_handler = NULL;
     }
 
@@ -295,16 +295,19 @@ static void connSocketEventHandler(struct aeEventLoop *el, int fd, void *clientD
 
     /* Handle normal I/O flows */
     if (!invert && call_read) {
-        if (!callHandler(conn, conn->read_handler)) return;
+        if (!callHandler(conn, conn->read_handler))
+            return;
     }
     /* Fire the writable event. */
     if (call_write) {
-        if (!callHandler(conn, conn->write_handler)) return;
+        if (!callHandler(conn, conn->write_handler))
+            return;
     }
     /* If we have to invert the call, fire the readable event now
      * after the writable one. */
     if (invert && call_read) {
-        if (!callHandler(conn, conn->read_handler)) return;
+        if (!callHandler(conn, conn->read_handler))
+            return;
     }
 }
 
@@ -315,16 +318,15 @@ static void connSocketAcceptHandler(aeEventLoop *el, int fd, void *privdata, int
     UNUSED(mask);
     UNUSED(privdata);
 
-    while(max--) {
+    while (max--) {
         cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
         if (cfd == ANET_ERR) {
             if (errno != EWOULDBLOCK)
-                serverLog(LL_WARNING,
-                    "Accepting client connection: %s", server.neterr);
+                serverLog(LL_WARNING, "Accepting client connection: %s", server.neterr);
             return;
         }
-        serverLog(LL_VERBOSE,"Accepted %s:%d", cip, cport);
-        acceptCommonHandler(connCreateAcceptedSocket(cfd, NULL),0,cip);
+        serverLog(LL_VERBOSE, "Accepted %s:%d", cip, cport);
+        acceptCommonHandler(connCreateAcceptedSocket(cfd, NULL), 0, cip);
     }
 }
 
@@ -337,7 +339,7 @@ static int connSocketAddr(connection *conn, char *ip, size_t ip_len, int *port, 
 }
 
 static int connSocketIsLocal(connection *conn) {
-    char cip[NET_IP_STR_LEN + 1] = { 0 };
+    char cip[NET_IP_STR_LEN + 1] = {0};
 
     if (connSocketAddr(conn, cip, sizeof(cip) - 1, NULL, 1) == C_ERR)
         return -1;
@@ -350,7 +352,7 @@ static int connSocketListen(connListener *listener) {
 }
 
 static int connSocketBlockingConnect(connection *conn, const char *addr, int port, long long timeout) {
-    int fd = anetTcpNonBlockConnect(NULL,addr,port);
+    int fd = anetTcpNonBlockConnect(NULL, addr, port);
     if (fd == -1) {
         conn->state = CONN_STATE_ERROR;
         conn->last_errno = errno;
@@ -384,7 +386,7 @@ static ssize_t connSocketSyncReadLine(connection *conn, char *ptr, ssize_t size,
 }
 
 static const char *connSocketGetType(connection *conn) {
-    (void) conn;
+    (void)conn;
 
     return CONN_TYPE_SOCKET;
 }
@@ -433,27 +435,32 @@ static ConnectionType CT_Socket = {
 };
 
 int connBlock(connection *conn) {
-    if (conn->fd == -1) return C_ERR;
+    if (conn->fd == -1)
+        return C_ERR;
     return anetBlock(NULL, conn->fd);
 }
 
 int connNonBlock(connection *conn) {
-    if (conn->fd == -1) return C_ERR;
+    if (conn->fd == -1)
+        return C_ERR;
     return anetNonBlock(NULL, conn->fd);
 }
 
 int connEnableTcpNoDelay(connection *conn) {
-    if (conn->fd == -1) return C_ERR;
+    if (conn->fd == -1)
+        return C_ERR;
     return anetEnableTcpNoDelay(NULL, conn->fd);
 }
 
 int connDisableTcpNoDelay(connection *conn) {
-    if (conn->fd == -1) return C_ERR;
+    if (conn->fd == -1)
+        return C_ERR;
     return anetDisableTcpNoDelay(NULL, conn->fd);
 }
 
 int connKeepAlive(connection *conn, int interval) {
-    if (conn->fd == -1) return C_ERR;
+    if (conn->fd == -1)
+        return C_ERR;
     return anetKeepAlive(NULL, conn->fd, interval);
 }
 
@@ -465,7 +472,6 @@ int connRecvTimeout(connection *conn, long long ms) {
     return anetRecvTimeout(NULL, conn->fd, ms);
 }
 
-int RedisRegisterConnectionTypeSocket(void)
-{
+int RedisRegisterConnectionTypeSocket(void) {
     return connTypeRegister(&CT_Socket);
 }

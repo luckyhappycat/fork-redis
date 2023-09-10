@@ -73,9 +73,7 @@
 #define ZMALLOC_LIB "libc"
 
 #if !defined(NO_MALLOC_USABLE_SIZE) && \
-    (defined(__GLIBC__) || defined(__FreeBSD__) || \
-     defined(__DragonFly__) || defined(__HAIKU__) || \
-     defined(USE_MALLOC_USABLE_SIZE))
+    (defined(__GLIBC__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__HAIKU__) || defined(USE_MALLOC_USABLE_SIZE))
 
 /* Includes for malloc_usable_size() */
 #ifdef __FreeBSD__
@@ -103,13 +101,13 @@
 /* 'noinline' attribute is intended to prevent the `-Wstringop-overread` warning
  * when using gcc-12 later with LTO enabled. It may be removed once the
  * bug[https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96503] is fixed. */
-__attribute__((malloc,alloc_size(1),noinline)) void *zmalloc(size_t size);
-__attribute__((malloc,alloc_size(1),noinline)) void *zcalloc(size_t size);
-__attribute__((malloc,alloc_size(1,2),noinline)) void *zcalloc_num(size_t num, size_t size);
-__attribute__((alloc_size(2),noinline)) void *zrealloc(void *ptr, size_t size);
-__attribute__((malloc,alloc_size(1),noinline)) void *ztrymalloc(size_t size);
-__attribute__((malloc,alloc_size(1),noinline)) void *ztrycalloc(size_t size);
-__attribute__((alloc_size(2),noinline)) void *ztryrealloc(void *ptr, size_t size);
+__attribute__((malloc, alloc_size(1), noinline)) void *zmalloc(size_t size);
+__attribute__((malloc, alloc_size(1), noinline)) void *zcalloc(size_t size);
+__attribute__((malloc, alloc_size(1, 2), noinline)) void *zcalloc_num(size_t num, size_t size);
+__attribute__((alloc_size(2), noinline)) void *zrealloc(void *ptr, size_t size);
+__attribute__((malloc, alloc_size(1), noinline)) void *ztrymalloc(size_t size);
+__attribute__((malloc, alloc_size(1), noinline)) void *ztrycalloc(size_t size);
+__attribute__((alloc_size(2), noinline)) void *ztryrealloc(void *ptr, size_t size);
 void zfree(void *ptr);
 void *zmalloc_usable(size_t size, size_t *usable);
 void *zcalloc_usable(size_t size, size_t *usable);
@@ -155,7 +153,7 @@ size_t zmalloc_usable_size(void *ptr);
  * The implementation returns the pointer as is; the only reason for its existence is as a conduit for the
  * alloc_size attribute. This cannot be a static inline because gcc then loses the attributes on the function.
  * See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96503 */
-__attribute__((alloc_size(2),noinline)) void *extend_to_usable(void *ptr, size_t size);
+__attribute__((alloc_size(2), noinline)) void *extend_to_usable(void *ptr, size_t size);
 #endif
 
 int get_proc_stat_ll(int i, long long *res);
