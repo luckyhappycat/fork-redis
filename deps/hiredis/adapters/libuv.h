@@ -146,8 +146,9 @@ static int redisLibuvAttach(redisAsyncContext* ac, uv_loop_t* loop) {
     ac->ev.scheduleTimer = redisLibuvSetTimeout;
 
     redisLibuvEvents* p = (redisLibuvEvents*)hi_malloc(sizeof(*p));
-    if (p == NULL)
+    if (p == NULL) {
         return REDIS_ERR;
+    }
 
     memset(p, 0, sizeof(*p));
 

@@ -151,8 +151,9 @@ void *bg_call_worker(void *arg) {
     RedisModule_UnblockClient(bg->bc, NULL);
 
     /* Free the arguments */
-    for (int i = 0; i < bg->argc; i++)
+    for (int i = 0; i < bg->argc; i++) {
         RedisModule_FreeString(ctx, bg->argv[i]);
+    }
     RedisModule_Free(bg->argv);
     RedisModule_Free(bg);
 
@@ -182,8 +183,9 @@ int call_with_user_bg(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     bg_call_data *bg = RedisModule_Alloc(sizeof(bg_call_data));
     bg->argv = RedisModule_Alloc(sizeof(RedisModuleString *) * argc);
     bg->argc = argc;
-    for (int i = 0; i < argc; i++)
+    for (int i = 0; i < argc; i++) {
         bg->argv[i] = RedisModule_HoldString(ctx, argv[i]);
+    }
 
     /* Block the client */
     bg->bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
@@ -200,26 +202,33 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "usercall", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "usercall", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "usercall.call_without_user", call_without_user, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "usercall.call_without_user", call_without_user, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "usercall.call_with_user_flag", call_with_user_flag, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "usercall.call_with_user_flag", call_with_user_flag, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "usercall.call_with_user_bg", call_with_user_bg, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "usercall.call_with_user_bg", call_with_user_bg, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "usercall.add_to_acl", add_to_acl, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "usercall.add_to_acl", add_to_acl, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "usercall.reset_user", reset_user, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "usercall.reset_user", reset_user, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "usercall.get_acl", get_acl, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "usercall.get_acl", get_acl, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

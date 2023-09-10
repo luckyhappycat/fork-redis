@@ -76,10 +76,11 @@ int test_call_generic(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 int test_call_info(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModuleCallReply *reply;
-    if (argc > 1)
+    if (argc > 1) {
         reply = RedisModule_Call(ctx, "info", "s", argv[1]);
-    else
+    } else {
         reply = RedisModule_Call(ctx, "info", "");
+    }
     if (reply) {
         RedisModule_ReplyWithCallReply(ctx, reply);
         RedisModule_FreeCallReply(reply);
@@ -162,8 +163,9 @@ int test_randomkey(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 int test_keyexists(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 2)
+    if (argc < 2) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModuleString *key = argv[1];
     int exists = RedisModule_KeyExists(ctx, key);
     return RedisModule_ReplyWithBool(ctx, exists);
@@ -313,25 +315,29 @@ int test_clientinfo(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 int test_getname(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     (void)argv;
-    if (argc != 1)
+    if (argc != 1) {
         return RedisModule_WrongArity(ctx);
+    }
     unsigned long long id = RedisModule_GetClientId(ctx);
     RedisModuleString *name = RedisModule_GetClientNameById(ctx, id);
-    if (name == NULL)
+    if (name == NULL) {
         return RedisModule_ReplyWithError(ctx, "-ERR No name");
+    }
     RedisModule_ReplyWithString(ctx, name);
     RedisModule_FreeString(ctx, name);
     return REDISMODULE_OK;
 }
 
 int test_setname(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
     unsigned long long id = RedisModule_GetClientId(ctx);
-    if (RedisModule_SetClientNameById(id, argv[1]) == REDISMODULE_OK)
+    if (RedisModule_SetClientNameById(id, argv[1]) == REDISMODULE_OK) {
         return RedisModule_ReplyWithSimpleString(ctx, "OK");
-    else
+    } else {
         return RedisModule_ReplyWithError(ctx, strerror(errno));
+    }
 }
 
 int test_log_tsctx(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -485,8 +491,9 @@ final:
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
-    if (RedisModule_Init(ctx, "misc", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "misc", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     if (RedisModule_SubscribeToKeyspaceEvents(
             ctx, REDISMODULE_NOTIFY_KEY_MISS | REDISMODULE_NOTIFY_EXPIRED, KeySpace_NotificationModuleKeyMissExpired
@@ -494,59 +501,85 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
 
-    if (RedisModule_CreateCommand(ctx, "test.call_generic", test_call_generic, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "test.call_generic", test_call_generic, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.call_info", test_call_info, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.call_info", test_call_info, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.ld_conversion", test_ld_conv, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.ld_conversion", test_ld_conv, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.ull_conversion", test_ull_conv, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.ull_conversion", test_ull_conv, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.flushall", test_flushall, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.flushall", test_flushall, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.dbsize", test_dbsize, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.dbsize", test_dbsize, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.randomkey", test_randomkey, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.randomkey", test_randomkey, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.keyexists", test_keyexists, "", 1, 1, 1) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.keyexists", test_keyexists, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.setlru", test_setlru, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.setlru", test_setlru, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.getlru", test_getlru, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.getlru", test_getlru, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.setlfu", test_setlfu, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.setlfu", test_setlfu, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.getlfu", test_getlfu, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.getlfu", test_getlfu, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.clientinfo", test_clientinfo, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.clientinfo", test_clientinfo, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.getname", test_getname, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.getname", test_getname, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.setname", test_setname, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.setname", test_setname, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.redisversion", test_redisversion, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.redisversion", test_redisversion, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.getclientcert", test_getclientcert, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.getclientcert", test_getclientcert, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.log_tsctx", test_log_tsctx, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.log_tsctx", test_log_tsctx, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
     /* Add a command with ':' in it's name, so that we can check commandstats sanitization. */
-    if (RedisModule_CreateCommand(ctx, "test.weird:cmd", test_weird_cmd, "readonly", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "test.weird:cmd", test_weird_cmd, "readonly", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.monotonic_time", test_monotonic_time, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.monotonic_time", test_monotonic_time, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.rm_call", test_rm_call, "allow-stale", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.rm_call", test_rm_call, "allow-stale", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.rm_call_flags", test_rm_call_flags, "allow-stale", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.rm_call_flags", test_rm_call_flags, "allow-stale", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.rm_call_replicate", test_rm_call_replicate, "allow-stale", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.rm_call_replicate", test_rm_call_replicate, "allow-stale", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.silent_open_key", test_open_key_no_effects, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.silent_open_key", test_open_key_no_effects, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.get_n_events", test_get_n_events, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.get_n_events", test_get_n_events, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "test.clear_n_events", test_clear_n_events, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "test.clear_n_events", test_clear_n_events, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

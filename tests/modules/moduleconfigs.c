@@ -49,8 +49,9 @@ int setStringConfigCommand(const char *name, RedisModuleString *new, void *privd
         *err = RedisModule_CreateString(NULL, "Cannot set string to 'rejectisfreed'", 36);
         return REDISMODULE_ERR;
     }
-    if (strval)
+    if (strval) {
         RedisModule_FreeString(NULL, strval);
+    }
     RedisModule_RetainString(NULL, new);
     strval = new;
     return REDISMODULE_OK;
@@ -147,8 +148,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "moduleconfigs", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "moduleconfigs", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     if (RedisModule_RegisterBoolConfig(
             ctx, "mutable_bool", 1, REDISMODULE_CONFIG_DEFAULT, getBoolConfigCommand, setBoolConfigCommand, boolApplyFunc, &mutable_bool_val
@@ -205,8 +207,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     }
     /* Creates a command which registers configs outside OnLoad() function. */
-    if (RedisModule_CreateCommand(ctx, "block.register.configs.outside.onload", registerBlockCheck, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.register.configs.outside.onload", registerBlockCheck, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

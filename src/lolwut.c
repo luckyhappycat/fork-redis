@@ -57,8 +57,9 @@ void lolwutCommand(client *c) {
 
     if (c->argc >= 3 && !strcasecmp(c->argv[1]->ptr, "version")) {
         long ver;
-        if (getLongFromObjectOrReply(c, c->argv[2], &ver, NULL) != C_OK)
+        if (getLongFromObjectOrReply(c, c->argv[2], &ver, NULL) != C_OK) {
             return;
+        }
         snprintf(verstr, sizeof(verstr), "%u.0.0", (unsigned int)ver);
         v = verstr;
 
@@ -69,12 +70,13 @@ void lolwutCommand(client *c) {
         c->argc -= 2;
     }
 
-    if ((v[0] == '5' && v[1] == '.' && v[2] != '9') || (v[0] == '4' && v[1] == '.' && v[2] == '9'))
+    if ((v[0] == '5' && v[1] == '.' && v[2] != '9') || (v[0] == '4' && v[1] == '.' && v[2] == '9')) {
         lolwut5Command(c);
-    else if ((v[0] == '6' && v[1] == '.' && v[2] != '9') || (v[0] == '5' && v[1] == '.' && v[2] == '9'))
+    } else if ((v[0] == '6' && v[1] == '.' && v[2] != '9') || (v[0] == '5' && v[1] == '.' && v[2] == '9')) {
         lolwut6Command(c);
-    else
+    } else {
         lolwutUnstableCommand(c);
+    }
 
     /* Fix back argc/argv in case of VERSION argument. */
     if (v == verstr) {
@@ -109,15 +111,17 @@ void lwFreeCanvas(lwCanvas *canvas) {
  * Coordinates are arranged so that left-top corner is 0,0. You can write
  * out of the size of the canvas without issues. */
 void lwDrawPixel(lwCanvas *canvas, int x, int y, int color) {
-    if (x < 0 || x >= canvas->width || y < 0 || y >= canvas->height)
+    if (x < 0 || x >= canvas->width || y < 0 || y >= canvas->height) {
         return;
+    }
     canvas->pixels[x + y * canvas->width] = color;
 }
 
 /* Return the value of the specified pixel on the canvas. */
 int lwGetPixel(lwCanvas *canvas, int x, int y) {
-    if (x < 0 || x >= canvas->width || y < 0 || y >= canvas->height)
+    if (x < 0 || x >= canvas->width || y < 0 || y >= canvas->height) {
         return 0;
+    }
     return canvas->pixels[x + y * canvas->width];
 }
 
@@ -131,8 +135,9 @@ void lwDrawLine(lwCanvas *canvas, int x1, int y1, int x2, int y2, int color) {
 
     while (1) {
         lwDrawPixel(canvas, x1, y1, color);
-        if (x1 == x2 && y1 == y2)
+        if (x1 == x2 && y1 == y2) {
             break;
+        }
         e2 = err * 2;
         if (e2 > -dy) {
             err -= dy;
@@ -183,6 +188,7 @@ void lwDrawSquare(lwCanvas *canvas, int x, int y, float size, float angle, int c
     }
 
     /* Draw the square. */
-    for (int j = 0; j < 4; j++)
+    for (int j = 0; j < 4; j++) {
         lwDrawLine(canvas, px[j], py[j], px[(j + 1) % 4], py[(j + 1) % 4], color);
+    }
 }

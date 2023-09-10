@@ -42,8 +42,9 @@ void *BlockDebug_ThreadMain(void *arg) {
     RedisModuleBlockedClient *bc = targ[0];
     long long delay = (unsigned long)targ[1];
     long long enable_time_track = (unsigned long)targ[2];
-    if (enable_time_track)
+    if (enable_time_track) {
         RedisModule_BlockedClientMeasureTimeStart(bc);
+    }
     RedisModule_Free(targ);
 
     struct timespec ts;
@@ -52,8 +53,9 @@ void *BlockDebug_ThreadMain(void *arg) {
     nanosleep(&ts, NULL);
     int *r = RedisModule_Alloc(sizeof(int));
     *r = rand();
-    if (enable_time_track)
+    if (enable_time_track) {
         RedisModule_BlockedClientMeasureTimeEnd(bc);
+    }
     RedisModule_UnblockClient(bc, r);
     return NULL;
 }
@@ -92,8 +94,9 @@ void HelloBlock_Disconnected(RedisModuleCtx *ctx, RedisModuleBlockedClient *bc) 
  * a random number. Timeout is the command timeout, so that you can test
  * what happens when the delay is greater than the timeout. */
 int HelloBlock_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
     long long delay;
     long long timeout;
 
@@ -134,8 +137,9 @@ int HelloBlock_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int a
  * what happens when the delay is greater than the timeout.
  * this command does not track background time so the background time should no appear in stats*/
 int HelloBlockNoTracking_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
     long long delay;
     long long timeout;
 
@@ -176,8 +180,9 @@ int HelloBlockNoTracking_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **a
  * This command is used to test multiple calls to RedisModule_BlockedClientMeasureTimeStart()
  * and RedisModule_BlockedClientMeasureTimeEnd() within the same execution. */
 int HelloDoubleBlock_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
     long long delay;
 
     if (RedisModule_StringToLongLong(argv[1], &delay) != REDISMODULE_OK) {
@@ -217,8 +222,9 @@ int Block_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return RedisModule_ReplyWithSimpleString(ctx, "Timed out");
     }
 
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
     long long timeout;
 
     if (RedisModule_StringToLongLong(argv[1], &timeout) != REDISMODULE_OK) {
@@ -247,8 +253,9 @@ int IsBlocked_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 /* BLOCK.RELEASE [reply] -- Releases the blocked client and produce the specified reply.
  */
 int Release_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
     if (!blocked_client) {
         return RedisModule_ReplyWithError(ctx, "ERR No blocked client");
     }
@@ -267,26 +274,33 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     UNUSED(argv);
     UNUSED(argc);
 
-    if (RedisModule_Init(ctx, "block", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "block", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.debug", HelloBlock_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.debug", HelloBlock_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.double_debug", HelloDoubleBlock_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.double_debug", HelloDoubleBlock_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.debug_no_track", HelloBlockNoTracking_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.debug_no_track", HelloBlockNoTracking_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.block", Block_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.block", Block_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.is_blocked", IsBlocked_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.is_blocked", IsBlocked_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.release", Release_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.release", Release_RedisCommand, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

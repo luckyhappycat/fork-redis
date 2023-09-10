@@ -103,8 +103,9 @@ static void __redisSetErrorFromErrno(redisContext *c, int type, const char *pref
     char buf[128] = {0};
     size_t len = 0;
 
-    if (prefix != NULL)
+    if (prefix != NULL) {
         len = snprintf(buf, sizeof(buf), "%s: ", prefix);
+    }
     strerror_r(errorno, (char *)(buf + len), sizeof(buf) - len);
     __redisSetError(c, type, buf);
 }
@@ -147,10 +148,11 @@ static int redisSetBlocking(redisContext *c, int blocking) {
         return REDIS_ERR;
     }
 
-    if (blocking)
+    if (blocking) {
         flags &= ~O_NONBLOCK;
-    else
+    } else {
         flags |= O_NONBLOCK;
+    }
 
     if (fcntl(c->fd, F_SETFL, flags) == -1) {
         __redisSetErrorFromErrno(c, REDIS_ERR_IO, "fcntl(F_SETFL)");
@@ -193,8 +195,9 @@ int redisKeepAlive(redisContext *c, int interval) {
     }
 
     val = interval / 3;
-    if (val == 0)
+    if (val == 0) {
         val = 1;
+    }
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
         __redisSetError(c, REDIS_ERR_OTHER, strerror(errno));
         return REDIS_ERR;
@@ -383,14 +386,16 @@ int redisContextSetTimeout(redisContext *c, const struct timeval tv) {
 
 int redisContextUpdateConnectTimeout(redisContext *c, const struct timeval *timeout) {
     /* Same timeval struct, short circuit */
-    if (c->connect_timeout == timeout)
+    if (c->connect_timeout == timeout) {
         return REDIS_OK;
+    }
 
     /* Allocate context timeval if we need to */
     if (c->connect_timeout == NULL) {
         c->connect_timeout = hi_malloc(sizeof(*c->connect_timeout));
-        if (c->connect_timeout == NULL)
+        if (c->connect_timeout == NULL) {
             return REDIS_ERR;
+        }
     }
 
     memcpy(c->connect_timeout, timeout, sizeof(*c->connect_timeout));
@@ -399,14 +404,16 @@ int redisContextUpdateConnectTimeout(redisContext *c, const struct timeval *time
 
 int redisContextUpdateCommandTimeout(redisContext *c, const struct timeval *timeout) {
     /* Same timeval struct, short circuit */
-    if (c->command_timeout == timeout)
+    if (c->command_timeout == timeout) {
         return REDIS_OK;
+    }
 
     /* Allocate context timeval if we need to */
     if (c->command_timeout == NULL) {
         c->command_timeout = hi_malloc(sizeof(*c->command_timeout));
-        if (c->command_timeout == NULL)
+        if (c->command_timeout == NULL) {
             return REDIS_ERR;
+        }
     }
 
     memcpy(c->command_timeout, timeout, sizeof(*c->command_timeout));
@@ -438,13 +445,15 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port, 
         hi_free(c->tcp.host);
 
         c->tcp.host = hi_strdup(addr);
-        if (c->tcp.host == NULL)
+        if (c->tcp.host == NULL) {
             goto oom;
+        }
     }
 
     if (timeout) {
-        if (redisContextUpdateConnectTimeout(c, timeout) == REDIS_ERR)
+        if (redisContextUpdateConnectTimeout(c, timeout) == REDIS_ERR) {
             goto oom;
+        }
     } else {
         hi_free(c->connect_timeout);
         c->connect_timeout = NULL;
@@ -470,12 +479,13 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port, 
     /* DNS lookup. To use dual stack, set both flags to prefer both IPv4 and
      * IPv6. By default, for historical reasons, we try IPv4 first and then we
      * try IPv6 only if no IPv4 address was found. */
-    if (c->flags & REDIS_PREFER_IPV6 && c->flags & REDIS_PREFER_IPV4)
+    if (c->flags & REDIS_PREFER_IPV6 && c->flags & REDIS_PREFER_IPV4) {
         hints.ai_family = AF_UNSPEC;
-    else if (c->flags & REDIS_PREFER_IPV6)
+    } else if (c->flags & REDIS_PREFER_IPV6) {
         hints.ai_family = AF_INET6;
-    else
+    } else {
         hints.ai_family = AF_INET;
+    }
 
     rv = getaddrinfo(c->tcp.host, _port, &hints, &servinfo);
     if (rv != 0 && hints.ai_family != AF_UNSPEC) {
@@ -489,12 +499,14 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port, 
     }
     for (p = servinfo; p != NULL; p = p->ai_next) {
     addrretry:
-        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == REDIS_INVALID_FD)
+        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == REDIS_INVALID_FD) {
             continue;
+        }
 
         c->fd = s;
-        if (redisSetBlocking(c, 0) != REDIS_OK)
+        if (redisSetBlocking(c, 0) != REDIS_OK) {
             goto error;
+        }
         if (c->tcp.source_addr) {
             int bound = 0;
             /* Using getaddrinfo saves us from self-determining IPv4 vs IPv6 */
@@ -531,8 +543,9 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port, 
         /* For repeat connection */
         hi_free(c->saddr);
         c->saddr = hi_malloc(p->ai_addrlen);
-        if (c->saddr == NULL)
+        if (c->saddr == NULL) {
             goto oom;
+        }
 
         memcpy(c->saddr, p->ai_addr, p->ai_addrlen);
         c->addrlen = p->ai_addrlen;
@@ -558,14 +571,17 @@ static int _redisContextConnectTcp(redisContext *c, const char *addr, int port, 
                 }
             } else {
             wait_for_ready:
-                if (redisContextWaitReady(c, timeout_msec) != REDIS_OK)
+                if (redisContextWaitReady(c, timeout_msec) != REDIS_OK) {
                     goto error;
-                if (redisSetTcpNoDelay(c) != REDIS_OK)
+                }
+                if (redisSetTcpNoDelay(c) != REDIS_OK) {
                     goto error;
+                }
             }
         }
-        if (blocking && redisSetBlocking(c, 1) != REDIS_OK)
+        if (blocking && redisSetBlocking(c, 1) != REDIS_OK) {
             goto error;
+        }
 
         c->flags |= REDIS_CONNECTED;
         rv = REDIS_OK;
@@ -604,38 +620,45 @@ int redisContextConnectUnix(redisContext *c, const char *path, const struct time
     struct sockaddr_un *sa;
     long timeout_msec = -1;
 
-    if (redisCreateSocket(c, AF_UNIX) < 0)
+    if (redisCreateSocket(c, AF_UNIX) < 0) {
         return REDIS_ERR;
-    if (redisSetBlocking(c, 0) != REDIS_OK)
+    }
+    if (redisSetBlocking(c, 0) != REDIS_OK) {
         return REDIS_ERR;
+    }
 
     c->connection_type = REDIS_CONN_UNIX;
     if (c->unix_sock.path != path) {
         hi_free(c->unix_sock.path);
 
         c->unix_sock.path = hi_strdup(path);
-        if (c->unix_sock.path == NULL)
+        if (c->unix_sock.path == NULL) {
             goto oom;
+        }
     }
 
     if (timeout) {
-        if (redisContextUpdateConnectTimeout(c, timeout) == REDIS_ERR)
+        if (redisContextUpdateConnectTimeout(c, timeout) == REDIS_ERR) {
             goto oom;
+        }
     } else {
         hi_free(c->connect_timeout);
         c->connect_timeout = NULL;
     }
 
-    if (redisContextTimeoutMsec(c, &timeout_msec) != REDIS_OK)
+    if (redisContextTimeoutMsec(c, &timeout_msec) != REDIS_OK) {
         return REDIS_ERR;
+    }
 
     /* Don't leak sockaddr if we're reconnecting */
-    if (c->saddr)
+    if (c->saddr) {
         hi_free(c->saddr);
+    }
 
     sa = (struct sockaddr_un *)(c->saddr = hi_malloc(sizeof(struct sockaddr_un)));
-    if (sa == NULL)
+    if (sa == NULL) {
         goto oom;
+    }
 
     c->addrlen = sizeof(struct sockaddr_un);
     sa->sun_family = AF_UNIX;
@@ -644,14 +667,16 @@ int redisContextConnectUnix(redisContext *c, const char *path, const struct time
         if (errno == EINPROGRESS && !blocking) {
             /* This is ok. */
         } else {
-            if (redisContextWaitReady(c, timeout_msec) != REDIS_OK)
+            if (redisContextWaitReady(c, timeout_msec) != REDIS_OK) {
                 return REDIS_ERR;
+            }
         }
     }
 
     /* Reset socket to be blocking after connect(2). */
-    if (blocking && redisSetBlocking(c, 1) != REDIS_OK)
+    if (blocking && redisSetBlocking(c, 1) != REDIS_OK) {
         return REDIS_ERR;
+    }
 
     c->flags |= REDIS_CONNECTED;
     return REDIS_OK;

@@ -12,8 +12,9 @@ static int exit_loop = 0;
 
 void getCallback(redisAsyncContext *c, void *r, void *privdata) {
     redisReply *reply = r;
-    if (reply == NULL)
+    if (reply == NULL) {
         return;
+    }
     printf("argv[%s]: %s\n", (char *)privdata, reply->str);
 
     /* Disconnect after receiving the reply to GET */

@@ -75,8 +75,9 @@ void memtest_progress_start(char *title, int pass) {
 
     printf("\x1b[H\x1b[2J"); /* Cursor home, clear screen. */
     /* Fill with dots. */
-    for (j = 0; j < ws.ws_col * (ws.ws_row - 2); j++)
+    for (j = 0; j < ws.ws_col * (ws.ws_row - 2); j++) {
         printf(".");
+    }
     printf("Please keep the test running several minutes per GB of memory.\n");
     printf("Also check http://www.memtest86.com/ and http://pyropus.ca/software/memtester/");
     printf("\x1b[H\x1b[2K");          /* Cursor home, clear current line.  */
@@ -93,8 +94,9 @@ void memtest_progress_end(void) {
 void memtest_progress_step(size_t curr, size_t size, char c) {
     size_t chars = ((unsigned long long)curr * progress_full) / size, j;
 
-    for (j = 0; j < chars - progress_printed; j++)
+    for (j = 0; j < chars - progress_printed; j++) {
         printf("%c", c);
+    }
     progress_printed = chars;
     fflush(stdout);
 }
@@ -111,8 +113,9 @@ int memtest_addressing(unsigned long *l, size_t bytes, int interactive) {
     for (j = 0; j < words; j++) {
         *p = (unsigned long)p;
         p++;
-        if ((j & 0xffff) == 0 && interactive)
+        if ((j & 0xffff) == 0 && interactive) {
             memtest_progress_step(j, words * 2, 'A');
+        }
     }
     /* Test */
     p = l;
@@ -125,8 +128,9 @@ int memtest_addressing(unsigned long *l, size_t bytes, int interactive) {
             return 1;
         }
         p++;
-        if ((j & 0xffff) == 0 && interactive)
+        if ((j & 0xffff) == 0 && interactive) {
             memtest_progress_step(j + words, words * 2, 'A');
+        }
     }
     return 0;
 }
@@ -164,8 +168,9 @@ void memtest_fill_random(unsigned long *l, size_t bytes, int interactive) {
             *l1 = *l2 = (unsigned long)rout;
             l1 += step;
             l2 += step;
-            if ((w & 0xffff) == 0 && interactive)
+            if ((w & 0xffff) == 0 && interactive) {
                 memtest_progress_step(w + iwords * off, words, 'R');
+            }
         }
     }
 }
@@ -191,8 +196,9 @@ void memtest_fill_value(unsigned long *l, size_t bytes, unsigned long v1, unsign
 #endif
             l1 += step;
             l2 += step;
-            if ((w & 0xffff) == 0 && interactive)
+            if ((w & 0xffff) == 0 && interactive) {
                 memtest_progress_step(w + iwords * off, words, sym);
+            }
         }
     }
 }
@@ -214,8 +220,9 @@ int memtest_compare(unsigned long *l, size_t bytes, int interactive) {
         }
         l1++;
         l2++;
-        if ((w & 0xffff) == 0 && interactive)
+        if ((w & 0xffff) == 0 && interactive) {
             memtest_progress_step(w, words, '=');
+        }
     }
     return 0;
 }
@@ -225,11 +232,13 @@ int memtest_compare_times(unsigned long *m, size_t bytes, int pass, int times, i
     int errors = 0;
 
     for (j = 0; j < times; j++) {
-        if (interactive)
+        if (interactive) {
             memtest_progress_start("Compare", pass);
+        }
         errors += memtest_compare(m, bytes, interactive);
-        if (interactive)
+        if (interactive) {
             memtest_progress_end();
+        }
     }
     return errors;
 }
@@ -246,31 +255,39 @@ int memtest_test(unsigned long *m, size_t bytes, int passes, int interactive) {
     while (pass != passes) {
         pass++;
 
-        if (interactive)
+        if (interactive) {
             memtest_progress_start("Addressing test", pass);
+        }
         errors += memtest_addressing(m, bytes, interactive);
-        if (interactive)
+        if (interactive) {
             memtest_progress_end();
+        }
 
-        if (interactive)
+        if (interactive) {
             memtest_progress_start("Random fill", pass);
+        }
         memtest_fill_random(m, bytes, interactive);
-        if (interactive)
+        if (interactive) {
             memtest_progress_end();
+        }
         errors += memtest_compare_times(m, bytes, pass, 4, interactive);
 
-        if (interactive)
+        if (interactive) {
             memtest_progress_start("Solid fill", pass);
+        }
         memtest_fill_value(m, bytes, 0, (unsigned long)-1, 'S', interactive);
-        if (interactive)
+        if (interactive) {
             memtest_progress_end();
+        }
         errors += memtest_compare_times(m, bytes, pass, 4, interactive);
 
-        if (interactive)
+        if (interactive) {
             memtest_progress_start("Checkerboard fill", pass);
+        }
         memtest_fill_value(m, bytes, ULONG_ONEZERO, ULONG_ZEROONE, 'C', interactive);
-        if (interactive)
+        if (interactive) {
             memtest_progress_end();
+        }
         errors += memtest_compare_times(m, bytes, pass, 4, interactive);
     }
     return errors;
@@ -299,10 +316,12 @@ int memtest_preserving_test(unsigned long *m, size_t bytes, int passes) {
     size_t left = bytes;
     int errors = 0;
 
-    if (bytes & 4095)
+    if (bytes & 4095) {
         return 0; /* Can't test across 4k page boundaries. */
-    if (bytes < 4096 * 2)
+    }
+    if (bytes < 4096 * 2) {
         return 0; /* Can't test a single page. */
+    }
 
     while (left) {
         /* If we have to test a single final page, go back a single page
@@ -317,8 +336,9 @@ int memtest_preserving_test(unsigned long *m, size_t bytes, int passes) {
         size_t len = (left > sizeof(backup)) ? sizeof(backup) : left;
 
         /* Always test an even number of pages. */
-        if (len / 4096 % 2)
+        if (len / 4096 % 2) {
             len -= 4096;
+        }
 
         memcpy(backup, p, len); /* Backup. */
         while (pass != passes) {

@@ -71,10 +71,11 @@ static UBits barg(lua_State *L, int idx) {
 #endif
 #elif defined(LUA_NUMBER_INT) || defined(LUA_NUMBER_LONG) || defined(LUA_NUMBER_LONGLONG) || defined(LUA_NUMBER_LONG_LONG) || \
     defined(LUA_NUMBER_LLONG)
-    if (sizeof(UBits) == sizeof(lua_Number))
+    if (sizeof(UBits) == sizeof(lua_Number)) {
         b = bn.b;
-    else
+    } else {
         b = (UBits)(SBits)bn.n;
+    }
 #elif defined(LUA_NUMBER_FLOAT)
 #error "A 'float' lua_Number type is incompatible with this library"
 #else
@@ -136,8 +137,9 @@ static int bit_tohex(lua_State *L) {
         n = -n;
         hexdigits = "0123456789ABCDEF";
     }
-    if (n > 8)
+    if (n > 8) {
         n = 8;
+    }
     for (i = (int)n; --i >= 0;) {
         buf[i] = hexdigits[b & 15];
         b >>= 4;
@@ -176,14 +178,17 @@ LUALIB_API int luaopen_bit(lua_State *L) {
         const char *msg = "compiled with incompatible luaconf.h";
 #ifdef LUA_NUMBER_DOUBLE
 #ifdef _WIN32
-        if (b == (UBits)1610612736L)
+        if (b == (UBits)1610612736L) {
             msg = "use D3DCREATE_FPU_PRESERVE with DirectX";
+        }
 #endif
-        if (b == (UBits)1127743488L)
+        if (b == (UBits)1127743488L) {
             msg = "not compiled with SWAPPED_DOUBLE";
+        }
 #endif
-        if (BAD_SAR)
+        if (BAD_SAR) {
             msg = "arithmetic right-shift broken";
+        }
         luaL_error(L, "bit library self-test failed (%s)", msg);
     }
 #if LUA_VERSION_NUM < 502

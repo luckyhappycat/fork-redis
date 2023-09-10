@@ -200,8 +200,9 @@ static unsigned zone_batch_malloc(struct _malloc_zone_t *zone, size_t size, void
 
     for (i = 0; i < num_requested; i++) {
         results[i] = je_malloc(size);
-        if (!results[i])
+        if (!results[i]) {
             break;
+        }
     }
 
     return i;

@@ -50,8 +50,9 @@
 static sds read_sysfs_line(char *path) {
     char buf[256];
     FILE *f = fopen(path, "r");
-    if (!f)
+    if (!f) {
         return NULL;
+    }
     if (!fgets(buf, sizeof(buf), f)) {
         fclose(f);
         return NULL;
@@ -72,8 +73,9 @@ static int checkClocksource(sds *error_msg) {
 
     system_hz = sysconf(_SC_CLK_TCK);
 
-    if (getrusage(RUSAGE_SELF, &ru_start) != 0)
+    if (getrusage(RUSAGE_SELF, &ru_start) != 0) {
         return 0;
+    }
     if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
         return 0;
     }
@@ -86,14 +88,17 @@ static int checkClocksource(sds *error_msg) {
     test_time_us = 5 * 1000000 / system_hz;
     while (1) {
         unsigned long long d;
-        if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0)
+        if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
             return 0;
+        }
         d = (ts.tv_sec * 1000000 + ts.tv_nsec / 1000) - start_us;
-        if (d >= test_time_us)
+        if (d >= test_time_us) {
             break;
+        }
     }
-    if (getrusage(RUSAGE_SELF, &ru_end) != 0)
+    if (getrusage(RUSAGE_SELF, &ru_end) != 0) {
         return 0;
+    }
 
     long long stime_us =
         (ru_end.ru_stime.tv_sec * 1000000 + ru_end.ru_stime.tv_usec) - (ru_start.ru_stime.tv_sec * 1000000 + ru_start.ru_stime.tv_usec);
@@ -149,8 +154,9 @@ int checkOvercommit(sds *error_msg) {
     FILE *fp = fopen("/proc/sys/vm/overcommit_memory", "r");
     char buf[64];
 
-    if (!fp)
+    if (!fp) {
         return 0;
+    }
     if (fgets(buf, 64, fp) == NULL) {
         fclose(fp);
         return 0;
@@ -178,8 +184,9 @@ int checkTHPEnabled(sds *error_msg) {
     char buf[1024];
 
     FILE *fp = fopen("/sys/kernel/mm/transparent_hugepage/enabled", "r");
-    if (!fp)
+    if (!fp) {
         return 0;
+    }
     if (fgets(buf, sizeof(buf), fp) == NULL) {
         fclose(fp);
         return 0;
@@ -210,16 +217,19 @@ static int smapsGetSharedDirty(unsigned long addr) {
     FILE *f;
 
     f = fopen("/proc/self/smaps", "r");
-    if (!f)
+    if (!f) {
         return -1;
+    }
 
     while (1) {
-        if (!fgets(buf, sizeof(buf), f))
+        if (!fgets(buf, sizeof(buf), f)) {
             break;
+        }
 
         ret = sscanf(buf, "%lx-%lx", &from, &to);
-        if (ret == 2)
+        if (ret == 2) {
             in_mapping = from <= addr && addr < to;
+        }
 
         if (in_mapping && !memcmp(buf, "Shared_Dirty:", 13)) {
             sscanf(buf, "%*s %d", &val);
@@ -273,8 +283,9 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
     if (ret < 0) {
         /* MADV_FREE is not available on older kernels that are presumably
          * not affected. */
-        if (errno == EINVAL)
+        if (errno == EINVAL) {
             goto exit;
+        }
 
         res = 0;
         goto exit;
@@ -300,10 +311,11 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
         /* Child: check if the page is marked as dirty, page_size in kb.
          * A value of 0 means the kernel is affected by the bug. */
         ret = smapsGetSharedDirty((unsigned long)q);
-        if (!ret)
+        if (!ret) {
             res = -1;
-        else if (ret == -1) /* Failed to read */
+        } else if (ret == -1) { /* Failed to read */
             res = 0;
+        }
 
         ret = write(pipefd[1], &res, sizeof(res)); /* Assume success, ignore return value*/
         exit(0);
@@ -320,18 +332,22 @@ int checkLinuxMadvFreeForkBug(sds *error_msg) {
 
 exit:
     /* Cleanup */
-    if (pipefd[0] != -1)
+    if (pipefd[0] != -1) {
         close(pipefd[0]);
-    if (pipefd[1] != -1)
+    }
+    if (pipefd[1] != -1) {
         close(pipefd[1]);
-    if (p != NULL)
+    }
+    if (p != NULL) {
         munmap(p, map_size);
+    }
 
-    if (res == -1)
+    if (res == -1) {
         *error_msg = sdsnew(
             "Your kernel has a bug that could lead to data corruption during background save. "
             "Please upgrade to the latest stable kernel."
         );
+    }
 
     return res;
 }

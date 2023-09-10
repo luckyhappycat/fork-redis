@@ -51,8 +51,9 @@ robj *createObject(int type, void *ptr) {
 }
 
 void initObjectLRUOrLFU(robj *o) {
-    if (o->refcount == OBJ_SHARED_REFCOUNT)
+    if (o->refcount == OBJ_SHARED_REFCOUNT) {
         return;
+    }
     /* Set the LRU to the current lruclock (minutes resolution), or
      * alternatively the LFU counter. */
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
@@ -102,9 +103,9 @@ robj *createEmbeddedStringObject(const char *ptr, size_t len) {
     sh->len = len;
     sh->alloc = len;
     sh->flags = SDS_TYPE_8;
-    if (ptr == SDS_NOINIT)
+    if (ptr == SDS_NOINIT) {
         sh->buf[len] = '\0';
-    else if (ptr) {
+    } else if (ptr) {
         memcpy(sh->buf, ptr, len);
         sh->buf[len] = '\0';
     } else {
@@ -121,26 +122,29 @@ robj *createEmbeddedStringObject(const char *ptr, size_t len) {
  * we allocate as EMBSTR will still fit into the 64 byte arena of jemalloc. */
 #define OBJ_ENCODING_EMBSTR_SIZE_LIMIT 44
 robj *createStringObject(const char *ptr, size_t len) {
-    if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT)
+    if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT) {
         return createEmbeddedStringObject(ptr, len);
-    else
+    } else {
         return createRawStringObject(ptr, len);
+    }
 }
 
 /* Same as CreateRawStringObject, can return NULL if allocation fails */
 robj *tryCreateRawStringObject(const char *ptr, size_t len) {
     sds str = sdstrynewlen(ptr, len);
-    if (!str)
+    if (!str) {
         return NULL;
+    }
     return createObject(OBJ_STRING, str);
 }
 
 /* Same as createStringObject, can return NULL if allocation fails */
 robj *tryCreateStringObject(const char *ptr, size_t len) {
-    if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT)
+    if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT) {
         return createEmbeddedStringObject(ptr, len);
-    else
+    } else {
         return tryCreateRawStringObject(ptr, len);
+    }
 }
 
 /* Create a string object from a long long value according to the specified flag. */
@@ -420,10 +424,12 @@ void decrRefCount(robj *o) {
         }
         zfree(o);
     } else {
-        if (o->refcount <= 0)
+        if (o->refcount <= 0) {
             serverPanic("decrRefCount against refcount <= 0");
-        if (o->refcount != OBJ_SHARED_REFCOUNT)
+        }
+        if (o->refcount != OBJ_SHARED_REFCOUNT) {
             o->refcount--;
+        }
     }
 }
 
@@ -551,8 +557,9 @@ void dismissHashObject(robj *o, size_t size_hint) {
 void dismissStreamObject(robj *o, size_t size_hint) {
     stream *s = o->ptr;
     rax *rax = s->rax;
-    if (raxSize(rax) == 0)
+    if (raxSize(rax) == 0) {
         return;
+    }
 
     /* Iterate only on stream entries, although size_hint may include serialized
      * consumer groups info, but usually, stream entries take up most of
@@ -583,14 +590,16 @@ void dismissStreamObject(robj *o, size_t size_hint) {
  * not going to release any memory. */
 void dismissObject(robj *o, size_t size_hint) {
     /* madvise(MADV_DONTNEED) may not work if Transparent Huge Pages is enabled. */
-    if (server.thp_enabled)
+    if (server.thp_enabled) {
         return;
+    }
 
-        /* Currently we use zmadvise_dontneed only when we use jemalloc with Linux.
-         * so we avoid these pointless loops when they're not going to do anything. */
+    /* Currently we use zmadvise_dontneed only when we use jemalloc with Linux.
+     * so we avoid these pointless loops when they're not going to do anything. */
 #if defined(USE_JEMALLOC) && defined(__linux__)
-    if (o->refcount != 1)
+    if (o->refcount != 1) {
         return;
+    }
     switch (o->type) {
         case OBJ_STRING:
             dismissStringObject(o);
@@ -642,8 +651,9 @@ int isSdsRepresentableAsLongLong(sds s, long long *llval) {
 int isObjectRepresentableAsLongLong(robj *o, long long *llval) {
     serverAssertWithInfo(NULL, o, o->type == OBJ_STRING);
     if (o->encoding == OBJ_ENCODING_INT) {
-        if (llval)
+        if (llval) {
             *llval = (long)o->ptr;
+        }
         return C_OK;
     } else {
         return isSdsRepresentableAsLongLong(o->ptr, llval);
@@ -653,8 +663,9 @@ int isObjectRepresentableAsLongLong(robj *o, long long *llval) {
 /* Optimize the SDS string inside the string object to require little space,
  * in case there is more than 10% of free space at the end of the SDS. */
 void trimStringObjectIfNeeded(robj *o, int trim_small_values) {
-    if (o->encoding != OBJ_ENCODING_RAW)
+    if (o->encoding != OBJ_ENCODING_RAW) {
         return;
+    }
     /* A string may have free space in the following cases:
      * 1. When an arg len is greater than PROTO_MBULK_BIG_ARG the query buffer may be used directly as the SDS string.
      * 2. When utilizing the argument caching mechanism in Lua.
@@ -683,14 +694,16 @@ robj *tryObjectEncodingEx(robj *o, int try_trim) {
     /* We try some specialized encoding only for objects that are
      * RAW or EMBSTR encoded, in other words objects that are still
      * in represented by an actually array of chars. */
-    if (!sdsEncodedObject(o))
+    if (!sdsEncodedObject(o)) {
         return o;
+    }
 
     /* It's not safe to encode shared objects: shared objects can be shared
      * everywhere in the "object space" of Redis and may end in places where
      * they are not handled. We handle them only as values in the keyspace. */
-    if (o->refcount > 1)
+    if (o->refcount > 1) {
         return o;
+    }
 
     /* Check if we can represent this string as a long integer.
      * Note that we are sure that a string larger than 20 chars is not
@@ -724,8 +737,9 @@ robj *tryObjectEncodingEx(robj *o, int try_trim) {
     if (len <= OBJ_ENCODING_EMBSTR_SIZE_LIMIT) {
         robj *emb;
 
-        if (o->encoding == OBJ_ENCODING_EMBSTR)
+        if (o->encoding == OBJ_ENCODING_EMBSTR) {
             return o;
+        }
         emb = createEmbeddedStringObject(s, sdslen(s));
         decrRefCount(o);
         return emb;
@@ -733,8 +747,9 @@ robj *tryObjectEncodingEx(robj *o, int try_trim) {
 
     /* We can't encode the object...
      * Do the last try, and at least optimize the SDS string inside */
-    if (try_trim)
+    if (try_trim) {
         trimStringObjectIfNeeded(o, 0);
+    }
 
     /* Return the original object. */
     return o;
@@ -780,8 +795,9 @@ int compareStringObjectsWithFlags(const robj *a, const robj *b, int flags) {
     char bufa[128], bufb[128], *astr, *bstr;
     size_t alen, blen, minlen;
 
-    if (a == b)
+    if (a == b) {
         return 0;
+    }
     if (sdsEncodedObject(a)) {
         astr = a->ptr;
         alen = sdslen(astr);
@@ -803,8 +819,9 @@ int compareStringObjectsWithFlags(const robj *a, const robj *b, int flags) {
 
         minlen = (alen < blen) ? alen : blen;
         cmp = memcmp(astr, bstr, minlen);
-        if (cmp == 0)
+        if (cmp == 0) {
             return alen - blen;
+        }
         return cmp;
     }
 }
@@ -850,8 +867,9 @@ int getDoubleFromObject(const robj *o, double *target) {
     } else {
         serverAssertWithInfo(NULL, o, o->type == OBJ_STRING);
         if (sdsEncodedObject(o)) {
-            if (!string2d(o->ptr, sdslen(o->ptr), &value))
+            if (!string2d(o->ptr, sdslen(o->ptr), &value)) {
                 return C_ERR;
+            }
         } else if (o->encoding == OBJ_ENCODING_INT) {
             value = (long)o->ptr;
         } else {
@@ -884,8 +902,9 @@ int getLongDoubleFromObject(robj *o, long double *target) {
     } else {
         serverAssertWithInfo(NULL, o, o->type == OBJ_STRING);
         if (sdsEncodedObject(o)) {
-            if (!string2ld(o->ptr, sdslen(o->ptr), &value))
+            if (!string2ld(o->ptr, sdslen(o->ptr), &value)) {
                 return C_ERR;
+            }
         } else if (o->encoding == OBJ_ENCODING_INT) {
             value = (long)o->ptr;
         } else {
@@ -918,16 +937,18 @@ int getLongLongFromObject(robj *o, long long *target) {
     } else {
         serverAssertWithInfo(NULL, o, o->type == OBJ_STRING);
         if (sdsEncodedObject(o)) {
-            if (string2ll(o->ptr, sdslen(o->ptr), &value) == 0)
+            if (string2ll(o->ptr, sdslen(o->ptr), &value) == 0) {
                 return C_ERR;
+            }
         } else if (o->encoding == OBJ_ENCODING_INT) {
             value = (long)o->ptr;
         } else {
             serverPanic("Unknown string encoding");
         }
     }
-    if (target)
+    if (target) {
         *target = value;
+    }
     return C_OK;
 }
 
@@ -948,8 +969,9 @@ int getLongLongFromObjectOrReply(client *c, robj *o, long long *target, const ch
 int getLongFromObjectOrReply(client *c, robj *o, long *target, const char *msg) {
     long long value;
 
-    if (getLongLongFromObjectOrReply(c, o, &value, msg) != C_OK)
+    if (getLongLongFromObjectOrReply(c, o, &value, msg) != C_OK) {
         return C_ERR;
+    }
     if (value < LONG_MIN || value > LONG_MAX) {
         if (msg != NULL) {
             addReplyError(c, (char *)msg);
@@ -963,8 +985,9 @@ int getLongFromObjectOrReply(client *c, robj *o, long *target, const char *msg) 
 }
 
 int getRangeLongFromObjectOrReply(client *c, robj *o, long min, long max, long *target, const char *msg) {
-    if (getLongFromObjectOrReply(c, o, target, msg) != C_OK)
+    if (getLongFromObjectOrReply(c, o, target, msg) != C_OK) {
         return C_ERR;
+    }
     if (*target < min || *target > max) {
         if (msg != NULL) {
             addReplyError(c, (char *)msg);
@@ -987,8 +1010,9 @@ int getPositiveLongFromObjectOrReply(client *c, robj *o, long *target, const cha
 int getIntFromObjectOrReply(client *c, robj *o, int *target, const char *msg) {
     long value;
 
-    if (getRangeLongFromObjectOrReply(c, o, INT_MIN, INT_MAX, &value, msg) != C_OK)
+    if (getRangeLongFromObjectOrReply(c, o, INT_MIN, INT_MAX, &value, msg) != C_OK) {
         return C_ERR;
+    }
 
     *target = value;
     return C_OK;
@@ -1092,8 +1116,9 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
                 samples++;
             }
             dictReleaseIterator(di);
-            if (samples)
+            if (samples) {
                 asize += (double)elesize / samples * dictSize(d);
+            }
         } else if (o->encoding == OBJ_ENCODING_INTSET) {
             asize = sizeof(*o) + zmalloc_size(o->ptr);
         } else if (o->encoding == OBJ_ENCODING_LISTPACK) {
@@ -1116,8 +1141,9 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
                 samples++;
                 znode = znode->level[0].forward;
             }
-            if (samples)
+            if (samples) {
                 asize += (double)elesize / samples * dictSize(d);
+            }
         } else {
             serverPanic("Unknown sorted set encoding");
         }
@@ -1136,8 +1162,9 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
                 samples++;
             }
             dictReleaseIterator(di);
-            if (samples)
+            if (samples) {
                 asize += (double)elesize / samples * dictSize(d);
+            }
         } else {
             serverPanic("Unknown hash encoding");
         }
@@ -1163,8 +1190,9 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
         if (s->rax->numele <= samples) {
             asize += lpsize;
         } else {
-            if (samples)
+            if (samples) {
                 lpsize /= samples; /* Compute the average. */
+            }
             asize += lpsize * (s->rax->numele - 1);
             /* No need to check if seek succeeded, we enter this branch only
              * if there are a few elements in the radix tree. */
@@ -1288,8 +1316,9 @@ struct redisMemOverhead *getMemoryOverheadData(void) {
     for (j = 0; j < server.dbnum; j++) {
         redisDb *db = server.db + j;
         long long keyscount = dictSize(db->dict);
-        if (keyscount == 0)
+        if (keyscount == 0) {
             continue;
+        }
 
         mh->total_keys += keyscount;
         mh->db = zrealloc(mh->db, sizeof(mh->db[0]) * (mh->num_dbs + 1));
@@ -1318,8 +1347,9 @@ struct redisMemOverhead *getMemoryOverheadData(void) {
     /* Metrics computed after subtracting the startup memory from
      * the total memory. */
     size_t net_usage = 1;
-    if (zmalloc_used > mh->startup_allocated)
+    if (zmalloc_used > mh->startup_allocated) {
         net_usage = zmalloc_used - mh->startup_allocated;
+    }
     mh->dataset_perc = (float)mh->dataset * 100 / net_usage;
     mh->bytes_per_key = mh->total_keys ? (net_usage / mh->total_keys) : 0;
 
@@ -1523,8 +1553,9 @@ int objectSetLRUOrLFU(robj *val, long long lfu_freq, long long lru_idle, long lo
          * code in estimateObjectIdleTime. I.e. imagine a day when lru_clock
          * wrap arounds (happens once in some 6 months), and becomes a low
          * value, like 10, an lru_idle of 1000 should be near LRU_CLOCK_MAX. */
-        if (lru_abs < 0)
+        if (lru_abs < 0) {
             lru_abs += LRU_CLOCK_MAX;
+        }
         val->lru = lru_abs;
         return 1;
     }
@@ -1541,8 +1572,9 @@ robj *objectCommandLookup(client *c, robj *key) {
 
 robj *objectCommandLookupOrReply(client *c, robj *key, robj *reply) {
     robj *o = objectCommandLookup(c, key);
-    if (!o)
+    if (!o) {
         addReplyOrErrorObject(c, reply);
+    }
     return o;
 }
 
@@ -1568,16 +1600,19 @@ void objectCommand(client *c) {
             NULL};
         addReplyHelp(c, help);
     } else if (!strcasecmp(c->argv[1]->ptr, "refcount") && c->argc == 3) {
-        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL)
+        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL) {
             return;
+        }
         addReplyLongLong(c, o->refcount);
     } else if (!strcasecmp(c->argv[1]->ptr, "encoding") && c->argc == 3) {
-        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL)
+        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL) {
             return;
+        }
         addReplyBulkCString(c, strEncoding(o->encoding));
     } else if (!strcasecmp(c->argv[1]->ptr, "idletime") && c->argc == 3) {
-        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL)
+        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL) {
             return;
+        }
         if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
             addReplyError(
                 c,
@@ -1588,8 +1623,9 @@ void objectCommand(client *c) {
         }
         addReplyLongLong(c, estimateObjectIdleTime(o) / 1000);
     } else if (!strcasecmp(c->argv[1]->ptr, "freq") && c->argc == 3) {
-        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL)
+        if ((o = objectCommandLookupOrReply(c, c->argv[2], shared.null[c->resp])) == NULL) {
             return;
+        }
         if (!(server.maxmemory_policy & MAXMEMORY_FLAG_LFU)) {
             addReplyError(
                 c,
@@ -1633,14 +1669,16 @@ void memoryCommand(client *c) {
         long long samples = OBJ_COMPUTE_SIZE_DEF_SAMPLES;
         for (int j = 3; j < c->argc; j++) {
             if (!strcasecmp(c->argv[j]->ptr, "samples") && j + 1 < c->argc) {
-                if (getLongLongFromObjectOrReply(c, c->argv[j + 1], &samples, NULL) == C_ERR)
+                if (getLongLongFromObjectOrReply(c, c->argv[j + 1], &samples, NULL) == C_ERR) {
                     return;
+                }
                 if (samples < 0) {
                     addReplyErrorObject(c, shared.syntaxerr);
                     return;
                 }
-                if (samples == 0)
+                if (samples == 0) {
                     samples = LLONG_MAX;
+                }
                 j++; /* skip option argument. */
             } else {
                 addReplyErrorObject(c, shared.syntaxerr);
@@ -1773,10 +1811,11 @@ void memoryCommand(client *c) {
         addReplyVerbatim(c, report, sdslen(report), "txt");
         sdsfree(report);
     } else if (!strcasecmp(c->argv[1]->ptr, "purge") && c->argc == 2) {
-        if (jemalloc_purge() == 0)
+        if (jemalloc_purge() == 0) {
             addReply(c, shared.ok);
-        else
+        } else {
             addReplyError(c, "Error purging dirty pages");
+        }
     } else {
         addReplySubcommandSyntaxError(c);
     }

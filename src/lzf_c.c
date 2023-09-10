@@ -136,8 +136,9 @@ size_t lzf_compress(
     unsigned int hval;
     int lit;
 
-    if (!in_len || !out_len)
+    if (!in_len || !out_len) {
         return 0;
+    }
 
 #if INIT_HTAB
     memset(htab, 0, sizeof(htab));
@@ -171,9 +172,11 @@ size_t lzf_compress(
             size_t maxlen = in_end - ip - len;
             maxlen = maxlen > MAX_REF ? MAX_REF : maxlen;
 
-            if (expect_false(op + 3 + 1 >= out_end)) /* first a faster conservative test */
-                if (op - !lit + 3 + 1 >= out_end)    /* second the exact but rare test */
+            if (expect_false(op + 3 + 1 >= out_end)) { /* first a faster conservative test */
+                if (op - !lit + 3 + 1 >= out_end) {    /* second the exact but rare test */
                     return 0;
+                }
+            }
 
             op[-lit - 1] = lit - 1; /* stop run */
             op -= !lit;             /* undo run if length is zero */
@@ -181,61 +184,77 @@ size_t lzf_compress(
             for (;;) {
                 if (expect_true(maxlen > 16)) {
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
 
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
 
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
 
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                     len++;
-                    if (ref[len] != ip[len])
+                    if (ref[len] != ip[len]) {
                         break;
+                    }
                 }
 
-                do
+                do {
                     len++;
-                while (len < maxlen && ref[len] == ip[len]);
+                } while (len < maxlen && ref[len] == ip[len]);
 
                 break;
             }
@@ -257,8 +276,9 @@ size_t lzf_compress(
 
             ip += len + 1;
 
-            if (expect_false(ip >= in_end - 2))
+            if (expect_false(ip >= in_end - 2)) {
                 break;
+            }
 
 #if ULTRA_FAST || VERY_FAST
             --ip;
@@ -287,8 +307,9 @@ size_t lzf_compress(
 #endif
         } else {
             /* one more literal byte we must copy */
-            if (expect_false(op >= out_end))
+            if (expect_false(op >= out_end)) {
                 return 0;
+            }
 
             lit++;
             *op++ = *ip++;
@@ -301,8 +322,9 @@ size_t lzf_compress(
         }
     }
 
-    if (op + 3 > out_end) /* at most 3 bytes can be missing here */
+    if (op + 3 > out_end) { /* at most 3 bytes can be missing here */
         return 0;
+    }
 
     while (ip < in_end) {
         lit++;

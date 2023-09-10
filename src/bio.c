@@ -131,10 +131,12 @@ void bioInit(void) {
     /* Set the stack size as by default it may be small in some system */
     pthread_attr_init(&attr);
     pthread_attr_getstacksize(&attr, &stacksize);
-    if (!stacksize)
+    if (!stacksize) {
         stacksize = 1; /* The world is full of Solaris Fixes */
-    while (stacksize < REDIS_THREAD_STACK_SIZE)
+    }
+    while (stacksize < REDIS_THREAD_STACK_SIZE) {
         stacksize *= 2;
+    }
     pthread_attr_setstacksize(&attr, stacksize);
 
     /* Ready to spawn our threads. We use the single argument the thread
@@ -222,8 +224,9 @@ void *bioProcessBackgroundJobs(void *arg) {
      * receive the watchdog signal. */
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGALRM);
-    if (pthread_sigmask(SIG_BLOCK, &sigset, NULL))
+    if (pthread_sigmask(SIG_BLOCK, &sigset, NULL)) {
         serverLog(LL_WARNING, "Warning: can't mask SIGALRM in bio.c thread: %s", strerror(errno));
+    }
 
     while (1) {
         listNode *ln;
@@ -275,8 +278,9 @@ void *bioProcessBackgroundJobs(void *arg) {
                     serverLog(LL_NOTICE, "Unable to reclaim page cache: %s", strerror(errno));
                 }
             }
-            if (job_type == BIO_CLOSE_AOF)
+            if (job_type == BIO_CLOSE_AOF) {
                 close(job->fd_args.fd);
+            }
         } else if (job_type == BIO_LAZY_FREE) {
             job->free_args.free_fn(job->free_args.free_args);
         } else {
@@ -324,8 +328,9 @@ void bioKillThreads(void) {
     unsigned long j;
 
     for (j = 0; j < BIO_WORKER_NUM; j++) {
-        if (bio_threads[j] == pthread_self())
+        if (bio_threads[j] == pthread_self()) {
             continue;
+        }
         if (bio_threads[j] && pthread_cancel(bio_threads[j]) == 0) {
             if ((err = pthread_join(bio_threads[j], NULL)) != 0) {
                 serverLog(LL_WARNING, "Bio worker thread #%lu can not be joined: %s", j, strerror(err));

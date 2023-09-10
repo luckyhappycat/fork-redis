@@ -48,21 +48,25 @@
 
 #ifdef USE_SETCPUAFFINITY
 static const char *next_token(const char *q, int sep) {
-    if (q)
+    if (q) {
         q = strchr(q, sep);
-    if (q)
+    }
+    if (q) {
         q++;
+    }
 
     return q;
 }
 
 static int next_num(const char *str, char **end, int *result) {
-    if (!str || *str == '\0' || !isdigit(*str))
+    if (!str || *str == '\0' || !isdigit(*str)) {
         return -1;
+    }
 
     *result = strtoul(str, end, 10);
-    if (str == *end)
+    if (str == *end) {
         return -1;
+    }
 
     return 0;
 }
@@ -83,8 +87,9 @@ void setcpuaffinity(const char *cpulist) {
     cpuset_t *cpuset;
 #endif
 
-    if (!cpulist)
+    if (!cpulist) {
         return;
+    }
 
 #ifndef __NetBSD__
     CPU_ZERO(&cpuset);
@@ -97,8 +102,9 @@ void setcpuaffinity(const char *cpulist) {
         int a, b, s;
         const char *c1, *c2;
 
-        if (next_num(p, &end, &a) != 0)
+        if (next_num(p, &end, &a) != 0) {
             return;
+        }
 
         b = a;
         s = 1;
@@ -108,21 +114,25 @@ void setcpuaffinity(const char *cpulist) {
         c2 = next_token(p, ',');
 
         if (c1 != NULL && (c2 == NULL || c1 < c2)) {
-            if (next_num(c1, &end, &b) != 0)
+            if (next_num(c1, &end, &b) != 0) {
                 return;
+            }
 
             c1 = end && *end ? next_token(end, ':') : NULL;
             if (c1 != NULL && (c2 == NULL || c1 < c2)) {
-                if (next_num(c1, &end, &s) != 0)
+                if (next_num(c1, &end, &s) != 0) {
                     return;
+                }
 
-                if (s == 0)
+                if (s == 0) {
                     return;
+                }
             }
         }
 
-        if ((a > b))
+        if ((a > b)) {
             return;
+        }
 
         while (a <= b) {
 #ifndef __NetBSD__
@@ -134,8 +144,9 @@ void setcpuaffinity(const char *cpulist) {
         }
     }
 
-    if (end && *end)
+    if (end && *end) {
         return;
+    }
 
 #ifdef __linux__
     sched_setaffinity(0, sizeof(cpuset), &cpuset);

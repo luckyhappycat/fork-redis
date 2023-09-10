@@ -45,8 +45,9 @@ static void redisLibhvDelWrite(void* privdata) {
 static void redisLibhvCleanup(void* privdata) {
     redisLibhvEvents* events = (redisLibhvEvents*)privdata;
 
-    if (events->timer)
+    if (events->timer) {
         htimer_del(events->timer);
+    }
 
     hio_close(events->io);
     hevent_set_userdata(events->io, NULL);

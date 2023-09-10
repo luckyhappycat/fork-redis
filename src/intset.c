@@ -44,12 +44,13 @@
 
 /* Return the required encoding for the provided value. */
 static uint8_t _intsetValueEncoding(int64_t v) {
-    if (v < INT32_MIN || v > INT32_MAX)
+    if (v < INT32_MIN || v > INT32_MAX) {
         return INTSET_ENC_INT64;
-    else if (v < INT16_MIN || v > INT16_MAX)
+    } else if (v < INT16_MIN || v > INT16_MAX) {
         return INTSET_ENC_INT32;
-    else
+    } else {
         return INTSET_ENC_INT16;
+    }
 }
 
 /* Return the value at pos, given an encoding. */
@@ -120,19 +121,22 @@ static uint8_t intsetSearch(intset *is, int64_t value, uint32_t *pos) {
 
     /* The value can never be found when the set is empty */
     if (intrev32ifbe(is->length) == 0) {
-        if (pos)
+        if (pos) {
             *pos = 0;
+        }
         return 0;
     } else {
         /* Check for the case where we know we cannot find the value,
          * but do know the insert position. */
         if (value > _intsetGet(is, max)) {
-            if (pos)
+            if (pos) {
                 *pos = intrev32ifbe(is->length);
+            }
             return 0;
         } else if (value < _intsetGet(is, 0)) {
-            if (pos)
+            if (pos) {
                 *pos = 0;
+            }
             return 0;
         }
     }
@@ -150,12 +154,14 @@ static uint8_t intsetSearch(intset *is, int64_t value, uint32_t *pos) {
     }
 
     if (value == cur) {
-        if (pos)
+        if (pos) {
             *pos = mid;
+        }
         return 1;
     } else {
-        if (pos)
+        if (pos) {
             *pos = min;
+        }
         return 0;
     }
 }
@@ -174,14 +180,16 @@ static intset *intsetUpgradeAndAdd(intset *is, int64_t value) {
     /* Upgrade back-to-front so we don't overwrite values.
      * Note that the "prepend" variable is used to make sure we have an empty
      * space at either the beginning or the end of the intset. */
-    while (length--)
+    while (length--) {
         _intsetSet(is, length + prepend, _intsetGetEncoded(is, length, curenc));
+    }
 
     /* Set the value at the beginning or the end. */
-    if (prepend)
+    if (prepend) {
         _intsetSet(is, 0, value);
-    else
+    } else {
         _intsetSet(is, intrev32ifbe(is->length), value);
+    }
     is->length = intrev32ifbe(intrev32ifbe(is->length) + 1);
     return is;
 }
@@ -211,8 +219,9 @@ static void intsetMoveTail(intset *is, uint32_t from, uint32_t to) {
 intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
     uint8_t valenc = _intsetValueEncoding(value);
     uint32_t pos;
-    if (success)
+    if (success) {
         *success = 1;
+    }
 
     /* Upgrade encoding if necessary. If we need to upgrade, we know that
      * this value should be either appended (if > 0) or prepended (if < 0),
@@ -225,14 +234,16 @@ intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
          * This call will populate "pos" with the right position to insert
          * the value when it cannot be found. */
         if (intsetSearch(is, value, &pos)) {
-            if (success)
+            if (success) {
                 *success = 0;
+            }
             return is;
         }
 
         is = intsetResize(is, intrev32ifbe(is->length) + 1);
-        if (pos < intrev32ifbe(is->length))
+        if (pos < intrev32ifbe(is->length)) {
             intsetMoveTail(is, pos, pos + 1);
+        }
     }
 
     _intsetSet(is, pos, value);
@@ -244,19 +255,22 @@ intset *intsetAdd(intset *is, int64_t value, uint8_t *success) {
 intset *intsetRemove(intset *is, int64_t value, int *success) {
     uint8_t valenc = _intsetValueEncoding(value);
     uint32_t pos;
-    if (success)
+    if (success) {
         *success = 0;
+    }
 
     if (valenc <= intrev32ifbe(is->encoding) && intsetSearch(is, value, &pos)) {
         uint32_t len = intrev32ifbe(is->length);
 
         /* We know we can delete */
-        if (success)
+        if (success) {
             *success = 1;
+        }
 
         /* Overwrite value with tail and update length */
-        if (pos < (len - 1))
+        if (pos < (len - 1)) {
             intsetMoveTail(is, pos + 1, pos);
+        }
         is = intsetResize(is, len - 1);
         is->length = intrev32ifbe(len - 1);
     }
@@ -313,8 +327,9 @@ size_t intsetBlobLen(intset *is) {
 int intsetValidateIntegrity(const unsigned char *p, size_t size, int deep) {
     intset *is = (intset *)p;
     /* check that we can actually read the header. */
-    if (size < sizeof(*is))
+    if (size < sizeof(*is)) {
         return 0;
+    }
 
     uint32_t encoding = intrev32ifbe(is->encoding);
 
@@ -331,22 +346,26 @@ int intsetValidateIntegrity(const unsigned char *p, size_t size, int deep) {
 
     /* check that the size matches (all records are inside the buffer). */
     uint32_t count = intrev32ifbe(is->length);
-    if (sizeof(*is) + count * record_size != size)
+    if (sizeof(*is) + count * record_size != size) {
         return 0;
+    }
 
     /* check that the set is not empty. */
-    if (count == 0)
+    if (count == 0) {
         return 0;
+    }
 
-    if (!deep)
+    if (!deep) {
         return 1;
+    }
 
     /* check that there are no dup or out of order records. */
     int64_t prev = _intsetGet(is, 0);
     for (uint32_t i = 1; i < count; i++) {
         int64_t cur = _intsetGet(is, i);
-        if (cur <= prev)
+        if (cur <= prev) {
             return 0;
+        }
         prev = cur;
     }
 
@@ -463,8 +482,9 @@ int intsetTest(int argc, char **argv, int flags) {
         is = intsetNew();
         for (i = 0; i < 1024; i++) {
             is = intsetAdd(is, rand() % 0x800, &success);
-            if (success)
+            if (success) {
                 inserts++;
+            }
         }
         assert(intrev32ifbe(is->length) == inserts);
         checkConsistency(is);
@@ -553,8 +573,9 @@ int intsetTest(int argc, char **argv, int flags) {
         checkConsistency(is);
 
         start = usec();
-        for (i = 0; i < num; i++)
+        for (i = 0; i < num; i++) {
             intsetSearch(is, rand() % ((1 << bits) - 1), NULL);
+        }
         printf("%ld lookups, %ld element set, %lldusec\n", num, size, usec() - start);
         zfree(is);
     }

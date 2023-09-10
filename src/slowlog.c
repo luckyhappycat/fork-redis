@@ -48,8 +48,9 @@ slowlogEntry *slowlogCreateEntry(client *c, robj **argv, int argc, long long dur
     slowlogEntry *se = zmalloc(sizeof(*se));
     int j, slargc = argc;
 
-    if (slargc > SLOWLOG_ENTRY_MAX_ARGC)
+    if (slargc > SLOWLOG_ENTRY_MAX_ARGC) {
         slargc = SLOWLOG_ENTRY_MAX_ARGC;
+    }
     se->argc = slargc;
     se->argv = zmalloc(sizeof(robj *) * slargc);
     for (j = 0; j < slargc; j++) {
@@ -94,8 +95,9 @@ void slowlogFreeEntry(void *septr) {
     slowlogEntry *se = septr;
     int j;
 
-    for (j = 0; j < se->argc; j++)
+    for (j = 0; j < se->argc; j++) {
         decrRefCount(se->argv[j]);
+    }
     zfree(se->argv);
     sdsfree(se->peerid);
     sdsfree(se->cname);
@@ -114,20 +116,24 @@ void slowlogInit(void) {
  * This function will make sure to trim the slow log accordingly to the
  * configured max length. */
 void slowlogPushEntryIfNeeded(client *c, robj **argv, int argc, long long duration) {
-    if (server.slowlog_log_slower_than < 0)
+    if (server.slowlog_log_slower_than < 0) {
         return; /* Slowlog disabled */
-    if (duration >= server.slowlog_log_slower_than)
+    }
+    if (duration >= server.slowlog_log_slower_than) {
         listAddNodeHead(server.slowlog, slowlogCreateEntry(c, argv, argc, duration));
+    }
 
     /* Remove old entries if needed. */
-    while (listLength(server.slowlog) > server.slowlog_max_len)
+    while (listLength(server.slowlog) > server.slowlog_max_len) {
         listDelNode(server.slowlog, listLast(server.slowlog));
+    }
 }
 
 /* Remove all the entries from the current slow log. */
 void slowlogReset(void) {
-    while (listLength(server.slowlog) > 0)
+    while (listLength(server.slowlog) > 0) {
         listDelNode(server.slowlog, listLast(server.slowlog));
+    }
 }
 
 /* The SLOWLOG command. Implements all the subcommands needed to handle the
@@ -159,8 +165,9 @@ void slowlogCommand(client *c) {
 
         if (c->argc == 3) {
             /* Consume count arg. */
-            if (getRangeLongFromObjectOrReply(c, c->argv[2], -1, LONG_MAX, &count, "count should be greater than or equal to -1") != C_OK)
+            if (getRangeLongFromObjectOrReply(c, c->argv[2], -1, LONG_MAX, &count, "count should be greater than or equal to -1") != C_OK) {
                 return;
+            }
 
             if (count == -1) {
                 /* We treat -1 as a special value, which means to get all slow logs.
@@ -184,8 +191,9 @@ void slowlogCommand(client *c) {
             addReplyLongLong(c, se->time);
             addReplyLongLong(c, se->duration);
             addReplyArrayLen(c, se->argc);
-            for (j = 0; j < se->argc; j++)
+            for (j = 0; j < se->argc; j++) {
                 addReplyBulk(c, se->argv[j]);
+            }
             addReplyBulkCBuffer(c, se->peerid, sdslen(se->peerid));
             addReplyBulkCBuffer(c, se->cname, sdslen(se->cname));
         }

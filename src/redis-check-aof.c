@@ -139,12 +139,14 @@ int processRESP(FILE *fp, char *filename, int *out_multi) {
     long argc;
     char *str;
 
-    if (!readArgc(fp, &argc))
+    if (!readArgc(fp, &argc)) {
         return 0;
+    }
 
     for (int i = 0; i < argc; i++) {
-        if (!readString(fp, &str))
+        if (!readString(fp, &str)) {
             return 0;
+        }
         if (i == 0) {
             if (strcasecmp(str, "multi") == 0) {
                 if ((*out_multi)++) {
@@ -192,8 +194,9 @@ int processAnnotations(FILE *fp, char *filename, int last_file) {
             printf("Invalid timestamp annotation\n");
             exit(1);
         }
-        if (ts <= to_timestamp)
+        if (ts <= to_timestamp) {
             return 1;
+        }
         if (epos == 0) {
             printf(
                 "AOF %s has nothing before timestamp %ld, "
@@ -261,8 +264,9 @@ int checkSingleAof(char *aof_filename, char *aof_filepath, int last_file, int fi
     }
 
     while (1) {
-        if (!multi)
+        if (!multi) {
             pos = ftello(fp);
+        }
         if (fgets(buf, sizeof(buf), fp) == NULL) {
             if (feof(fp)) {
                 break;
@@ -282,8 +286,9 @@ int checkSingleAof(char *aof_filename, char *aof_filepath, int last_file, int fi
                 return AOF_CHECK_TIMESTAMP_TRUNCATED;
             }
         } else if (buf[0] == '*') {
-            if (!processRESP(fp, aof_filepath, &multi))
+            if (!processRESP(fp, aof_filepath, &multi)) {
                 break;
+            }
         } else {
             printf("AOF %s format error\n", aof_filename);
             break;
@@ -473,10 +478,12 @@ void checkMultiPartAof(char *dirpath, char *manifest_filepath, int fix) {
     printf("Start checking Multi Part AOF\n");
     aofManifest *am = aofLoadManifestFromFile(manifest_filepath);
 
-    if (am->base_aof_info)
+    if (am->base_aof_info) {
         total_num++;
-    if (am->incr_aof_list)
+    }
+    if (am->incr_aof_list) {
         total_num += listLength(am->incr_aof_list);
+    }
 
     if (am->base_aof_info) {
         sds aof_filename = am->base_aof_info->file_name;

@@ -204,8 +204,9 @@ void SHA1Update(SHA1_CTX* context, const unsigned char* data, uint32_t len) {
     uint32_t i, j;
 
     j = context->count[0];
-    if ((context->count[0] += len << 3) < j)
+    if ((context->count[0] += len << 3) < j) {
         context->count[1]++;
+    }
     context->count[1] += (len >> 29);
     j = (j >> 3) & 63;
     if ((j + len) > 63) {
@@ -215,8 +216,9 @@ void SHA1Update(SHA1_CTX* context, const unsigned char* data, uint32_t len) {
             SHA1Transform(context->state, &data[i]);
         }
         j = 0;
-    } else
+    } else {
         i = 0;
+    }
     memcpy(&context->buffer[j], &data[i], len - i);
 }
 
@@ -281,17 +283,20 @@ int sha1Test(int argc, char** argv, int flags) {
     UNUSED(argv);
     UNUSED(flags);
 
-    for (i = 0; i < BUFSIZE; i++)
+    for (i = 0; i < BUFSIZE; i++) {
         buf[i] = i;
+    }
 
     SHA1Init(&ctx);
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 1000; i++) {
         SHA1Update(&ctx, buf, BUFSIZE);
+    }
     SHA1Final(hash, &ctx);
 
     printf("SHA1=");
-    for (i = 0; i < 20; i++)
+    for (i = 0; i < 20; i++) {
         printf("%02x", hash[i]);
+    }
     printf("\n");
     return 0;
 }

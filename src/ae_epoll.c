@@ -38,8 +38,9 @@ typedef struct aeApiState {
 static int aeApiCreate(aeEventLoop *eventLoop) {
     aeApiState *state = zmalloc(sizeof(aeApiState));
 
-    if (!state)
+    if (!state) {
         return -1;
+    }
     state->events = zmalloc(sizeof(struct epoll_event) * eventLoop->setsize);
     if (!state->events) {
         zfree(state);
@@ -80,13 +81,16 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
 
     ee.events = 0;
     mask |= eventLoop->events[fd].mask; /* Merge old events */
-    if (mask & AE_READABLE)
+    if (mask & AE_READABLE) {
         ee.events |= EPOLLIN;
-    if (mask & AE_WRITABLE)
+    }
+    if (mask & AE_WRITABLE) {
         ee.events |= EPOLLOUT;
+    }
     ee.data.fd = fd;
-    if (epoll_ctl(state->epfd, op, fd, &ee) == -1)
+    if (epoll_ctl(state->epfd, op, fd, &ee) == -1) {
         return -1;
+    }
     return 0;
 }
 
@@ -96,10 +100,12 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
     int mask = eventLoop->events[fd].mask & (~delmask);
 
     ee.events = 0;
-    if (mask & AE_READABLE)
+    if (mask & AE_READABLE) {
         ee.events |= EPOLLIN;
-    if (mask & AE_WRITABLE)
+    }
+    if (mask & AE_WRITABLE) {
         ee.events |= EPOLLOUT;
+    }
     ee.data.fd = fd;
     if (mask != AE_NONE) {
         epoll_ctl(state->epfd, EPOLL_CTL_MOD, fd, &ee);
@@ -123,14 +129,18 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
             int mask = 0;
             struct epoll_event *e = state->events + j;
 
-            if (e->events & EPOLLIN)
+            if (e->events & EPOLLIN) {
                 mask |= AE_READABLE;
-            if (e->events & EPOLLOUT)
+            }
+            if (e->events & EPOLLOUT) {
                 mask |= AE_WRITABLE;
-            if (e->events & EPOLLERR)
+            }
+            if (e->events & EPOLLERR) {
                 mask |= AE_WRITABLE | AE_READABLE;
-            if (e->events & EPOLLHUP)
+            }
+            if (e->events & EPOLLHUP) {
                 mask |= AE_WRITABLE | AE_READABLE;
+            }
             eventLoop->fired[j].fd = e->data.fd;
             eventLoop->fired[j].mask = mask;
         }

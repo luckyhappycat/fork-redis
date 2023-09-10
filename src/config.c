@@ -298,8 +298,9 @@ static standardConfig *lookupConfig(sds name) {
 
 /* Get enum value from name. If there is no match INT_MIN is returned. */
 int configEnumGetValue(configEnum *ce, sds *argv, int argc, int bitflags) {
-    if (argc == 0 || (!bitflags && argc != 1))
+    if (argc == 0 || (!bitflags && argc != 1)) {
         return INT_MIN;
+    }
     int values = 0;
     for (int i = 0; i < argc; i++) {
         int matched = 0;
@@ -309,8 +310,9 @@ int configEnumGetValue(configEnum *ce, sds *argv, int argc, int bitflags) {
                 matched = 1;
             }
         }
-        if (!matched)
+        if (!matched) {
             return INT_MIN;
+        }
     }
     return values;
 }
@@ -342,8 +344,9 @@ static sds configEnumGetName(configEnum *ce, int values, int bitflags) {
 /* Used for INFO generation. */
 const char *evictPolicyToString(void) {
     for (configEnum *ce = maxmemory_policy_enum; ce->name != NULL; ce++) {
-        if (server.maxmemory_policy == ce->val)
+        if (server.maxmemory_policy == ce->val) {
             return ce->name;
+        }
     }
     serverPanic("unknown eviction policy");
 }
@@ -353,12 +356,13 @@ const char *evictPolicyToString(void) {
  *----------------------------------------------------------------------------*/
 
 int yesnotoi(char *s) {
-    if (!strcasecmp(s, "yes"))
+    if (!strcasecmp(s, "yes")) {
         return 1;
-    else if (!strcasecmp(s, "no"))
+    } else if (!strcasecmp(s, "no")) {
         return 0;
-    else
+    } else {
         return -1;
+    }
 }
 
 void appendServerSaveParams(time_t seconds, int changes) {
@@ -403,10 +407,11 @@ static int updateClientOutputBufferLimit(sds *args, int arg_len, const char **er
 
     /* We need a multiple of 4: <class> <hard> <soft> <soft_seconds> */
     if (arg_len % 4) {
-        if (err)
+        if (err) {
             *err =
                 "Wrong number of arguments in "
                 "buffer limit configuration.";
+        }
         return 0;
     }
 
@@ -416,10 +421,11 @@ static int updateClientOutputBufferLimit(sds *args, int arg_len, const char **er
     for (j = 0; j < arg_len; j += 4) {
         class = getClientTypeByName(args[j]);
         if (class == -1 || class == CLIENT_TYPE_MASTER) {
-            if (err)
+            if (err) {
                 *err =
                     "Invalid client class specified in "
                     "buffer limit configuration.";
+            }
             return 0;
         }
 
@@ -427,10 +433,11 @@ static int updateClientOutputBufferLimit(sds *args, int arg_len, const char **er
         soft = memtoull(args[j + 2], &soft_err);
         soft_seconds = strtoll(args[j + 3], &soft_seconds_eptr, 10);
         if (hard_err || soft_err || soft_seconds < 0 || *soft_seconds_eptr != '\0') {
-            if (err)
+            if (err) {
                 *err =
                     "Error in hard, soft or soft_seconds setting in "
                     "buffer limit configuration.";
+            }
             return 0;
         }
 
@@ -442,8 +449,9 @@ static int updateClientOutputBufferLimit(sds *args, int arg_len, const char **er
 
     /* Finally set the new config. */
     for (j = 0; j < CLIENT_TYPE_OBUF_COUNT; j++) {
-        if (classes[j])
+        if (classes[j]) {
             server.client_obuf_limits[j] = values[j];
+        }
     }
 
     return 1;
@@ -476,8 +484,9 @@ void loadServerConfigFromString(char *config) {
         lines[i] = sdstrim(lines[i], " \t\r\n");
 
         /* Skip comments and blank lines */
-        if (lines[i][0] == '#' || lines[i][0] == '\0')
+        if (lines[i][0] == '#' || lines[i][0] == '\0') {
             continue;
+        }
 
         /* Split into arguments */
         argv = sdssplitargs(lines[i], &argc);
@@ -512,8 +521,9 @@ void loadServerConfigFromString(char *config) {
                 int new_argc;
                 new_argv = sdssplitargs(argv[1], &new_argc);
                 if (!config->interface.set(config, new_argv, new_argc, &err)) {
-                    if (new_argv)
+                    if (new_argv) {
                         sdsfreesplitres(new_argv, new_argc);
+                    }
                     goto loaderr;
                 }
                 sdsfreesplitres(new_argv, new_argc);
@@ -587,10 +597,12 @@ void loadServerConfigFromString(char *config) {
             }
             sds name = sdsdup(argv[0]);
             sds val = sdsdup(argv[1]);
-            for (int i = 2; i < argc; i++)
+            for (int i = 2; i < argc; i++) {
                 val = sdscatfmt(val, " %S", argv[i]);
-            if (!dictReplace(server.module_configs_queue, name, val))
+            }
+            if (!dictReplace(server.module_configs_queue, name, val)) {
                 sdsfree(name);
+            }
         } else if (!strcasecmp(argv[0], "sentinel")) {
             /* argc == 1 is handled by main() as we need to enter the sentinel
              * mode ASAP. */
@@ -635,18 +647,21 @@ void loadServerConfigFromString(char *config) {
     }
 
     /* To ensure backward compatibility and work while hz is out of range */
-    if (server.config_hz < CONFIG_MIN_HZ)
+    if (server.config_hz < CONFIG_MIN_HZ) {
         server.config_hz = CONFIG_MIN_HZ;
-    if (server.config_hz > CONFIG_MAX_HZ)
+    }
+    if (server.config_hz > CONFIG_MAX_HZ) {
         server.config_hz = CONFIG_MAX_HZ;
+    }
 
     sdsfreesplitres(lines, totlines);
     reading_config_file = 0;
     return;
 
 loaderr:
-    if (argv)
+    if (argv) {
         sdsfreesplitres(argv, argc);
+    }
     fprintf(stderr, "\n*** FATAL CONFIG FILE ERROR (Redis %s) ***\n", REDIS_VERSION);
     if (i < totlines) {
         fprintf(stderr, "Reading the configuration file, at line %d\n", linenum);
@@ -694,8 +709,9 @@ void loadServerConfig(char *filename, char config_from_stdin, char *options) {
                         serverLog(LL_WARNING, "Fatal error, can't open config file '%s': %s", globbuf.gl_pathv[i], strerror(errno));
                         exit(1);
                     }
-                    while (fgets(buf, CONFIG_READ_LEN + 1, fp) != NULL)
+                    while (fgets(buf, CONFIG_READ_LEN + 1, fp) != NULL) {
                         config = sdscat(config, buf);
+                    }
                     fclose(fp);
                 }
 
@@ -708,8 +724,9 @@ void loadServerConfig(char *filename, char config_from_stdin, char *options) {
                 serverLog(LL_WARNING, "Fatal error, can't open config file '%s': %s", filename, strerror(errno));
                 exit(1);
             }
-            while (fgets(buf, CONFIG_READ_LEN + 1, fp) != NULL)
+            while (fgets(buf, CONFIG_READ_LEN + 1, fp) != NULL) {
                 config = sdscat(config, buf);
+            }
             fclose(fp);
         }
     }
@@ -718,8 +735,9 @@ void loadServerConfig(char *filename, char config_from_stdin, char *options) {
     if (config_from_stdin) {
         serverLog(LL_NOTICE, "Reading config from stdin");
         fp = stdin;
-        while (fgets(buf, CONFIG_READ_LEN + 1, fp) != NULL)
+        while (fgets(buf, CONFIG_READ_LEN + 1, fp) != NULL) {
             config = sdscat(config, buf);
+        }
     }
 
     /* Append the additional options */
@@ -744,8 +762,9 @@ static int performInterfaceSet(standardConfig *config, sds value, const char **e
 
     /* Set the config */
     res = config->interface.set(config, argv, argc, errstr);
-    if (config->flags & MULTI_ARG_CONFIG)
+    if (config->flags & MULTI_ARG_CONFIG) {
         sdsfreesplitres(argv, argc);
+    }
     return res;
 }
 
@@ -787,21 +806,24 @@ static void restoreBackupConfig(standardConfig **set_configs, sds *old_values, i
     const char *errstr = "unknown error";
     /* Set all backup values */
     for (i = 0; i < count; i++) {
-        if (!performInterfaceSet(set_configs[i], old_values[i], &errstr))
+        if (!performInterfaceSet(set_configs[i], old_values[i], &errstr)) {
             serverLog(
                 LL_WARNING, "Failed restoring failed CONFIG SET command. Error setting %s to '%s': %s", set_configs[i]->name, old_values[i], errstr
             );
+        }
     }
     /* Apply backup */
     if (apply_fns) {
         for (i = 0; i < count && apply_fns[i] != NULL; i++) {
-            if (!apply_fns[i](&errstr))
+            if (!apply_fns[i](&errstr)) {
                 serverLog(LL_WARNING, "Failed applying restored failed CONFIG SET command: %s", errstr);
+            }
         }
     }
     if (module_configs) {
-        if (!moduleConfigApplyConfig(module_configs, &errstr, NULL))
+        if (!moduleConfigApplyConfig(module_configs, &errstr, NULL)) {
             serverLog(LL_WARNING, "Failed applying restored failed CONFIG SET command: %s", errstr);
+        }
     }
 }
 
@@ -858,8 +880,9 @@ void configSetCommand(client *c) {
         }
 
         /* We continue to make sure we redact all the configs */
-        if (invalid_args)
+        if (invalid_args) {
             continue;
+        }
 
         if (config->flags & IMMUTABLE_CONFIG || (config->flags & PROTECTED_CONFIG && !allowProtectedAction(server.enable_protected_configs, c))) {
             /* Note: we don't abort the loop since we still want to handle redacting sensitive configs (above) */
@@ -891,12 +914,14 @@ void configSetCommand(client *c) {
         new_values[i] = c->argv[2 + i * 2 + 1]->ptr;
     }
 
-    if (invalid_args)
+    if (invalid_args) {
         goto err;
+    }
 
     /* Backup old values before setting new ones */
-    for (i = 0; i < config_count; i++)
+    for (i = 0; i < config_count; i++) {
         old_values[i] = set_configs[i]->interface.get(set_configs[i]);
+    }
 
     /* Set all new values (don't apply yet) */
     for (i = 0; i < config_count; i++) {
@@ -966,8 +991,9 @@ end:
     zfree(set_configs);
     zfree(config_names);
     zfree(new_values);
-    for (i = 0; i < config_count; i++)
+    for (i = 0; i < config_count; i++) {
         sdsfree(old_values[i]);
+    }
     zfree(old_values);
     zfree(apply_fns);
     zfree(config_map_fns);
@@ -991,8 +1017,9 @@ void configGetCommand(client *c) {
         /* If the string doesn't contain glob patterns, just directly
          * look up the key in the dictionary. */
         if (!strpbrk(name, "[*?")) {
-            if (dictFind(matches, name))
+            if (dictFind(matches, name)) {
                 continue;
+            }
             standardConfig *config = lookupConfig(name);
 
             if (config) {
@@ -1007,10 +1034,12 @@ void configGetCommand(client *c) {
         while ((de = dictNext(di)) != NULL) {
             standardConfig *config = dictGetVal(de);
             /* Note that hidden configs require an exact match (not a pattern) */
-            if (config->flags & HIDDEN_CONFIG)
+            if (config->flags & HIDDEN_CONFIG) {
                 continue;
-            if (dictFind(matches, config->name))
+            }
+            if (dictFind(matches, config->name)) {
                 continue;
+            }
             if (stringmatch(name, dictGetKey(de), 1)) {
                 dictAdd(matches, dictGetKey(de), config);
             }
@@ -1121,8 +1150,9 @@ void rewriteConfigAddLineNumberToOption(struct rewriteConfigState *state, sds op
 void rewriteConfigMarkAsProcessed(struct rewriteConfigState *state, const char *option) {
     sds opt = sdsnew(option);
 
-    if (dictAdd(state->rewritten, opt, NULL) != DICT_OK)
+    if (dictAdd(state->rewritten, opt, NULL) != DICT_OK) {
         sdsfree(opt);
+    }
 }
 
 /* Read the old file, split it into lines to populate a newly created
@@ -1132,18 +1162,21 @@ void rewriteConfigMarkAsProcessed(struct rewriteConfigState *state, const char *
  * If the old file does not exist at all, an empty state is returned. */
 struct rewriteConfigState *rewriteConfigReadOldFile(char *path) {
     FILE *fp = fopen(path, "r");
-    if (fp == NULL && errno != ENOENT)
+    if (fp == NULL && errno != ENOENT) {
         return NULL;
+    }
 
     struct redis_stat sb;
-    if (fp && redis_fstat(fileno(fp), &sb) == -1)
+    if (fp && redis_fstat(fileno(fp), &sb) == -1) {
         return NULL;
+    }
 
     int linenum = -1;
     struct rewriteConfigState *state = rewriteConfigCreateState();
 
-    if (fp == NULL || sb.st_size == 0)
+    if (fp == NULL || sb.st_size == 0) {
         return state;
+    }
 
     /* Load the file content */
     sds config = sdsnewlen(SDS_NOINIT, sb.st_size);
@@ -1168,8 +1201,9 @@ struct rewriteConfigState *rewriteConfigReadOldFile(char *path) {
 
         /* Handle comments and empty lines. */
         if (line[0] == '#' || line[0] == '\0') {
-            if (state->needs_signature && !strcmp(line, REDIS_CONFIG_REWRITE_SIGNATURE))
+            if (state->needs_signature && !strcmp(line, REDIS_CONFIG_REWRITE_SIGNATURE)) {
                 state->needs_signature = 0;
+            }
             rewriteConfigAppendLine(state, line);
             continue;
         }
@@ -1188,8 +1222,9 @@ struct rewriteConfigState *rewriteConfigReadOldFile(char *path) {
              * unloaded. Load it as a comment. */
             sds aux = sdsnew("# ??? ");
             aux = sdscatsds(aux, line);
-            if (argv)
+            if (argv) {
                 sdsfreesplitres(argv, argc);
+            }
             sdsfree(line);
             rewriteConfigAppendLine(state, aux);
             continue;
@@ -1262,8 +1297,9 @@ int rewriteConfigRewriteLine(struct rewriteConfigState *state, const char *optio
         /* There are still lines in the old configuration file we can reuse
          * for this option. Replace the line with the new one. */
         listDelNode(l, ln);
-        if (listLength(l) == 0)
+        if (listLength(l) == 0) {
             dictDelete(state->option_to_line, o);
+        }
         sdsfree(state->lines[linenum]);
         state->lines[linenum] = line;
     } else {
@@ -1336,8 +1372,9 @@ void rewriteConfigStringOption(struct rewriteConfigState *state, const char *opt
     }
 
     /* Set force to zero if the value is set to its default. */
-    if (defvalue && strcmp(value, defvalue) == 0)
+    if (defvalue && strcmp(value, defvalue) == 0) {
         force = 0;
+    }
 
     line = sdsnew(option);
     line = sdscatlen(line, " ", 1);
@@ -1359,8 +1396,9 @@ void rewriteConfigSdsOption(struct rewriteConfigState *state, const char *option
     }
 
     /* Set force to zero if the value is set to its default. */
-    if (defvalue && strcmp(value, defvalue) == 0)
+    if (defvalue && strcmp(value, defvalue) == 0) {
         force = 0;
+    }
 
     line = sdsnew(option);
     line = sdscatlen(line, " ", 1);
@@ -1515,8 +1553,9 @@ void rewriteConfigClientOutputBufferLimitOption(standardConfig *config, const ch
         rewriteConfigFormatMemory(soft, sizeof(soft), server.client_obuf_limits[j].soft_limit_bytes);
 
         char *typename = getClientTypeName(j);
-        if (!strcmp(typename, "slave"))
+        if (!strcmp(typename, "slave")) {
             typename = "replica";
+        }
         line = sdscatprintf(sdsempty(), "%s %s %s %s %ld", name, typename, hard, soft, (long)server.client_obuf_limits[j].soft_limit_seconds);
         rewriteConfigRewriteLine(state, name, line, force);
     }
@@ -1532,12 +1571,14 @@ void rewriteConfigOOMScoreAdjValuesOption(standardConfig *config, const char *na
     line = sdsnew(name);
     line = sdscatlen(line, " ", 1);
     for (j = 0; j < CONFIG_OOM_COUNT; j++) {
-        if (server.oom_score_adj_values[j] != configOOMScoreAdjValuesDefaults[j])
+        if (server.oom_score_adj_values[j] != configOOMScoreAdjValuesDefaults[j]) {
             force = 1;
+        }
 
         line = sdscatprintf(line, "%d", server.oom_score_adj_values[j]);
-        if (j + 1 != CONFIG_OOM_COUNT)
+        if (j + 1 != CONFIG_OOM_COUNT) {
             line = sdscatlen(line, " ", 1);
+        }
     }
     rewriteConfigRewriteLine(state, name, line, force);
 }
@@ -1567,10 +1608,11 @@ void rewriteConfigBindOption(standardConfig *config, const char *name, struct re
     }
 
     /* Rewrite as bind <addr1> <addr2> ... <addrN> */
-    if (server.bindaddr_count > 0)
+    if (server.bindaddr_count > 0) {
         addresses = sdsjoin(server.bindaddr, server.bindaddr_count, " ");
-    else
+    } else {
         addresses = sdsnew("\"\"");
+    }
     line = sdsnew(name);
     line = sdscatlen(line, " ", 1);
     line = sdscatsds(line, addresses);
@@ -1609,8 +1651,9 @@ sds rewriteConfigGetContentFromState(struct rewriteConfigState *state) {
     for (j = 0; j < state->numlines; j++) {
         /* Every cluster of empty lines is turned into a single empty line. */
         if (sdslen(state->lines[j]) == 0) {
-            if (was_empty)
+            if (was_empty) {
                 continue;
+            }
             was_empty = 1;
         } else {
             was_empty = 0;
@@ -1669,8 +1712,9 @@ sds getConfigDebugInfo(void) {
     dictEntry *de;
     while ((de = dictNext(di)) != NULL) {
         standardConfig *config = dictGetVal(de);
-        if (!(config->flags & DEBUG_CONFIG))
+        if (!(config->flags & DEBUG_CONFIG)) {
             continue;
+        }
         config->interface.rewrite(config, config->name, state);
     }
     dictReleaseIterator(di);
@@ -1715,23 +1759,24 @@ int rewriteConfigOverwriteFile(char *configfile, sds content) {
     while (offset < sdslen(content)) {
         written_bytes = write(fd, content + offset, sdslen(content) - offset);
         if (written_bytes <= 0) {
-            if (errno == EINTR)
+            if (errno == EINTR) {
                 continue; /* FD is blocking, no other retryable errors */
+            }
             serverLog(LL_WARNING, "Failed after writing (%zd) bytes to tmp config file (%s)", offset, strerror(errno));
             goto cleanup;
         }
         offset += written_bytes;
     }
 
-    if (fsync(fd))
+    if (fsync(fd)) {
         serverLog(LL_WARNING, "Could not sync tmp config file to disk (%s)", strerror(errno));
-    else if (fchmod(fd, 0644 & ~server.umask) == -1)
+    } else if (fchmod(fd, 0644 & ~server.umask) == -1) {
         serverLog(LL_WARNING, "Could not chmod config file (%s)", strerror(errno));
-    else if (rename(tmp_conffile, configfile) == -1)
+    } else if (rename(tmp_conffile, configfile) == -1) {
         serverLog(LL_WARNING, "Could not rename tmp config file (%s)", strerror(errno));
-    else if (fsyncFileDir(configfile) == -1)
+    } else if (fsyncFileDir(configfile) == -1) {
         serverLog(LL_WARNING, "Could not sync config file dir (%s)", strerror(errno));
-    else {
+    } else {
         retval = 0;
         serverLog(LL_DEBUG, "Rewritten config file (%s) successfully", configfile);
     }
@@ -1739,8 +1784,9 @@ int rewriteConfigOverwriteFile(char *configfile, sds content) {
 cleanup:
     old_errno = errno;
     close(fd);
-    if (retval)
+    if (retval) {
         unlink(tmp_conffile);
+    }
     errno = old_errno;
     return retval;
 }
@@ -1761,10 +1807,12 @@ int rewriteConfig(char *path, int force_write) {
     int retval;
 
     /* Step 1: read the old config into our rewrite state. */
-    if ((state = rewriteConfigReadOldFile(path)) == NULL)
+    if ((state = rewriteConfigReadOldFile(path)) == NULL) {
         return -1;
-    if (force_write)
+    }
+    if (force_write) {
         state->force_write = 1;
+    }
 
     /* Step 2: rewrite every single option, replacing or appending it inside
      * the rewrite state. */
@@ -1775,10 +1823,12 @@ int rewriteConfig(char *path, int force_write) {
     while ((de = dictNext(di)) != NULL) {
         standardConfig *config = dictGetVal(de);
         /* Only rewrite the primary names */
-        if (config->flags & ALIAS_CONFIG)
+        if (config->flags & ALIAS_CONFIG) {
             continue;
-        if (config->interface.rewrite)
+        }
+        if (config->interface.rewrite) {
             config->interface.rewrite(config, dictGetKey(de), state);
+        }
     }
     dictReleaseIterator(di);
 
@@ -1786,8 +1836,9 @@ int rewriteConfig(char *path, int force_write) {
     rewriteConfigLoadmoduleOption(state);
 
     /* Rewrite Sentinel config if in Sentinel mode. */
-    if (server.sentinel_mode)
+    if (server.sentinel_mode) {
         rewriteConfigSentinelOption(state);
+    }
 
     /* Step 3: remove all the orphaned lines in the old file, that is, lines
      * that were used by a config option and are no longer used, like in case
@@ -1839,8 +1890,9 @@ static int boolConfigSet(standardConfig *config, sds *argv, int argc, const char
         *err = "argument must be 'yes' or 'no'";
         return 0;
     }
-    if (config->data.yesno.is_valid_fn && !config->data.yesno.is_valid_fn(yn, err))
+    if (config->data.yesno.is_valid_fn && !config->data.yesno.is_valid_fn(yn, err)) {
         return 0;
+    }
     int prev = config->flags & MODULE_CONFIG ? getModuleBoolConfig(config->privdata) : *(config->data.yesno.config);
     if (prev != yn) {
         if (config->flags & MODULE_CONFIG) {
@@ -1883,8 +1935,9 @@ static void stringConfigInit(standardConfig *config) {
 
 static int stringConfigSet(standardConfig *config, sds *argv, int argc, const char **err) {
     UNUSED(argc);
-    if (config->data.string.is_valid_fn && !config->data.string.is_valid_fn(argv[0], err))
+    if (config->data.string.is_valid_fn && !config->data.string.is_valid_fn(argv[0], err)) {
         return 0;
+    }
     char *prev = *config->data.string.config;
     char *new = (config->data.string.convert_empty_to_null && !argv[0][0]) ? NULL : argv[0];
     if (new != prev && (new == NULL || prev == NULL || strcmp(prev, new))) {
@@ -1911,8 +1964,9 @@ static void sdsConfigInit(standardConfig *config) {
 
 static int sdsConfigSet(standardConfig *config, sds *argv, int argc, const char **err) {
     UNUSED(argc);
-    if (config->data.sds.is_valid_fn && !config->data.sds.is_valid_fn(argv[0], err))
+    if (config->data.sds.is_valid_fn && !config->data.sds.is_valid_fn(argv[0], err)) {
         return 0;
+    }
 
     sds prev = config->flags & MODULE_CONFIG ? getModuleStringConfig(config->privdata) : *config->data.sds.config;
     sds new = (config->data.string.convert_empty_to_null && (sdslen(argv[0]) == 0)) ? NULL : argv[0];
@@ -1929,16 +1983,18 @@ static int sdsConfigSet(standardConfig *config, sds *argv, int argc, const char 
         *config->data.sds.config = new != NULL ? sdsdup(new) : NULL;
         return 1;
     }
-    if (config->flags & MODULE_CONFIG && prev)
+    if (config->flags & MODULE_CONFIG && prev) {
         sdsfree(prev);
+    }
     return (config->flags & VOLATILE_CONFIG) ? 1 : 2;
 }
 
 static sds sdsConfigGet(standardConfig *config) {
     sds val = config->flags & MODULE_CONFIG ? getModuleStringConfig(config->privdata) : *config->data.sds.config;
     if (val) {
-        if (config->flags & MODULE_CONFIG)
+        if (config->flags & MODULE_CONFIG) {
             return val;
+        }
         return sdsdup(val);
     } else {
         return sdsnew("");
@@ -1948,8 +2004,9 @@ static sds sdsConfigGet(standardConfig *config) {
 static void sdsConfigRewrite(standardConfig *config, const char *name, struct rewriteConfigState *state) {
     sds val = config->flags & MODULE_CONFIG ? getModuleStringConfig(config->privdata) : *config->data.sds.config;
     rewriteConfigSdsOption(state, name, val, config->data.sds.default_value);
-    if ((val) && (config->flags & MODULE_CONFIG))
+    if ((val) && (config->flags & MODULE_CONFIG)) {
         sdsfree(val);
+    }
 }
 
 #define ALLOW_EMPTY_STRING 0
@@ -2005,12 +2062,14 @@ static int enumConfigSet(standardConfig *config, sds *argv, int argc, const char
         *err = loadbuf;
         return 0;
     }
-    if (config->data.enumd.is_valid_fn && !config->data.enumd.is_valid_fn(enumval, err))
+    if (config->data.enumd.is_valid_fn && !config->data.enumd.is_valid_fn(enumval, err)) {
         return 0;
+    }
     int prev = config->flags & MODULE_CONFIG ? getModuleEnumConfig(config->privdata) : *(config->data.enumd.config);
     if (prev != enumval) {
-        if (config->flags & MODULE_CONFIG)
+        if (config->flags & MODULE_CONFIG) {
             return setModuleEnumConfig(config->privdata, enumval, err);
+        }
         *(config->data.enumd.config) = enumval;
         return 1;
     }
@@ -2052,10 +2111,11 @@ int setNumericType(standardConfig *config, long long val, const char **err) {
     } else if (config->data.numeric.numeric_type == NUMERIC_TYPE_ULONG) {
         *(config->data.numeric.config.ul) = (unsigned long)val;
     } else if (config->data.numeric.numeric_type == NUMERIC_TYPE_LONG_LONG) {
-        if (config->flags & MODULE_CONFIG)
+        if (config->flags & MODULE_CONFIG) {
             return setModuleNumericConfig(config->privdata, val, err);
-        else
+        } else {
             *(config->data.numeric.config.ll) = (long long)val;
+        }
     } else if (config->data.numeric.numeric_type == NUMERIC_TYPE_ULONG_LONG) {
         *(config->data.numeric.config.ull) = (unsigned long long)val;
     } else if (config->data.numeric.numeric_type == NUMERIC_TYPE_SIZE_T) {
@@ -2146,8 +2206,9 @@ static int numericParseString(standardConfig *config, sds value, const char **er
     if (config->data.numeric.flags & MEMORY_CONFIG) {
         int memerr;
         *res = memtoull(value, &memerr);
-        if (!memerr)
+        if (!memerr) {
             return 1;
+        }
     }
 
     /* Attempt to parse as percent */
@@ -2163,23 +2224,26 @@ static int numericParseString(standardConfig *config, sds value, const char **er
         char *endptr;
         errno = 0;
         *res = strtoll(value, &endptr, 8);
-        if (errno == 0 && *endptr == '\0')
+        if (errno == 0 && *endptr == '\0') {
             return 1; /* No overflow or invalid characters */
+        }
     }
 
     /* Attempt a simple number (no special flags set) */
-    if (!config->data.numeric.flags && string2ll(value, sdslen(value), res))
+    if (!config->data.numeric.flags && string2ll(value, sdslen(value), res)) {
         return 1;
+    }
 
     /* Select appropriate error string */
-    if (config->data.numeric.flags & MEMORY_CONFIG && config->data.numeric.flags & PERCENT_CONFIG)
+    if (config->data.numeric.flags & MEMORY_CONFIG && config->data.numeric.flags & PERCENT_CONFIG) {
         *err = "argument must be a memory or percent value";
-    else if (config->data.numeric.flags & MEMORY_CONFIG)
+    } else if (config->data.numeric.flags & MEMORY_CONFIG) {
         *err = "argument must be a memory value";
-    else if (config->data.numeric.flags & OCTAL_CONFIG)
+    } else if (config->data.numeric.flags & OCTAL_CONFIG) {
         *err = "argument couldn't be parsed as an octal number";
-    else
+    } else {
         *err = "argument couldn't be parsed into an integer";
+    }
     return 0;
 }
 
@@ -2187,14 +2251,17 @@ static int numericConfigSet(standardConfig *config, sds *argv, int argc, const c
     UNUSED(argc);
     long long ll, prev = 0;
 
-    if (!numericParseString(config, argv[0], err, &ll))
+    if (!numericParseString(config, argv[0], err, &ll)) {
         return 0;
+    }
 
-    if (!numericBoundaryCheck(config, ll, err))
+    if (!numericBoundaryCheck(config, ll, err)) {
         return 0;
+    }
 
-    if (config->data.numeric.is_valid_fn && !config->data.numeric.is_valid_fn(ll, err))
+    if (config->data.numeric.is_valid_fn && !config->data.numeric.is_valid_fn(ll, err)) {
         return 0;
+    }
 
     GET_NUMERIC_TYPE(prev)
     if (prev != ll) {
@@ -2440,10 +2507,12 @@ static int updateHZ(const char **err) {
     UNUSED(err);
     /* Hz is more a hint from the user, so we accept values out of range
      * but cap them to reasonable values. */
-    if (server.config_hz < CONFIG_MIN_HZ)
+    if (server.config_hz < CONFIG_MIN_HZ) {
         server.config_hz = CONFIG_MIN_HZ;
-    if (server.config_hz > CONFIG_MAX_HZ)
+    }
+    if (server.config_hz > CONFIG_MAX_HZ) {
         server.config_hz = CONFIG_MAX_HZ;
+    }
     server.hz = server.config_hz;
     return 1;
 }
@@ -2528,10 +2597,11 @@ static int updateAofAutoGCEnabled(const char **err) {
 
 static int updateSighandlerEnabled(const char **err) {
     UNUSED(err);
-    if (server.crashlog_enabled)
+    if (server.crashlog_enabled) {
         setupSigSegvHandler();
-    else
+    } else {
         removeSigSegvHandlers();
+    }
     return 1;
 }
 
@@ -2595,8 +2665,9 @@ static int applyBind(const char **err) {
     tcp_listener->ct = connectionByType(CONN_TYPE_SOCKET);
     if (changeListener(tcp_listener) == C_ERR) {
         *err = "Failed to bind to specified addresses.";
-        if (tls_listener)
+        if (tls_listener) {
             closeListener(tls_listener); /* failed with TLS together */
+        }
         return 0;
     }
 
@@ -2696,8 +2767,9 @@ static sds getConfigDirOption(standardConfig *config) {
     UNUSED(config);
     char buf[1024];
 
-    if (getcwd(buf, sizeof(buf)) == NULL)
+    if (getcwd(buf, sizeof(buf)) == NULL) {
         buf[0] = '\0';
+    }
 
     return sdsnew(buf);
 }
@@ -2762,8 +2834,9 @@ static sds getConfigSaveOption(standardConfig *config) {
 
     for (j = 0; j < server.saveparamslen; j++) {
         buf = sdscatprintf(buf, "%jd %d", (intmax_t)server.saveparams[j].seconds, server.saveparams[j].changes);
-        if (j != server.saveparamslen - 1)
+        if (j != server.saveparamslen - 1) {
             buf = sdscatlen(buf, " ", 1);
+        }
     }
 
     return buf;
@@ -2783,8 +2856,9 @@ static sds getConfigClientOutputBufferLimitOption(standardConfig *config) {
             buf, "%s %llu %llu %ld", getClientTypeName(j), server.client_obuf_limits[j].hard_limit_bytes,
             server.client_obuf_limits[j].soft_limit_bytes, (long)server.client_obuf_limits[j].soft_limit_seconds
         );
-        if (j != CLIENT_TYPE_OBUF_COUNT - 1)
+        if (j != CLIENT_TYPE_OBUF_COUNT - 1) {
             buf = sdscatlen(buf, " ", 1);
+        }
     }
     return buf;
 }
@@ -2808,8 +2882,9 @@ static int setConfigOOMScoreAdjValuesOption(standardConfig *config, sds *argv, i
         long long val = strtoll(argv[i], &eptr, 10);
 
         if (*eptr != '\0' || val < -2000 || val > 2000) {
-            if (err)
+            if (err) {
                 *err = "Invalid oom-score-adj-values, elements must be between -2000 and 2000.";
+            }
             return 0;
         }
 
@@ -2845,8 +2920,9 @@ static sds getConfigOOMScoreAdjValuesOption(standardConfig *config) {
 
     for (j = 0; j < CONFIG_OOM_COUNT; j++) {
         buf = sdscatprintf(buf, "%d", server.oom_score_adj_values[j]);
-        if (j != CONFIG_OOM_COUNT - 1)
+        if (j != CONFIG_OOM_COUNT - 1) {
             buf = sdscatlen(buf, " ", 1);
+        }
     }
 
     return buf;
@@ -2882,15 +2958,17 @@ static int setConfigBindOption(standardConfig *config, sds *argv, int argc, cons
     }
 
     /* A single empty argument is treated as a zero bindaddr count */
-    if (argc == 1 && sdslen(argv[0]) == 0)
+    if (argc == 1 && sdslen(argv[0]) == 0) {
         argc = 0;
+    }
 
     /* Free old bind addresses */
     for (j = 0; j < server.bindaddr_count; j++) {
         zfree(server.bindaddr[j]);
     }
-    for (j = 0; j < argc; j++)
+    for (j = 0; j < argc; j++) {
         server.bindaddr[j] = zstrdup(argv[j]);
+    }
     server.bindaddr_count = argc;
 
     return 1;
@@ -2928,10 +3006,11 @@ static sds getConfigBindOption(standardConfig *config) {
 static sds getConfigReplicaOfOption(standardConfig *config) {
     UNUSED(config);
     char buf[256];
-    if (server.masterhost)
+    if (server.masterhost) {
         snprintf(buf, sizeof(buf), "%s %d", server.masterhost, server.masterport);
-    else
+    } else {
         buf[0] = '\0';
+    }
     return sdsnew(buf);
 }
 
@@ -2946,10 +3025,11 @@ static int setConfigLatencyTrackingInfoPercentilesOutputOption(standardConfig *c
     server.latency_tracking_info_percentiles_len = argc;
 
     /* Special case: treat single arg "" as zero args indicating empty percentile configuration */
-    if (argc == 1 && sdslen(argv[0]) == 0)
+    if (argc == 1 && sdslen(argv[0]) == 0) {
         server.latency_tracking_info_percentiles_len = 0;
-    else
+    } else {
         server.latency_tracking_info_percentiles = zmalloc(sizeof(double) * argc);
+    }
 
     for (int j = 0; j < server.latency_tracking_info_percentiles_len; j++) {
         double percentile;
@@ -2980,8 +3060,9 @@ static sds getConfigLatencyTrackingInfoPercentilesOutputOption(standardConfig *c
         size_t len = snprintf(fbuf, sizeof(fbuf), "%f", server.latency_tracking_info_percentiles[j]);
         len = trimDoubleString(fbuf, len);
         buf = sdscatlen(buf, fbuf, len);
-        if (j != server.latency_tracking_info_percentiles_len - 1)
+        if (j != server.latency_tracking_info_percentiles_len - 1) {
             buf = sdscatlen(buf, " ", 1);
+        }
     }
     return buf;
 }
@@ -3014,10 +3095,12 @@ static int applyClientMaxMemoryUsage(const char **err) {
 
     /* server.client_mem_usage_buckets is an indication that the previous config
      * was non-zero, in which case we can exit and no apply is needed. */
-    if (server.maxmemory_clients != 0 && server.client_mem_usage_buckets)
+    if (server.maxmemory_clients != 0 && server.client_mem_usage_buckets) {
         return 1;
-    if (server.maxmemory_clients != 0)
+    }
+    if (server.maxmemory_clients != 0) {
         initServerClientMemUsageBuckets();
+    }
 
     /* When client eviction is enabled update memory buckets for all clients.
      * When disabled, clear that data structure. */
@@ -3033,8 +3116,9 @@ static int applyClientMaxMemoryUsage(const char **err) {
         }
     }
 
-    if (server.maxmemory_clients == 0)
+    if (server.maxmemory_clients == 0) {
         freeServerClientMemUsageBuckets();
+    }
     return 1;
 }
 
@@ -3474,8 +3558,9 @@ void initConfigValues(void) {
     configs = dictCreate(&sdsHashDictType);
     dictExpand(configs, sizeof(static_configs) / sizeof(standardConfig));
     for (standardConfig *config = static_configs; config->name != NULL; config++) {
-        if (config->interface.init)
+        if (config->interface.init) {
             config->interface.init(config);
+        }
         /* Add the primary config to the dictionary. */
         int ret = registerConfigValue(config->name, config, 0);
         serverAssert(ret);
@@ -3492,8 +3577,9 @@ void initConfigValues(void) {
 /* Remove a config by name from the configs dict. */
 void removeConfig(sds name) {
     standardConfig *config = lookupConfig(name);
-    if (!config)
+    if (!config) {
         return;
+    }
     if (config->flags & MODULE_CONFIG) {
         sdsfree((sds)config->name);
         if (config->type == ENUM_CONFIG) {
@@ -3504,8 +3590,9 @@ void removeConfig(sds name) {
             }
             zfree(config->data.enumd.enum_value);
         } else if (config->type == SDS_CONFIG) {
-            if (config->data.sds.default_value)
+            if (config->data.sds.default_value) {
                 sdsfree((sds)config->data.sds.default_value);
+            }
         }
     }
     dictDelete(configs, name);

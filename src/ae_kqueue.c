@@ -61,8 +61,9 @@ static inline void resetEventMask(char *eventsMask, int fd) {
 static int aeApiCreate(aeEventLoop *eventLoop) {
     aeApiState *state = zmalloc(sizeof(aeApiState));
 
-    if (!state)
+    if (!state) {
         return -1;
+    }
     state->events = zmalloc(sizeof(struct kevent) * eventLoop->setsize);
     if (!state->events) {
         zfree(state);
@@ -105,13 +106,15 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
 
     if (mask & AE_READABLE) {
         EV_SET(&ke, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1)
+        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) {
             return -1;
+        }
     }
     if (mask & AE_WRITABLE) {
         EV_SET(&ke, fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1)
+        if (kevent(state->kqfd, &ke, 1, NULL, 0, NULL) == -1) {
             return -1;
+        }
     }
     return 0;
 }
@@ -158,10 +161,11 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
             int fd = e->ident;
             int mask = 0;
 
-            if (e->filter == EVFILT_READ)
+            if (e->filter == EVFILT_READ) {
                 mask = AE_READABLE;
-            else if (e->filter == EVFILT_WRITE)
+            } else if (e->filter == EVFILT_WRITE) {
                 mask = AE_WRITABLE;
+            }
             addEventMask(state->eventsMask, fd, mask);
         }
 

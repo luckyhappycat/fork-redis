@@ -66,8 +66,9 @@ static size_t rioBufferWrite(rio *r, const void *buf, size_t len) {
 
 /* Returns 1 or 0 for success/failure. */
 static size_t rioBufferRead(rio *r, void *buf, size_t len) {
-    if (sdslen(r->io.buffer.ptr) - r->io.buffer.pos < len)
+    if (sdslen(r->io.buffer.ptr) - r->io.buffer.pos < len) {
         return 0; /* not enough buffer to return len bytes. */
+    }
     memcpy(buf, r->io.buffer.ptr + r->io.buffer.pos, len);
     r->io.buffer.pos += len;
     return 1;
@@ -108,8 +109,9 @@ void rioInitWithBuffer(rio *r, sds s) {
 
 /* Returns 1 or 0 for success/failure. */
 static size_t rioFileWrite(rio *r, const void *buf, size_t len) {
-    if (!r->io.file.autosync)
+    if (!r->io.file.autosync) {
         return fwrite(buf, len, 1, r->io.file.fp);
+    }
 
     size_t nwritten = 0;
     /* Incrementally write data to the file, avoid a single write larger than
@@ -120,8 +122,9 @@ static size_t rioFileWrite(rio *r, const void *buf, size_t len) {
         size_t nalign = (size_t)(r->io.file.autosync - r->io.file.buffered);
         size_t towrite = nalign > len - nwritten ? len - nwritten : nalign;
 
-        if (fwrite((char *)buf + nwritten, towrite, 1, r->io.file.fp) == 0)
+        if (fwrite((char *)buf + nwritten, towrite, 1, r->io.file.fp) == 0) {
             return 0;
+        }
         nwritten += towrite;
         r->io.file.buffered += towrite;
 
@@ -134,8 +137,9 @@ static size_t rioFileWrite(rio *r, const void *buf, size_t len) {
 
 #if HAVE_SYNC_FILE_RANGE
             /* Start writeout asynchronously. */
-            if (sync_file_range(fileno(r->io.file.fp), processed - r->io.file.autosync, r->io.file.autosync, SYNC_FILE_RANGE_WRITE) == -1)
+            if (sync_file_range(fileno(r->io.file.fp), processed - r->io.file.autosync, r->io.file.autosync, SYNC_FILE_RANGE_WRITE) == -1) {
                 return 0;
+            }
 
             if (processed >= (size_t)r->io.file.autosync * 2) {
                 /* To keep the promise to 'autosync', we should make sure last
@@ -144,12 +148,14 @@ static size_t rioFileWrite(rio *r, const void *buf, size_t len) {
                 if (sync_file_range(
                         fileno(r->io.file.fp), processed - r->io.file.autosync * 2, r->io.file.autosync,
                         SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_AFTER
-                    ) == -1)
+                    ) == -1) {
                     return 0;
+                }
             }
 #else
-            if (redis_fsync(fileno(r->io.file.fp)) == -1)
+            if (redis_fsync(fileno(r->io.file.fp)) == -1) {
                 return 0;
+            }
 #endif
             if (r->io.file.reclaim_cache) {
                 /* In Linux sync_file_range just issue a writeback request to
@@ -218,8 +224,9 @@ static size_t rioConnRead(rio *r, void *buf, size_t len) {
     size_t avail = sdslen(r->io.conn.buf) - r->io.conn.pos;
 
     /* If the buffer is too small for the entire request: realloc. */
-    if (sdslen(r->io.conn.buf) + sdsavail(r->io.conn.buf) < len)
+    if (sdslen(r->io.conn.buf) + sdsavail(r->io.conn.buf) < len) {
         r->io.conn.buf = sdsMakeRoomFor(r->io.conn.buf, len - sdslen(r->io.conn.buf));
+    }
 
     /* If the remaining unused buffer is not large enough: memmove so that we
      * can read the rest. */
@@ -243,8 +250,9 @@ static size_t rioConnRead(rio *r, void *buf, size_t len) {
         /* Read either what's missing, or PROTO_IOBUF_LEN, the bigger of
          * the two. */
         size_t toread = needs < PROTO_IOBUF_LEN ? PROTO_IOBUF_LEN : needs;
-        if (toread > sdsavail(r->io.conn.buf))
+        if (toread > sdsavail(r->io.conn.buf)) {
             toread = sdsavail(r->io.conn.buf);
+        }
         if (r->io.conn.read_limit != 0 && r->io.conn.read_so_far + buffered + toread > r->io.conn.read_limit) {
             toread = r->io.conn.read_limit - r->io.conn.read_so_far - buffered;
         }
@@ -252,10 +260,12 @@ static size_t rioConnRead(rio *r, void *buf, size_t len) {
         if (retval == 0) {
             return 0;
         } else if (retval < 0) {
-            if (connLastErrorRetryable(r->io.conn.conn))
+            if (connLastErrorRetryable(r->io.conn.conn)) {
                 continue;
-            if (errno == EWOULDBLOCK)
+            }
+            if (errno == EWOULDBLOCK) {
                 errno = ETIMEDOUT;
+            }
             return 0;
         }
         sdsIncrLen(r->io.conn.buf, retval);
@@ -305,13 +315,15 @@ void rioInitWithConn(rio *r, connection *conn, size_t read_limit) {
  * when the SDS pointer 'remaining' is passed. */
 void rioFreeConn(rio *r, sds *remaining) {
     if (remaining && (size_t)r->io.conn.pos < sdslen(r->io.conn.buf)) {
-        if (r->io.conn.pos > 0)
+        if (r->io.conn.pos > 0) {
             sdsrange(r->io.conn.buf, r->io.conn.pos, -1);
+        }
         *remaining = r->io.conn.buf;
     } else {
         sdsfree(r->io.conn.buf);
-        if (remaining)
+        if (remaining) {
             *remaining = NULL;
+        }
     }
     r->io.conn.buf = NULL;
 }
@@ -339,17 +351,20 @@ static size_t rioFdWrite(rio *r, const void *buf, size_t len) {
     if (len > PROTO_IOBUF_LEN) {
         /* First, flush any pre-existing buffered data. */
         if (sdslen(r->io.fd.buf)) {
-            if (rioFdWrite(r, NULL, 0) == 0)
+            if (rioFdWrite(r, NULL, 0) == 0) {
                 return 0;
+            }
         }
         /* Write the new data, keeping 'p' and 'len' from the input. */
     } else {
         if (len) {
             r->io.fd.buf = sdscatlen(r->io.fd.buf, buf, len);
-            if (sdslen(r->io.fd.buf) > PROTO_IOBUF_LEN)
+            if (sdslen(r->io.fd.buf) > PROTO_IOBUF_LEN) {
                 doflush = 1;
-            if (!doflush)
+            }
+            if (!doflush) {
                 return 1;
+            }
         }
         /* Flushing the buffered data. set 'p' and 'len' accordingly. */
         p = (unsigned char *)r->io.fd.buf;
@@ -360,14 +375,16 @@ static size_t rioFdWrite(rio *r, const void *buf, size_t len) {
     while (nwritten != len) {
         retval = write(r->io.fd.fd, p + nwritten, len - nwritten);
         if (retval <= 0) {
-            if (retval == -1 && errno == EINTR)
+            if (retval == -1 && errno == EINTR) {
                 continue;
+            }
             /* With blocking io, which is the sole user of this
              * rio target, EWOULDBLOCK is returned only because of
              * the SO_SNDTIMEO socket option, so we translate the error
              * into one more recognizable by the user. */
-            if (retval == -1 && errno == EWOULDBLOCK)
+            if (retval == -1 && errno == EWOULDBLOCK) {
                 errno = ETIMEDOUT;
+            }
             return 0; /* error. */
         }
         nwritten += retval;
@@ -437,8 +454,9 @@ void rioGenericUpdateChecksum(rio *r, const void *buf, size_t len) {
  * disk I/O concentrated in very little time. When we fsync in an explicit
  * way instead the I/O pressure is more distributed across time. */
 void rioSetAutoSync(rio *r, off_t bytes) {
-    if (r->write != rioFileIO.write)
+    if (r->write != rioFileIO.write) {
         return;
+    }
     r->io.file.autosync = bytes;
 }
 
@@ -479,8 +497,9 @@ size_t rioWriteBulkCount(rio *r, char prefix, long count) {
     clen = 1 + ll2string(cbuf + 1, sizeof(cbuf) - 1, count);
     cbuf[clen++] = '\r';
     cbuf[clen++] = '\n';
-    if (rioWrite(r, cbuf, clen) == 0)
+    if (rioWrite(r, cbuf, clen) == 0) {
         return 0;
+    }
     return clen;
 }
 
@@ -488,12 +507,15 @@ size_t rioWriteBulkCount(rio *r, char prefix, long count) {
 size_t rioWriteBulkString(rio *r, const char *buf, size_t len) {
     size_t nwritten;
 
-    if ((nwritten = rioWriteBulkCount(r, '$', len)) == 0)
+    if ((nwritten = rioWriteBulkCount(r, '$', len)) == 0) {
         return 0;
-    if (len > 0 && rioWrite(r, buf, len) == 0)
+    }
+    if (len > 0 && rioWrite(r, buf, len) == 0) {
         return 0;
-    if (rioWrite(r, "\r\n", 2) == 0)
+    }
+    if (rioWrite(r, "\r\n", 2) == 0) {
         return 0;
+    }
     return nwritten + len + 2;
 }
 

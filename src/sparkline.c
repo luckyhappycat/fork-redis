@@ -70,25 +70,28 @@ void sparklineSequenceAddSample(struct sequence *seq, double value, char *label)
     if (seq->length == 0) {
         seq->min = seq->max = value;
     } else {
-        if (value < seq->min)
+        if (value < seq->min) {
             seq->min = value;
-        else if (value > seq->max)
+        } else if (value > seq->max) {
             seq->max = value;
+        }
     }
     seq->samples = zrealloc(seq->samples, sizeof(struct sample) * (seq->length + 1));
     seq->samples[seq->length].value = value;
     seq->samples[seq->length].label = label;
     seq->length++;
-    if (label)
+    if (label) {
         seq->labels++;
+    }
 }
 
 /* Free a sequence. */
 void freeSparklineSequence(struct sequence *seq) {
     int j;
 
-    for (j = 0; j < seq->length; j++)
+    for (j = 0; j < seq->length; j++) {
         zfree(seq->samples[j].label);
+    }
     zfree(seq->samples);
     zfree(seq);
 }
@@ -124,13 +127,16 @@ sds sparklineRenderRange(sds output, struct sequence *seq, int rows, int offset,
             double relval = s->value - seq->min;
             int step;
 
-            if (opt_log)
+            if (opt_log) {
                 relval = log(relval + 1);
+            }
             step = (int)(relval * steps) / relmax;
-            if (step < 0)
+            if (step < 0) {
                 step = 0;
-            if (step >= steps)
+            }
+            if (step >= steps) {
                 step = steps - 1;
+            }
 
             if (row < rows) {
                 /* Print the character needed to create the sparkline */
@@ -176,8 +182,9 @@ sds sparklineRender(sds output, struct sequence *seq, int columns, int rows, int
     for (j = 0; j < seq->length; j += columns) {
         int sublen = (seq->length - j) < columns ? (seq->length - j) : columns;
 
-        if (j != 0)
+        if (j != 0) {
             output = sdscatlen(output, "\n", 1);
+        }
         output = sparklineRenderRange(output, seq, rows, j, sublen, flags);
     }
     return output;

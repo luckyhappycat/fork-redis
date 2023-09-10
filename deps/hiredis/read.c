@@ -98,10 +98,11 @@ static size_t chrtos(char *buf, size_t size, char byte) {
             len = snprintf(buf, size, "\"\\b\"");
             break;
         default:
-            if (isprint(byte))
+            if (isprint(byte)) {
                 len = snprintf(buf, size, "\"%c\"", byte);
-            else
+            } else {
                 len = snprintf(buf, size, "\"\\x%02x\"", (unsigned char)byte);
+            }
             break;
     }
 
@@ -135,8 +136,9 @@ static char *seekNewline(char *s, size_t len) {
     char *ret;
 
     /* We cannot match with fewer than 2 bytes */
-    if (len < 2)
+    if (len < 2) {
         return NULL;
+    }
 
     /* Search up to len - 1 characters */
     len--;
@@ -174,13 +176,15 @@ static int string2ll(const char *s, size_t slen, long long *value) {
     int negative = 0;
     unsigned long long v;
 
-    if (plen == slen)
+    if (plen == slen) {
         return REDIS_ERR;
+    }
 
     /* Special case: first and only digit is 0. */
     if (slen == 1 && p[0] == '0') {
-        if (value != NULL)
+        if (value != NULL) {
             *value = 0;
+        }
         return REDIS_OK;
     }
 
@@ -190,8 +194,9 @@ static int string2ll(const char *s, size_t slen, long long *value) {
         plen++;
 
         /* Abort on only a negative sign. */
-        if (plen == slen)
+        if (plen == slen) {
             return REDIS_ERR;
+        }
     }
 
     /* First digit should be 1-9, otherwise the string should just be 0. */
@@ -207,12 +212,14 @@ static int string2ll(const char *s, size_t slen, long long *value) {
     }
 
     while (plen < slen && p[0] >= '0' && p[0] <= '9') {
-        if (v > (ULLONG_MAX / 10)) /* Overflow. */
+        if (v > (ULLONG_MAX / 10)) { /* Overflow. */
             return REDIS_ERR;
+        }
         v *= 10;
 
-        if (v > (ULLONG_MAX - (p[0] - '0'))) /* Overflow. */
+        if (v > (ULLONG_MAX - (p[0] - '0'))) { /* Overflow. */
             return REDIS_ERR;
+        }
         v += p[0] - '0';
 
         p++;
@@ -220,19 +227,24 @@ static int string2ll(const char *s, size_t slen, long long *value) {
     }
 
     /* Return if not all bytes were used. */
-    if (plen < slen)
+    if (plen < slen) {
         return REDIS_ERR;
+    }
 
     if (negative) {
-        if (v > ((unsigned long long)(-(LLONG_MIN + 1)) + 1)) /* Overflow. */
+        if (v > ((unsigned long long)(-(LLONG_MIN + 1)) + 1)) { /* Overflow. */
             return REDIS_ERR;
-        if (value != NULL)
+        }
+        if (value != NULL) {
             *value = -v;
+        }
     } else {
-        if (v > LLONG_MAX) /* Overflow. */
+        if (v > LLONG_MAX) { /* Overflow. */
             return REDIS_ERR;
-        if (value != NULL)
+        }
+        if (value != NULL) {
             *value = v;
+        }
     }
     return REDIS_OK;
 }
@@ -246,8 +258,9 @@ static char *readLine(redisReader *r, int *_len) {
     if (s != NULL) {
         len = s - (r->buf + r->pos);
         r->pos += len + 2; /* skip \r\n */
-        if (_len)
+        if (_len) {
             *_len = len;
+        }
         return p;
     }
     return NULL;
@@ -339,10 +352,11 @@ static int processLineItem(redisReader *r) {
                 return REDIS_ERR;
             }
 
-            if (r->fn && r->fn->createNil)
+            if (r->fn && r->fn->createNil) {
                 obj = r->fn->createNil(cur);
-            else
+            } else {
                 obj = (void *)REDIS_REPLY_NIL;
+            }
         } else if (cur->type == REDIS_REPLY_BOOL) {
             int bval;
 
@@ -352,26 +366,29 @@ static int processLineItem(redisReader *r) {
             }
 
             bval = p[0] == 't' || p[0] == 'T';
-            if (r->fn && r->fn->createBool)
+            if (r->fn && r->fn->createBool) {
                 obj = r->fn->createBool(cur, bval);
-            else
+            } else {
                 obj = (void *)REDIS_REPLY_BOOL;
+            }
         } else if (cur->type == REDIS_REPLY_BIGNUM) {
             /* Ensure all characters are decimal digits (with possible leading
              * minus sign). */
             for (int i = 0; i < len; i++) {
                 /* XXX Consider: Allow leading '+'? Error on leading '0's? */
-                if (i == 0 && p[0] == '-')
+                if (i == 0 && p[0] == '-') {
                     continue;
+                }
                 if (p[i] < '0' || p[i] > '9') {
                     __redisReaderSetError(r, REDIS_ERR_PROTOCOL, "Bad bignum value");
                     return REDIS_ERR;
                 }
             }
-            if (r->fn && r->fn->createString)
+            if (r->fn && r->fn->createString) {
                 obj = r->fn->createString(cur, p, len);
-            else
+            } else {
                 obj = (void *)REDIS_REPLY_BIGNUM;
+            }
         } else {
             /* Type will be error or status. */
             for (int i = 0; i < len; i++) {
@@ -380,10 +397,11 @@ static int processLineItem(redisReader *r) {
                     return REDIS_ERR;
                 }
             }
-            if (r->fn && r->fn->createString)
+            if (r->fn && r->fn->createString) {
                 obj = r->fn->createString(cur, p, len);
-            else
+            } else {
                 obj = (void *)(uintptr_t)(cur->type);
+            }
         }
 
         if (obj == NULL) {
@@ -392,8 +410,9 @@ static int processLineItem(redisReader *r) {
         }
 
         /* Set reply if this is the root object. */
-        if (r->ridx == 0)
+        if (r->ridx == 0) {
             r->reply = obj;
+        }
         moveToNextTask(r);
         return REDIS_OK;
     }
@@ -427,10 +446,11 @@ static int processBulkItem(redisReader *r) {
 
         if (len == -1) {
             /* The nil object can always be created. */
-            if (r->fn && r->fn->createNil)
+            if (r->fn && r->fn->createNil) {
                 obj = r->fn->createNil(cur);
-            else
+            } else {
                 obj = (void *)REDIS_REPLY_NIL;
+            }
             success = 1;
         } else {
             /* Only continue when the buffer contains the entire bulk item. */
@@ -444,10 +464,11 @@ static int processBulkItem(redisReader *r) {
                     );
                     return REDIS_ERR;
                 }
-                if (r->fn && r->fn->createString)
+                if (r->fn && r->fn->createString) {
                     obj = r->fn->createString(cur, s + 2, len);
-                else
+                } else {
                     obj = (void *)(uintptr_t)cur->type;
+                }
                 success = 1;
             }
         }
@@ -462,8 +483,9 @@ static int processBulkItem(redisReader *r) {
             r->pos += bytelen;
 
             /* Set reply if this is the root object. */
-            if (r->ridx == 0)
+            if (r->ridx == 0) {
                 r->reply = obj;
+            }
             moveToNextTask(r);
             return REDIS_OK;
         }
@@ -479,16 +501,18 @@ static int redisReaderGrow(redisReader *r) {
     /* Grow our stack size */
     newlen = r->tasks + REDIS_READER_STACK_SIZE;
     aux = hi_realloc(r->task, sizeof(*r->task) * newlen);
-    if (aux == NULL)
+    if (aux == NULL) {
         goto oom;
+    }
 
     r->task = aux;
 
     /* Allocate new tasks */
     for (; r->tasks < newlen; r->tasks++) {
         r->task[r->tasks] = hi_calloc(1, sizeof(**r->task));
-        if (r->task[r->tasks] == NULL)
+        if (r->task[r->tasks] == NULL) {
             goto oom;
+        }
     }
 
     return REDIS_OK;
@@ -506,8 +530,9 @@ static int processAggregateItem(redisReader *r) {
     int root = 0, len;
 
     if (r->ridx == r->tasks - 1) {
-        if (redisReaderGrow(r) == REDIS_ERR)
+        if (redisReaderGrow(r) == REDIS_ERR) {
             return REDIS_ERR;
+        }
     }
 
     if ((p = readLine(r, &len)) != NULL) {
@@ -524,10 +549,11 @@ static int processAggregateItem(redisReader *r) {
         }
 
         if (elements == -1) {
-            if (r->fn && r->fn->createNil)
+            if (r->fn && r->fn->createNil) {
                 obj = r->fn->createNil(cur);
-            else
+            } else {
                 obj = (void *)REDIS_REPLY_NIL;
+            }
 
             if (obj == NULL) {
                 __redisReaderSetErrorOOM(r);
@@ -536,13 +562,15 @@ static int processAggregateItem(redisReader *r) {
 
             moveToNextTask(r);
         } else {
-            if (cur->type == REDIS_REPLY_MAP)
+            if (cur->type == REDIS_REPLY_MAP) {
                 elements *= 2;
+            }
 
-            if (r->fn && r->fn->createArray)
+            if (r->fn && r->fn->createArray) {
                 obj = r->fn->createArray(cur, elements);
-            else
+            } else {
                 obj = (void *)(uintptr_t)cur->type;
+            }
 
             if (obj == NULL) {
                 __redisReaderSetErrorOOM(r);
@@ -566,8 +594,9 @@ static int processAggregateItem(redisReader *r) {
         }
 
         /* Set reply if this is the root object. */
-        if (root)
+        if (root) {
             r->reply = obj;
+        }
         return REDIS_OK;
     }
 
@@ -659,21 +688,25 @@ redisReader *redisReaderCreateWithFunctions(redisReplyObjectFunctions *fn) {
     redisReader *r;
 
     r = hi_calloc(1, sizeof(redisReader));
-    if (r == NULL)
+    if (r == NULL) {
         return NULL;
+    }
 
     r->buf = hi_sdsempty();
-    if (r->buf == NULL)
+    if (r->buf == NULL) {
         goto oom;
+    }
 
     r->task = hi_calloc(REDIS_READER_STACK_SIZE, sizeof(*r->task));
-    if (r->task == NULL)
+    if (r->task == NULL) {
         goto oom;
+    }
 
     for (; r->tasks < REDIS_READER_STACK_SIZE; r->tasks++) {
         r->task[r->tasks] = hi_calloc(1, sizeof(**r->task));
-        if (r->task[r->tasks] == NULL)
+        if (r->task[r->tasks] == NULL) {
             goto oom;
+        }
     }
 
     r->fn = fn;
@@ -688,11 +721,13 @@ oom:
 }
 
 void redisReaderFree(redisReader *r) {
-    if (r == NULL)
+    if (r == NULL) {
         return;
+    }
 
-    if (r->reply != NULL && r->fn && r->fn->freeObject)
+    if (r->reply != NULL && r->fn && r->fn->freeObject) {
         r->fn->freeObject(r->reply);
+    }
 
     if (r->task) {
         /* We know r->task[i] is allocated if i < r->tasks */
@@ -711,8 +746,9 @@ int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
     hisds newbuf;
 
     /* Return early when this reader is in an erroneous state. */
-    if (r->err)
+    if (r->err) {
         return REDIS_ERR;
+    }
 
     /* Copy the provided buffer. */
     if (buf != NULL && len >= 1) {
@@ -720,15 +756,17 @@ int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
         if (r->len == 0 && r->maxbuf != 0 && hi_sdsavail(r->buf) > r->maxbuf) {
             hi_sdsfree(r->buf);
             r->buf = hi_sdsempty();
-            if (r->buf == 0)
+            if (r->buf == 0) {
                 goto oom;
+            }
 
             r->pos = 0;
         }
 
         newbuf = hi_sdscatlen(r->buf, buf, len);
-        if (newbuf == NULL)
+        if (newbuf == NULL) {
             goto oom;
+        }
 
         r->buf = newbuf;
         r->len = hi_sdslen(r->buf);
@@ -742,16 +780,19 @@ oom:
 
 int redisReaderGetReply(redisReader *r, void **reply) {
     /* Default target pointer to NULL. */
-    if (reply != NULL)
+    if (reply != NULL) {
         *reply = NULL;
+    }
 
     /* Return early when this reader is in an erroneous state. */
-    if (r->err)
+    if (r->err) {
         return REDIS_ERR;
+    }
 
     /* When the buffer is empty, there will never be a reply. */
-    if (r->len == 0)
+    if (r->len == 0) {
         return REDIS_OK;
+    }
 
     /* Set first item to process when the stack is empty. */
     if (r->ridx == -1) {
@@ -765,19 +806,23 @@ int redisReaderGetReply(redisReader *r, void **reply) {
     }
 
     /* Process items in reply. */
-    while (r->ridx >= 0)
-        if (processItem(r) != REDIS_OK)
+    while (r->ridx >= 0) {
+        if (processItem(r) != REDIS_OK) {
             break;
+        }
+    }
 
     /* Return ASAP when an error occurred. */
-    if (r->err)
+    if (r->err) {
         return REDIS_ERR;
+    }
 
     /* Discard part of the buffer when we've consumed at least 1k, to avoid
      * doing unnecessary calls to memmove() in sds.c. */
     if (r->pos >= 1024) {
-        if (hi_sdsrange(r->buf, r->pos, -1) < 0)
+        if (hi_sdsrange(r->buf, r->pos, -1) < 0) {
             return REDIS_ERR;
+        }
         r->pos = 0;
         r->len = hi_sdslen(r->buf);
     }

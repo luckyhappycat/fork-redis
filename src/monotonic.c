@@ -147,17 +147,20 @@ static void monotonicInit_posix(void) {
 
 const char *monotonicInit(void) {
 #if defined(USE_PROCESSOR_CLOCK) && defined(__x86_64__) && defined(__linux__)
-    if (getMonotonicUs == NULL)
+    if (getMonotonicUs == NULL) {
         monotonicInit_x86linux();
+    }
 #endif
 
 #if defined(USE_PROCESSOR_CLOCK) && defined(__aarch64__)
-    if (getMonotonicUs == NULL)
+    if (getMonotonicUs == NULL) {
         monotonicInit_aarch64();
+    }
 #endif
 
-    if (getMonotonicUs == NULL)
+    if (getMonotonicUs == NULL) {
         monotonicInit_posix();
+    }
 
     return monotonic_info_string;
 }
@@ -167,7 +170,8 @@ const char *monotonicInfoString(void) {
 }
 
 monotonic_clock_type monotonicGetType(void) {
-    if (getMonotonicUs == getMonotonicUs_posix)
+    if (getMonotonicUs == getMonotonicUs_posix) {
         return MONOTONIC_CLOCK_POSIX;
+    }
     return MONOTONIC_CLOCK_HW;
 }

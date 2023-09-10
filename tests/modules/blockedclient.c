@@ -147,8 +147,9 @@ void *bg_call_worker(void *arg) {
     RedisModule_UnblockClient(bg->bc, NULL);
 
     /* Free the arguments */
-    for (int i = 0; i < bg->argc; i++)
+    for (int i = 0; i < bg->argc; i++) {
         RedisModule_FreeString(ctx, bg->argv[i]);
+    }
     RedisModule_Free(bg->argv);
     RedisModule_Free(bg);
 
@@ -178,8 +179,9 @@ int do_bg_rm_call(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     bg_call_data *bg = RedisModule_Alloc(sizeof(bg_call_data));
     bg->argv = RedisModule_Alloc(sizeof(RedisModuleString *) * argc);
     bg->argc = argc;
-    for (int i = 0; i < argc; i++)
+    for (int i = 0; i < argc; i++) {
         bg->argv[i] = RedisModule_HoldString(ctx, argv[i]);
+    }
 
     /* Block the client */
     bg->bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
@@ -556,8 +558,9 @@ int slow_fg_command(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     while (!abort_flag) {
         RedisModule_Yield(ctx, yield_flags, "Slow module operation");
         usleep(1000);
-        if (block_time && RedisModule_MonotonicMicroseconds() - start_time > (uint64_t)block_time)
+        if (block_time && RedisModule_MonotonicMicroseconds() - start_time > (uint64_t)block_time) {
             break;
+        }
     }
 
     abort_flag = 0;
@@ -620,12 +623,14 @@ static void timer_callback(RedisModuleCtx *ctx, void *data) {
 }
 
 int unblock_by_timer(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     long long period;
-    if (RedisModule_StringToLongLong(argv[1], &period) != REDISMODULE_OK)
+    if (RedisModule_StringToLongLong(argv[1], &period) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "ERR invalid period");
+    }
 
     RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
     RedisModule_CreateTimer(ctx, period, timer_callback, bc);
@@ -636,59 +641,77 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "blockedclient", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "blockedclient", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "acquire_gil", acquire_gil, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "acquire_gil", acquire_gil, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call", do_rm_call, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call", do_rm_call, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_on_thread", do_rm_call_async_on_thread, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_on_thread", do_rm_call_async_on_thread, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_script_mode", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_script_mode", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_no_replicate", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_async_no_replicate", do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_rm_call_fire_and_forget", do_rm_call_async_fire_and_forget, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_rm_call_fire_and_forget", do_rm_call_async_fire_and_forget, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "wait_and_do_rm_call", wait_and_do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "wait_and_do_rm_call", wait_and_do_rm_call_async, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "blpop_and_set_multiple_keys", blpop_and_set_multiple_keys, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "blpop_and_set_multiple_keys", blpop_and_set_multiple_keys, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_bg_rm_call", do_bg_rm_call, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_bg_rm_call", do_bg_rm_call, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_bg_rm_call_format", do_bg_rm_call, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_bg_rm_call_format", do_bg_rm_call, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "do_fake_bg_true", do_fake_bg_true, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "do_fake_bg_true", do_fake_bg_true, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "slow_fg_command", slow_fg_command, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "slow_fg_command", slow_fg_command, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "stop_slow_fg_command", stop_slow_fg_command, "allow-busy", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "stop_slow_fg_command", stop_slow_fg_command, "allow-busy", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "set_slow_bg_operation", set_slow_bg_operation, "allow-busy", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "set_slow_bg_operation", set_slow_bg_operation, "allow-busy", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "is_in_slow_bg_operation", is_in_slow_bg_operation, "allow-busy", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "is_in_slow_bg_operation", is_in_slow_bg_operation, "allow-busy", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "unblock_by_timer", unblock_by_timer, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "unblock_by_timer", unblock_by_timer, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

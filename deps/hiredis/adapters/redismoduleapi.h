@@ -112,13 +112,15 @@ static inline int redisModuleAttach(redisAsyncContext *ac, RedisModuleCtx *modul
     redisModuleEvents *e;
 
     /* Nothing should be attached when something is already attached */
-    if (ac->ev.data != NULL)
+    if (ac->ev.data != NULL) {
         return REDIS_ERR;
+    }
 
     /* Create container for context and r/w events */
     e = (redisModuleEvents *)hi_malloc(sizeof(*e));
-    if (e == NULL)
+    if (e == NULL) {
         return REDIS_ERR;
+    }
 
     e->context = ac;
     e->module_ctx = module_ctx;

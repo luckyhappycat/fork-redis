@@ -125,28 +125,34 @@ void get_redis_version(redisContext *c, int *majorptr, int *minorptr) {
     int major, minor;
 
     reply = redisCommand(c, "INFO");
-    if (reply == NULL || c->err || reply->type != REDIS_REPLY_STRING)
+    if (reply == NULL || c->err || reply->type != REDIS_REPLY_STRING) {
         goto abort;
-    if ((s = strstr(reply->str, REDIS_VERSION_FIELD)) == NULL)
+    }
+    if ((s = strstr(reply->str, REDIS_VERSION_FIELD)) == NULL) {
         goto abort;
+    }
 
     s += strlen(REDIS_VERSION_FIELD);
 
     /* We need a field terminator and at least 'x.y.z' (5) bytes of data */
-    if ((e = strstr(s, "\r\n")) == NULL || (e - s) < 5)
+    if ((e = strstr(s, "\r\n")) == NULL || (e - s) < 5) {
         goto abort;
+    }
 
     /* Extract version info */
     major = strtol(s, &eptr, 10);
-    if (*eptr != '.')
+    if (*eptr != '.') {
         goto abort;
+    }
     minor = strtol(eptr + 1, NULL, 10);
 
     /* Push info the caller wants */
-    if (majorptr)
+    if (majorptr) {
         *majorptr = major;
-    if (minorptr)
+    }
+    if (minorptr) {
         *minorptr = minor;
+    }
 
     freeReplyObject(reply);
     return;
@@ -211,8 +217,9 @@ static int disconnect(redisContext *c, int keep_fd) {
     freeReplyObject(reply);
 
     /* Free the context as well, but keep the fd if requested. */
-    if (keep_fd)
+    if (keep_fd) {
         return redisFreeKeepFd(c);
+    }
     redisFree(c);
     return -1;
 }
@@ -1139,8 +1146,9 @@ static void test_blocking_connection(struct config config) {
     test_cond(redisGetReply(c, NULL) == REDIS_OK);
 
     get_redis_version(c, &major, NULL);
-    if (major >= 6)
+    if (major >= 6) {
         test_resp3_push_handler(c);
+    }
     test_resp3_push_options(config);
 
     test_privdata_hooks(config);
@@ -1328,8 +1336,9 @@ static void test_throughput(struct config config) {
     long long t1, t2;
 
     test("Throughput:\n");
-    for (i = 0; i < 500; i++)
+    for (i = 0; i < 500; i++) {
         freeReplyObject(redisCommand(c, "LPUSH mylist foo"));
+    }
 
     num = 1000;
     replies = hi_malloc_safe(sizeof(redisReply *) * num);
@@ -1339,8 +1348,9 @@ static void test_throughput(struct config config) {
         assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_STATUS);
     }
     t2 = usec();
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         freeReplyObject(replies[i]);
+    }
     hi_free(replies);
     printf("\t(%dx PING: %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
@@ -1352,8 +1362,9 @@ static void test_throughput(struct config config) {
         assert(replies[i] != NULL && replies[i]->elements == 500);
     }
     t2 = usec();
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         freeReplyObject(replies[i]);
+    }
     hi_free(replies);
     printf("\t(%dx LRANGE with 500 elements: %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
@@ -1364,29 +1375,33 @@ static void test_throughput(struct config config) {
         assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_INTEGER);
     }
     t2 = usec();
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         freeReplyObject(replies[i]);
+    }
     hi_free(replies);
     printf("\t(%dx INCRBY: %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
     num = 10000;
     replies = hi_malloc_safe(sizeof(redisReply *) * num);
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         redisAppendCommand(c, "PING");
+    }
     t1 = usec();
     for (i = 0; i < num; i++) {
         assert(redisGetReply(c, (void *)&replies[i]) == REDIS_OK);
         assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_STATUS);
     }
     t2 = usec();
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         freeReplyObject(replies[i]);
+    }
     hi_free(replies);
     printf("\t(%dx PING (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
     replies = hi_malloc_safe(sizeof(redisReply *) * num);
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         redisAppendCommand(c, "LRANGE mylist 0 499");
+    }
     t1 = usec();
     for (i = 0; i < num; i++) {
         assert(redisGetReply(c, (void *)&replies[i]) == REDIS_OK);
@@ -1394,22 +1409,25 @@ static void test_throughput(struct config config) {
         assert(replies[i] != NULL && replies[i]->elements == 500);
     }
     t2 = usec();
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         freeReplyObject(replies[i]);
+    }
     hi_free(replies);
     printf("\t(%dx LRANGE with 500 elements (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
     replies = hi_malloc_safe(sizeof(redisReply *) * num);
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         redisAppendCommand(c, "INCRBY incrkey %d", 1000000);
+    }
     t1 = usec();
     for (i = 0; i < num; i++) {
         assert(redisGetReply(c, (void *)&replies[i]) == REDIS_OK);
         assert(replies[i] != NULL && replies[i]->type == REDIS_REPLY_INTEGER);
     }
     t2 = usec();
-    for (i = 0; i < num; i++)
+    for (i = 0; i < num; i++) {
         freeReplyObject(replies[i]);
+    }
     hi_free(replies);
     printf("\t(%dx INCRBY (pipelined): %.3fs)\n", num, (t2 - t1) / 1000000.0);
 
@@ -1567,8 +1585,9 @@ void integer_cb(redisAsyncContext *ac, void *r, void *privdata) {
     TestState *state = privdata;
     assert(reply != NULL && reply->type == REDIS_REPLY_INTEGER);
     state->checkpoint++;
-    if (state->disconnect)
+    if (state->disconnect) {
         async_disconnect(ac);
+    }
 }
 
 /* Subscribe callback for test_pubsub_handling and test_pubsub_handling_resp3:
@@ -1608,8 +1627,9 @@ void array_cb(redisAsyncContext *ac, void *r, void *privdata) {
     TestState *state = privdata;
     assert(reply != NULL && reply->type == REDIS_REPLY_ARRAY);
     state->checkpoint++;
-    if (state->disconnect)
+    if (state->disconnect) {
         async_disconnect(ac);
+    }
 }
 
 /* Expect a NULL reply */
@@ -2095,8 +2115,9 @@ static void test_async_polling(struct config config) {
     test("Async connect: ");
     c = do_aconnect(config, ASTEST_CONNECT);
     assert(c);
-    while (astest.connected == 0)
+    while (astest.connected == 0) {
         redisPollTick(c, 0.1);
+    }
     assert(astest.connects == 1);
     ASASSERT(astest.connect_status == REDIS_OK);
     assert(astest.disconnects == 0);
@@ -2117,8 +2138,9 @@ static void test_async_polling(struct config config) {
         c = do_aconnect(config, ASTEST_CONN_TIMEOUT);
         assert(c);
         assert(c->err == 0);
-        while (astest.connected == 0)
+        while (astest.connected == 0) {
             redisPollTick(c, 0.1);
+        }
         assert(astest.connected == -1);
         /*
          * freeing should not be done, clearing should have happened.
@@ -2132,12 +2154,14 @@ static void test_async_polling(struct config config) {
     /* Test a ping/pong after connection */
     test("Async PING/PONG: ");
     c = do_aconnect(config, ASTEST_PINGPONG);
-    while (astest.connected == 0)
+    while (astest.connected == 0) {
         redisPollTick(c, 0.1);
+    }
     status = redisAsyncCommand(c, commandCallback, NULL, "PING");
     assert(status == REDIS_OK);
-    while (astest.ac)
+    while (astest.ac) {
         redisPollTick(c, 0.1);
+    }
     test_cond(astest.pongs == 1);
 
     /* Test a ping/pong after connection that didn't time out.
@@ -2147,14 +2171,16 @@ static void test_async_polling(struct config config) {
         test("Async PING/PONG after connect timeout: ");
         config.connect_timeout.tv_usec = 10000; /* 10ms  */
         c = do_aconnect(config, ASTEST_PINGPONG_TIMEOUT);
-        while (astest.connected == 0)
+        while (astest.connected == 0) {
             redisPollTick(c, 0.1);
+        }
         /* sleep 0.1 s, allowing old timeout to arrive */
         millisleep(10);
         status = redisAsyncCommand(c, commandCallback, NULL, "PING");
         assert(status == REDIS_OK);
-        while (astest.ac)
+        while (astest.ac) {
             redisPollTick(c, 0.1);
+        }
         test_cond(astest.pongs == 2);
         config = defaultconfig;
     }
@@ -2164,8 +2190,9 @@ static void test_async_polling(struct config config) {
      */
     test("Disconnect from onConnected callback (Issue #931): ");
     c = do_aconnect(config, ASTEST_ISSUE_931);
-    while (astest.disconnects == 0)
+    while (astest.disconnects == 0) {
         redisPollTick(c, 0.1);
+    }
     assert(astest.connected == 0);
     assert(astest.connects == 1);
     test_cond(astest.disconnects == 1);
@@ -2176,8 +2203,9 @@ static void test_async_polling(struct config config) {
     test("Ping/Pong from onConnected callback (Issue #931): ");
     c = do_aconnect(config, ASTEST_ISSUE_931_PING);
     /* connect callback issues ping, reponse callback destroys context */
-    while (astest.ac)
+    while (astest.ac) {
         redisPollTick(c, 0.1);
+    }
     assert(astest.connected == 0);
     assert(astest.connects == 1);
     assert(astest.disconnects == 1);
@@ -2273,8 +2301,9 @@ int main(int argc, char **argv) {
     test_invalid_timeout_errors(cfg);
     test_append_formatted_commands(cfg);
     test_tcp_options(cfg);
-    if (throughput)
+    if (throughput) {
         test_throughput(cfg);
+    }
 
     printf("\nTesting against Unix socket connection (%s): ", cfg.unix_sock.path);
     if (test_unix_socket) {
@@ -2284,8 +2313,9 @@ int main(int argc, char **argv) {
         test_blocking_connection_timeouts(cfg);
         test_blocking_io_errors(cfg);
         test_invalid_timeout_errors(cfg);
-        if (throughput)
+        if (throughput) {
             test_throughput(cfg);
+        }
     } else {
         test_skipped();
     }
@@ -2304,8 +2334,9 @@ int main(int argc, char **argv) {
         test_blocking_io_errors(cfg);
         test_invalid_timeout_errors(cfg);
         test_append_formatted_commands(cfg);
-        if (throughput)
+        if (throughput) {
             test_throughput(cfg);
+        }
 
         redisFreeSSLContext(_ssl_ctx);
         _ssl_ctx = NULL;

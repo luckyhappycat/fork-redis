@@ -219,11 +219,13 @@ int commandBlockCheck(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (RedisModule_Init(ctx, "aclcheck", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "aclcheck", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (argc > 1)
+    if (argc > 1) {
         return RedisModule_WrongArity(ctx);
+    }
 
     /* When that flag is passed, we try to create too many categories,
      * and the test expects this to fail. In this case redis returns REDISMODULE_ERR
@@ -244,75 +246,94 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         }
     }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.set.check.key", set_aclcheck_key, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.set.check.key", set_aclcheck_key, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "block.commands.outside.onload", commandBlockCheck, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "block.commands.outside.onload", commandBlockCheck, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.module.command.aclcategories.write", module_test_acl_category, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.module.command.aclcategories.write", module_test_acl_category, "write", 0, 0, 0) ==
+        REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
     RedisModuleCommand *aclcategories_write = RedisModule_GetCommand(ctx, "aclcheck.module.command.aclcategories.write");
 
-    if (RedisModule_SetCommandACLCategories(aclcategories_write, "write") == REDISMODULE_ERR)
+    if (RedisModule_SetCommandACLCategories(aclcategories_write, "write") == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     if (RedisModule_CreateCommand(
             ctx, "aclcheck.module.command.aclcategories.write.function.read.category", module_test_acl_category, "write", 0, 0, 0
-        ) == REDISMODULE_ERR)
+        ) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
     RedisModuleCommand *read_category = RedisModule_GetCommand(ctx, "aclcheck.module.command.aclcategories.write.function.read.category");
 
-    if (RedisModule_SetCommandACLCategories(read_category, "read") == REDISMODULE_ERR)
+    if (RedisModule_SetCommandACLCategories(read_category, "read") == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     if (RedisModule_CreateCommand(ctx, "aclcheck.module.command.aclcategories.read.only.category", module_test_acl_category, "", 0, 0, 0) ==
-        REDISMODULE_ERR)
+        REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
     RedisModuleCommand *read_only_category = RedisModule_GetCommand(ctx, "aclcheck.module.command.aclcategories.read.only.category");
 
-    if (RedisModule_SetCommandACLCategories(read_only_category, "read") == REDISMODULE_ERR)
+    if (RedisModule_SetCommandACLCategories(read_only_category, "read") == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.publish.check.channel", publish_aclcheck_channel, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.publish.check.channel", publish_aclcheck_channel, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call.check.cmd", rm_call_aclcheck_cmd_default_user, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call.check.cmd", rm_call_aclcheck_cmd_default_user, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call.check.cmd.module.user", rm_call_aclcheck_cmd_module_user, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call.check.cmd.module.user", rm_call_aclcheck_cmd_module_user, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call", rm_call_aclcheck, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call", rm_call_aclcheck, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call_with_errors", rm_call_aclcheck_with_errors, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "aclcheck.rm_call_with_errors", rm_call_aclcheck_with_errors, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* This validates that, when module tries to add a category with invalid characters,
      * redis returns REDISMODULE_ERR and set errno to `EINVAL` */
-    if (RedisModule_AddACLCategory(ctx, "!nval!dch@r@cter$") == REDISMODULE_ERR)
+    if (RedisModule_AddACLCategory(ctx, "!nval!dch@r@cter$") == REDISMODULE_ERR) {
         RedisModule_Assert(errno == EINVAL);
-    else
+    } else {
         return REDISMODULE_ERR;
+    }
 
     /* This validates that, when module tries to add a category that already exists,
      * redis returns REDISMODULE_ERR and set errno to `EBUSY` */
-    if (RedisModule_AddACLCategory(ctx, "write") == REDISMODULE_ERR)
+    if (RedisModule_AddACLCategory(ctx, "write") == REDISMODULE_ERR) {
         RedisModule_Assert(errno == EBUSY);
-    else
+    } else {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_AddACLCategory(ctx, "foocategory") == REDISMODULE_ERR)
+    if (RedisModule_AddACLCategory(ctx, "foocategory") == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     if (RedisModule_CreateCommand(ctx, "aclcheck.module.command.test.add.new.aclcategories", module_test_acl_category, "", 0, 0, 0) ==
-        REDISMODULE_ERR)
+        REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
     RedisModuleCommand *test_add_new_aclcategories = RedisModule_GetCommand(ctx, "aclcheck.module.command.test.add.new.aclcategories");
 
-    if (RedisModule_SetCommandACLCategories(test_add_new_aclcategories, "foocategory") == REDISMODULE_ERR)
+    if (RedisModule_SetCommandACLCategories(test_add_new_aclcategories, "foocategory") == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

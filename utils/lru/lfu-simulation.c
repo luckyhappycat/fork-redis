@@ -26,8 +26,9 @@ struct entry {
  * we detect the overflow we account for it as if the counter wrapped
  * a single time. */
 uint16_t minutes_diff(uint16_t now, uint16_t prev) {
-    if (now >= prev)
+    if (now >= prev) {
         return now - prev;
+    }
     return 65535 - prev + now;
 }
 
@@ -35,15 +36,18 @@ uint16_t minutes_diff(uint16_t now, uint16_t prev) {
  * less likely is that the counter is really incremented.
  * The maximum value of the counter is saturated at 255. */
 uint8_t log_incr(uint8_t counter) {
-    if (counter == 255)
+    if (counter == 255) {
         return counter;
+    }
     double r = (double)rand() / RAND_MAX;
     double baseval = counter - LFU_INIT_VAL;
-    if (baseval < 0)
+    if (baseval < 0) {
         baseval = 0;
+    }
     double limit = 1.0 / (baseval * 10 + 1);
-    if (r < limit)
+    if (r < limit) {
         counter++;
+    }
     return counter;
 }
 
@@ -73,12 +77,15 @@ uint8_t scan_entry(struct entry *e) {
 void show_entry(long pos, struct entry *e) {
     char *tag = "normal       ";
 
-    if (pos >= 10 && pos <= 14)
+    if (pos >= 10 && pos <= 14) {
         tag = "new no access";
-    if (pos >= 15 && pos <= 19)
+    }
+    if (pos >= 15 && pos <= 19) {
         tag = "new accessed ";
-    if (pos >= keyspace_size - 5)
+    }
+    if (pos >= keyspace_size - 5) {
         tag = "old no access";
+    }
 
     printf(
         "%ld] <%s> frequency:%d decrtime:%d [%lu hits | age:%ld sec]\n", pos, tag, e->counter, e->decrtime, (unsigned long)e->hits,
@@ -115,10 +122,12 @@ int main(void) {
         if (now - start < switch_after) {
             /* Power law. */
             idx = 1;
-            while ((rand() % 21) != 0 && idx < keyspace_size)
+            while ((rand() % 21) != 0 && idx < keyspace_size) {
                 idx *= 2;
-            if (idx > keyspace_size)
+            }
+            if (idx > keyspace_size) {
                 idx = keyspace_size;
+            }
             idx = rand() % idx;
         } else {
             /* Flat. */
@@ -132,8 +141,9 @@ int main(void) {
          *
          * Also never access last 5 entry, so that we have keys which
          * are never recreated (old), and never accessed. */
-        if ((idx < 10 || idx > 14) && (idx < keyspace_size - 5))
+        if ((idx < 10 || idx > 14) && (idx < keyspace_size - 5)) {
             access_entry(entries + idx);
+        }
 
         /* Simulate the addition of new entries at positions between
          * 10 and 19, a random one every 10 seconds. */
@@ -152,11 +162,13 @@ int main(void) {
             printf("Current minutes time: %d\n", (int)to_16bit_minutes(now));
             printf("Access method: %s\n", (now - start < switch_after) ? "power-law" : "flat");
 
-            for (j = 0; j < 20; j++)
+            for (j = 0; j < 20; j++) {
                 show_entry(j, entries + j);
+            }
 
-            for (j = keyspace_size - 20; j < keyspace_size; j++)
+            for (j = keyspace_size - 20; j < keyspace_size; j++) {
                 show_entry(j, entries + j);
+            }
             display_time = now;
         }
     }

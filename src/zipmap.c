@@ -105,8 +105,9 @@ unsigned char *zipmapNew(void) {
 static unsigned int zipmapDecodeLength(unsigned char *p) {
     unsigned int len = *p;
 
-    if (len < ZIPMAP_BIGLEN)
+    if (len < ZIPMAP_BIGLEN) {
         return len;
+    }
     memcpy(&len, p + 1, sizeof(unsigned int));
     memrev32ifbe(&len);
     return len;
@@ -166,8 +167,9 @@ static unsigned char *zipmapLookupRaw(unsigned char *zm, unsigned char *key, uns
         free = p[0];
         p += l + 1 + free; /* +1 to skip the free byte */
     }
-    if (totlen != NULL)
+    if (totlen != NULL) {
         *totlen = (unsigned int)(p - zm) + 1;
+    }
     return k;
 }
 
@@ -175,10 +177,12 @@ static unsigned long zipmapRequiredLength(unsigned int klen, unsigned int vlen) 
     unsigned int l;
 
     l = klen + vlen + 3;
-    if (klen >= ZIPMAP_BIGLEN)
+    if (klen >= ZIPMAP_BIGLEN) {
         l += 4;
-    if (vlen >= ZIPMAP_BIGLEN)
+    }
+    if (vlen >= ZIPMAP_BIGLEN) {
         l += 4;
+    }
     return l;
 }
 
@@ -223,8 +227,9 @@ unsigned char *zipmapSet(unsigned char *zm, unsigned char *key, unsigned int kle
     unsigned char *p;
 
     freelen = reqlen;
-    if (update)
+    if (update) {
         *update = 0;
+    }
     p = zipmapLookupRaw(zm, key, klen, &zmlen);
     if (p == NULL) {
         /* Key not found: enlarge */
@@ -233,13 +238,15 @@ unsigned char *zipmapSet(unsigned char *zm, unsigned char *key, unsigned int kle
         zmlen = zmlen + reqlen;
 
         /* Increase zipmap length (this is an insert) */
-        if (zm[0] < ZIPMAP_BIGLEN)
+        if (zm[0] < ZIPMAP_BIGLEN) {
             zm[0]++;
+        }
     } else {
         /* Key found. Is there enough space for the new value? */
         /* Compute the total length: */
-        if (update)
+        if (update) {
             *update = 1;
+        }
         freelen = zipmapRawEntryLength(p);
         if (freelen < reqlen) {
             /* Store the offset of this key within the current zipmap, so
@@ -298,14 +305,17 @@ unsigned char *zipmapDel(unsigned char *zm, unsigned char *key, unsigned int kle
         zm = zipmapResize(zm, zmlen - freelen);
 
         /* Decrease zipmap length */
-        if (zm[0] < ZIPMAP_BIGLEN)
+        if (zm[0] < ZIPMAP_BIGLEN) {
             zm[0]--;
+        }
 
-        if (deleted)
+        if (deleted) {
             *deleted = 1;
+        }
     } else {
-        if (deleted)
+        if (deleted) {
             *deleted = 0;
+        }
     }
     return zm;
 }
@@ -327,8 +337,9 @@ unsigned char *zipmapRewind(unsigned char *zm) {
  * }
  */
 unsigned char *zipmapNext(unsigned char *zm, unsigned char **key, unsigned int *klen, unsigned char **value, unsigned int *vlen) {
-    if (zm[0] == ZIPMAP_END)
+    if (zm[0] == ZIPMAP_END) {
         return NULL;
+    }
     if (key) {
         *key = zm;
         *klen = zipmapDecodeLength(zm);
@@ -349,8 +360,9 @@ unsigned char *zipmapNext(unsigned char *zm, unsigned char **key, unsigned int *
 int zipmapGet(unsigned char *zm, unsigned char *key, unsigned int klen, unsigned char **value, unsigned int *vlen) {
     unsigned char *p;
 
-    if ((p = zipmapLookupRaw(zm, key, klen, NULL)) == NULL)
+    if ((p = zipmapLookupRaw(zm, key, klen, NULL)) == NULL) {
         return 0;
+    }
     p += zipmapRawKeyLength(p);
     *vlen = zipmapDecodeLength(p);
     *value = p + ZIPMAP_LEN_BYTES(*vlen) + 1;
@@ -369,12 +381,14 @@ unsigned int zipmapLen(unsigned char *zm) {
         len = zm[0];
     } else {
         unsigned char *p = zipmapRewind(zm);
-        while ((p = zipmapNext(p, NULL, NULL, NULL, NULL)) != NULL)
+        while ((p = zipmapNext(p, NULL, NULL, NULL, NULL)) != NULL) {
             len++;
+        }
 
         /* Re-store length if small enough */
-        if (len < ZIPMAP_BIGLEN)
+        if (len < ZIPMAP_BIGLEN) {
             zm[0] = len;
+        }
     }
     return len;
 }
@@ -396,15 +410,18 @@ int zipmapValidateIntegrity(unsigned char *zm, size_t size, int deep) {
     unsigned int l, s, e;
 
     /* check that we can actually read the header (or ZIPMAP_END). */
-    if (size < 2)
+    if (size < 2) {
         return 0;
+    }
 
     /* the last byte must be the terminator. */
-    if (zm[size - 1] != ZIPMAP_END)
+    if (zm[size - 1] != ZIPMAP_END) {
         return 0;
+    }
 
-    if (!deep)
+    if (!deep) {
         return 1;
+    }
 
     unsigned int count = 0;
     unsigned char *p = zm + 1; /* skip the count */
@@ -412,8 +429,9 @@ int zipmapValidateIntegrity(unsigned char *zm, size_t size, int deep) {
         /* read the field name length encoding type */
         s = zipmapGetEncodedLengthSize(p);
         /* make sure the entry length doesn't reach outside the edge of the zipmap */
-        if (OUT_OF_RANGE(p + s))
+        if (OUT_OF_RANGE(p + s)) {
             return 0;
+        }
 
         /* read the field name length */
         l = zipmapDecodeLength(p);
@@ -421,14 +439,16 @@ int zipmapValidateIntegrity(unsigned char *zm, size_t size, int deep) {
         p += l; /* skip the field */
 
         /* make sure the entry doesn't reach outside the edge of the zipmap */
-        if (OUT_OF_RANGE(p))
+        if (OUT_OF_RANGE(p)) {
             return 0;
+        }
 
         /* read the value length encoding type */
         s = zipmapGetEncodedLengthSize(p);
         /* make sure the entry length doesn't reach outside the edge of the zipmap */
-        if (OUT_OF_RANGE(p + s))
+        if (OUT_OF_RANGE(p + s)) {
             return 0;
+        }
 
         /* read the value length */
         l = zipmapDecodeLength(p);
@@ -438,17 +458,20 @@ int zipmapValidateIntegrity(unsigned char *zm, size_t size, int deep) {
         count++;
 
         /* make sure the entry doesn't reach outside the edge of the zipmap */
-        if (OUT_OF_RANGE(p))
+        if (OUT_OF_RANGE(p)) {
             return 0;
+        }
     }
 
     /* check that the zipmap is not empty. */
-    if (count == 0)
+    if (count == 0) {
         return 0;
+    }
 
     /* check that the count in the header is correct */
-    if (zm[0] != ZIPMAP_BIGLEN && zm[0] != count)
+    if (zm[0] != ZIPMAP_BIGLEN && zm[0] != count) {
         return 0;
+    }
 
     return 1;
 #undef OUT_OF_RANGE
@@ -469,21 +492,24 @@ static void zipmapRepr(unsigned char *p) {
             l = zipmapDecodeLength(p);
             printf("{key %u}", l);
             p += zipmapEncodeLength(NULL, l);
-            if (l != 0 && fwrite(p, l, 1, stdout) == 0)
+            if (l != 0 && fwrite(p, l, 1, stdout) == 0) {
                 perror("fwrite");
+            }
             p += l;
 
             l = zipmapDecodeLength(p);
             printf("{value %u}", l);
             p += zipmapEncodeLength(NULL, l);
             e = *p++;
-            if (l != 0 && fwrite(p, l, 1, stdout) == 0)
+            if (l != 0 && fwrite(p, l, 1, stdout) == 0) {
                 perror("fwrite");
+            }
             p += l + e;
             if (e) {
                 printf("[");
-                while (e--)
+                while (e--) {
                     printf(".");
+                }
                 printf("]");
             }
         }
@@ -523,8 +549,9 @@ int zipmapTest(int argc, char *argv[], int flags) {
         unsigned char buf[512];
         unsigned char *value;
         unsigned int vlen, i;
-        for (i = 0; i < 512; i++)
+        for (i = 0; i < 512; i++) {
             buf[i] = 'a';
+        }
 
         zm = zipmapSet(zm, buf, 512, (unsigned char *)"long", 4, NULL);
         if (zipmapGet(zm, buf, 512, &value, &vlen)) {

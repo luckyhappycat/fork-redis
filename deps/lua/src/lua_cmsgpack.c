@@ -71,8 +71,9 @@ void memrevifle(void *ptr, size_t len) {
     int test = 1;
     unsigned char *testp = (unsigned char *)&test;
 
-    if (testp[0] == 0)
+    if (testp[0] == 0) {
         return; /* Big endian, nothing to do. */
+    }
     len /= 2;
     while (len--) {
         aux = *p;
@@ -117,8 +118,9 @@ mp_buf *mp_buf_new(lua_State *L) {
 void mp_buf_append(lua_State *L, mp_buf *buf, const unsigned char *s, size_t len) {
     if (buf->free < len) {
         size_t newsize = buf->len + len;
-        if (newsize < buf->len || newsize >= SIZE_MAX / 2)
+        if (newsize < buf->len || newsize >= SIZE_MAX / 2) {
             abort();
+        }
         newsize *= 2;
 
         buf->b = (unsigned char *)mp_realloc(L, buf->b, buf->len + buf->free, newsize);
@@ -473,10 +475,11 @@ int table_is_an_array(lua_State *L) {
  * an object at key '1', we serialize to message pack list. Otherwise
  * we use a map. */
 void mp_encode_lua_table(lua_State *L, mp_buf *buf, int level) {
-    if (table_is_an_array(L))
+    if (table_is_an_array(L)) {
         mp_encode_lua_table_as_array(L, buf, level);
-    else
+    } else {
         mp_encode_lua_table_as_map(L, buf, level);
+    }
 }
 
 void mp_encode_lua_null(lua_State *L, mp_buf *buf) {
@@ -491,8 +494,9 @@ void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level) {
 
     /* Limit the encoding of nested tables to a specified maximum depth, so that
      * we survive when called against circular references in tables. */
-    if (t == LUA_TTABLE && level == LUACMSGPACK_MAX_NESTING)
+    if (t == LUA_TTABLE && level == LUACMSGPACK_MAX_NESTING) {
         t = LUA_TNIL;
+    }
     switch (t) {
         case LUA_TSTRING:
             mp_encode_lua_string(L, buf);
@@ -531,11 +535,13 @@ int mp_pack(lua_State *L) {
     int i;
     mp_buf *buf;
 
-    if (nargs == 0)
+    if (nargs == 0) {
         return luaL_argerror(L, 0, "MessagePack pack needs input.");
+    }
 
-    if (!lua_checkstack(L, nargs))
+    if (!lua_checkstack(L, nargs)) {
         return luaL_argerror(L, 0, "Too many arguments for MessagePack pack.");
+    }
 
     buf = mp_buf_new(L);
     for (i = 1; i <= nargs; i++) {
@@ -574,8 +580,9 @@ void mp_decode_to_lua_array(lua_State *L, mp_cur *c, size_t len) {
     while (len--) {
         lua_pushnumber(L, index++);
         mp_decode_to_lua_type(L, c);
-        if (c->err)
+        if (c->err) {
             return;
+        }
         lua_settable(L, -3);
     }
 }
@@ -585,11 +592,13 @@ void mp_decode_to_lua_hash(lua_State *L, mp_cur *c, size_t len) {
     lua_newtable(L);
     while (len--) {
         mp_decode_to_lua_type(L, c); /* key */
-        if (c->err)
+        if (c->err) {
             return;
+        }
         mp_decode_to_lua_type(L, c); /* value */
-        if (c->err)
+        if (c->err) {
             return;
+        }
         lua_settable(L, -3);
     }
 }
@@ -792,13 +801,15 @@ int mp_unpack_full(lua_State *L, lua_Integer limit, lua_Integer offset) {
 
     s = luaL_checklstring(L, 1, &len); /* if no match, exits */
 
-    if (offset < 0 || limit < 0) /* requesting negative off or lim is invalid */
+    if (offset < 0 || limit < 0) { /* requesting negative off or lim is invalid */
         return luaL_error(L, "Invalid request to unpack with offset of %d and limit of %d.", (int)offset, (int)len);
-    else if (offset > len)
+    } else if (offset > len) {
         return luaL_error(L, "Start offset %d greater than input length %d.", (int)offset, (int)len);
+    }
 
-    if (decode_all)
+    if (decode_all) {
         limit = INT_MAX;
+    }
 
     mp_cur_init(&c, (const unsigned char *)s + offset, len - offset);
 
@@ -819,8 +830,9 @@ int mp_unpack_full(lua_State *L, lua_Integer limit, lua_Integer offset) {
          * subtract the entire buffer size from the unprocessed size
          * to get our next start offset */
         size_t new_offset = len - c.left;
-        if (new_offset > LONG_MAX)
+        if (new_offset > LONG_MAX) {
             abort();
+        }
 
         luaL_checkstack(L, 1, "in function mp_unpack_full");
 

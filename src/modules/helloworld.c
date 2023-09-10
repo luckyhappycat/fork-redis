@@ -59,8 +59,9 @@ int HelloSimple_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int 
  * You'll find this command to be roughly as fast as the actual RPUSH
  * command. */
 int HelloPushNative_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
 
@@ -77,8 +78,9 @@ int HelloPushNative_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, 
  * available as low level APIs, or when you don't need the maximum speed
  * possible but instead prefer implementation simplicity. */
 int HelloPushCall_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleCallReply *reply;
 
@@ -93,8 +95,9 @@ int HelloPushCall_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, in
  * This is exactly as HELLO.PUSH.CALL, but shows how we can reply to the
  * client using directly a reply object that Call() returned. */
 int HelloPushCall2_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleCallReply *reply;
 
@@ -108,8 +111,9 @@ int HelloPushCall2_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, i
  * a Redis list, by using the high level Call() API.
  * This command is an example of the array reply access. */
 int HelloListSumLen_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleCallReply *reply;
 
@@ -131,8 +135,9 @@ int HelloListSumLen_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, 
  * 'dstlist'. If less than count elements are available, it moves as much
  * elements as possible. */
 int HelloListSplice_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *srckey = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
     RedisModuleKey *dstkey = RedisModule_OpenKey(ctx, argv[2], REDISMODULE_READ | REDISMODULE_WRITE);
@@ -156,8 +161,9 @@ int HelloListSplice_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, 
         RedisModuleString *ele;
 
         ele = RedisModule_ListPop(srckey, REDISMODULE_LIST_TAIL);
-        if (ele == NULL)
+        if (ele == NULL) {
             break;
+        }
         RedisModule_ListPush(dstkey, REDISMODULE_LIST_HEAD, ele);
         RedisModule_FreeString(ctx, ele);
     }
@@ -172,8 +178,9 @@ int HelloListSplice_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, 
 /* Like the HELLO.LIST.SPLICE above, but uses automatic memory management
  * in order to avoid freeing stuff. */
 int HelloListSpliceAuto_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModule_AutoMemory(ctx);
 
@@ -195,8 +202,9 @@ int HelloListSpliceAuto_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **ar
         RedisModuleString *ele;
 
         ele = RedisModule_ListPop(srckey, REDISMODULE_LIST_TAIL);
-        if (ele == NULL)
+        if (ele == NULL) {
             break;
+        }
         RedisModule_ListPush(dstkey, REDISMODULE_LIST_HEAD, ele);
     }
 
@@ -209,18 +217,21 @@ int HelloListSpliceAuto_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **ar
  * Shows how to generate arrays as commands replies.
  * It just outputs <count> random numbers. */
 int HelloRandArray_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
     long long count;
-    if (RedisModule_StringToLongLong(argv[1], &count) != REDISMODULE_OK || count < 0)
+    if (RedisModule_StringToLongLong(argv[1], &count) != REDISMODULE_OK || count < 0) {
         return RedisModule_ReplyWithError(ctx, "ERR invalid count");
+    }
 
     /* To reply with an array, we call RedisModule_ReplyWithArray() followed
      * by other "count" calls to other reply functions in order to generate
      * the elements of the array. */
     RedisModule_ReplyWithArray(ctx, count);
-    while (count--)
+    while (count--) {
         RedisModule_ReplyWithLongLong(ctx, rand());
+    }
     return REDISMODULE_OK;
 }
 
@@ -266,14 +277,16 @@ int HelloRepl1_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int a
  *
  * Usage: HELLO.REPL2 <list-key> */
 int HelloRepl2_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
 
-    if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_LIST)
+    if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_LIST) {
         return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
+    }
 
     size_t listlen = RedisModule_ValueLength(key);
     long long sum = 0;
@@ -282,8 +295,9 @@ int HelloRepl2_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int a
     while (listlen--) {
         RedisModuleString *ele = RedisModule_ListPop(key, REDISMODULE_LIST_TAIL);
         long long val;
-        if (RedisModule_StringToLongLong(ele, &val) != REDISMODULE_OK)
+        if (RedisModule_StringToLongLong(ele, &val) != REDISMODULE_OK) {
             val = 0;
+        }
         val++;
         sum += val;
         RedisModuleString *newele = RedisModule_CreateStringFromLongLong(ctx, val);
@@ -303,8 +317,9 @@ int HelloRepl2_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int a
  *
  * HELLO.TOGGLE.CASE key */
 int HelloToggleCase_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
 
@@ -338,13 +353,15 @@ int HelloToggleCase_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, 
  * milliseconds. Otherwise no operation is performed. */
 int HelloMoreExpire_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
 
     mstime_t addms, expire;
 
-    if (RedisModule_StringToLongLong(argv[2], &addms) != REDISMODULE_OK)
+    if (RedisModule_StringToLongLong(argv[2], &addms) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "ERR invalid expire time");
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
     expire = RedisModule_GetExpire(key);
@@ -363,8 +380,9 @@ int HelloMoreExpire_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, 
  * should match.*/
 int HelloZsumRange_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     double score_start, score_end;
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
 
     if (RedisModule_StringToDouble(argv[2], &score_start) != REDISMODULE_OK || RedisModule_StringToDouble(argv[3], &score_end) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "ERR invalid range");
@@ -417,8 +435,9 @@ int HelloZsumRange_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, i
 int HelloLexRange_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
 
-    if (argc != 6)
+    if (argc != 6) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
     if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_ZSET) {
@@ -455,8 +474,9 @@ int HelloLexRange_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, in
 int HelloHCopy_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
 
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
     int type = RedisModule_KeyType(key);
     if (type != REDISMODULE_KEYTYPE_HASH && type != REDISMODULE_KEYTYPE_EMPTY) {
@@ -495,8 +515,9 @@ int HelloLeftPad_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int
     RedisModule_AutoMemory(ctx); /* Use automatic memory management. */
     long long padlen;
 
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
 
     if ((RedisModule_StringToLongLong(argv[2], &padlen) != REDISMODULE_OK) || (padlen < 0)) {
         return RedisModule_ReplyWithError(ctx, "ERR invalid padding length");
@@ -507,18 +528,21 @@ int HelloLeftPad_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int
 
     /* If the string is already larger than the target len, just return
      * the string itself. */
-    if (strlen >= (size_t)padlen)
+    if (strlen >= (size_t)padlen) {
         return RedisModule_ReplyWithString(ctx, argv[1]);
+    }
 
     /* Padding must be a single character in this simple implementation. */
-    if (chlen != 1)
+    if (chlen != 1) {
         return RedisModule_ReplyWithError(ctx, "ERR padding must be a single char");
+    }
 
     /* Here we use our pool allocator, for our throw-away allocation. */
     padlen -= strlen;
     char *buf = RedisModule_PoolAlloc(ctx, padlen + strlen);
-    for (long long j = 0; j < padlen; j++)
+    for (long long j = 0; j < padlen; j++) {
         buf[j] = *ch;
+    }
     memcpy(buf + padlen, str, strlen);
 
     RedisModule_ReplyWithStringBuffer(ctx, buf, padlen + strlen);
@@ -528,8 +552,9 @@ int HelloLeftPad_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int
 /* This function must be present on each Redis module. It is used in order to
  * register the commands into the Redis server. */
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (RedisModule_Init(ctx, "helloworld", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "helloworld", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* Log the list of parameters passing loading the module. */
     for (int j = 0; j < argc; j++) {
@@ -537,53 +562,69 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         printf("Module loaded with ARGV[%d] = %s\n", j, s);
     }
 
-    if (RedisModule_CreateCommand(ctx, "hello.simple", HelloSimple_RedisCommand, "readonly", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.simple", HelloSimple_RedisCommand, "readonly", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.push.native", HelloPushNative_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.push.native", HelloPushNative_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.push.call", HelloPushCall_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.push.call", HelloPushCall_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.push.call2", HelloPushCall2_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.push.call2", HelloPushCall2_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.list.sum.len", HelloListSumLen_RedisCommand, "readonly", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.list.sum.len", HelloListSumLen_RedisCommand, "readonly", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.list.splice", HelloListSplice_RedisCommand, "write deny-oom", 1, 2, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.list.splice", HelloListSplice_RedisCommand, "write deny-oom", 1, 2, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.list.splice.auto", HelloListSpliceAuto_RedisCommand, "write deny-oom", 1, 2, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.list.splice.auto", HelloListSpliceAuto_RedisCommand, "write deny-oom", 1, 2, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.rand.array", HelloRandArray_RedisCommand, "readonly", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.rand.array", HelloRandArray_RedisCommand, "readonly", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.repl1", HelloRepl1_RedisCommand, "write", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.repl1", HelloRepl1_RedisCommand, "write", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.repl2", HelloRepl2_RedisCommand, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.repl2", HelloRepl2_RedisCommand, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.toggle.case", HelloToggleCase_RedisCommand, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.toggle.case", HelloToggleCase_RedisCommand, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.more.expire", HelloMoreExpire_RedisCommand, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.more.expire", HelloMoreExpire_RedisCommand, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.zsumrange", HelloZsumRange_RedisCommand, "readonly", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.zsumrange", HelloZsumRange_RedisCommand, "readonly", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.lexrange", HelloLexRange_RedisCommand, "readonly", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.lexrange", HelloLexRange_RedisCommand, "readonly", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.hcopy", HelloHCopy_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.hcopy", HelloHCopy_RedisCommand, "write deny-oom", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "hello.leftpad", HelloLeftPad_RedisCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hello.leftpad", HelloLeftPad_RedisCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

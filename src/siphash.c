@@ -655,8 +655,9 @@ int siphash_test(void) {
     int i;
     int fails = 0;
 
-    for (i = 0; i < 16; ++i)
+    for (i = 0; i < 16; ++i) {
         k[i] = i;
+    }
 
     for (i = 0; i < 64; ++i) {
         in[i] = i;
@@ -673,21 +674,25 @@ int siphash_test(void) {
     uint64_t h1, h2;
     h1 = siphash((uint8_t *)"hello world", 11, (uint8_t *)"1234567812345678");
     h2 = siphash_nocase((uint8_t *)"hello world", 11, (uint8_t *)"1234567812345678");
-    if (h1 != h2)
+    if (h1 != h2) {
         fails++;
+    }
 
     h1 = siphash((uint8_t *)"hello world", 11, (uint8_t *)"1234567812345678");
     h2 = siphash_nocase((uint8_t *)"HELLO world", 11, (uint8_t *)"1234567812345678");
-    if (h1 != h2)
+    if (h1 != h2) {
         fails++;
+    }
 
     h1 = siphash((uint8_t *)"HELLO world", 11, (uint8_t *)"1234567812345678");
     h2 = siphash_nocase((uint8_t *)"HELLO world", 11, (uint8_t *)"1234567812345678");
-    if (h1 == h2)
+    if (h1 == h2) {
         fails++;
+    }
 
-    if (!fails)
+    if (!fails) {
         return 0;
+    }
     return 1;
 }
 

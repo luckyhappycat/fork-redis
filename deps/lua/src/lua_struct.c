@@ -80,13 +80,14 @@ typedef struct Header {
 } Header;
 
 static int getnum(lua_State *L, const char **fmt, int df) {
-    if (!isdigit(**fmt)) /* no number? */
-        return df;       /* return default value */
-    else {
+    if (!isdigit(**fmt)) { /* no number? */
+        return df;         /* return default value */
+    } else {
         int a = 0;
         do {
-            if (a > (INT_MAX / 10) || a * 10 > (INT_MAX - (**fmt - '0')))
+            if (a > (INT_MAX / 10) || a * 10 > (INT_MAX - (**fmt - '0'))) {
                 luaL_error(L, "integral size overflow");
+            }
             a = a * 10 + *((*fmt)++) - '0';
         } while (isdigit(**fmt));
         return a;
@@ -119,8 +120,9 @@ static size_t optsize(lua_State *L, char opt, const char **fmt) {
         case 'i':
         case 'I': {
             int sz = getnum(L, fmt, sizeof(int));
-            if (sz > MAXINTSIZE)
+            if (sz > MAXINTSIZE) {
                 luaL_error(L, "integral size %d is larger than limit of %d", sz, MAXINTSIZE);
+            }
             return sz;
         }
         default:
@@ -133,10 +135,12 @@ static size_t optsize(lua_State *L, char opt, const char **fmt) {
 ** at current position 'len'
 */
 static int gettoalign(size_t len, Header *h, int opt, size_t size) {
-    if (size == 0 || opt == 'c')
+    if (size == 0 || opt == 'c') {
         return 0;
-    if (size > (size_t)h->align)
+    }
+    if (size > (size_t)h->align) {
         size = h->align; /* respect max. alignment */
+    }
     return (size - (len & (size - 1))) & (size - 1);
 }
 
@@ -155,8 +159,9 @@ static void controloptions(lua_State *L, int opt, const char **fmt, Header *h) {
             return;
         case '!': {
             int a = getnum(L, fmt, MAXALIGN);
-            if (!isp2(a))
+            if (!isp2(a)) {
                 luaL_error(L, "alignment %d is not a power of 2", a);
+            }
             h->align = a;
             return;
         }
@@ -171,10 +176,11 @@ static void putinteger(lua_State *L, luaL_Buffer *b, int arg, int endian, int si
     lua_Number n = luaL_checknumber(L, arg);
     Uinttype value;
     char buff[MAXINTSIZE];
-    if (n < 0)
+    if (n < 0) {
         value = (Uinttype)(Inttype)n;
-    else
+    } else {
         value = (Uinttype)n;
+    }
     if (endian == LITTLE) {
         int i;
         for (i = 0; i < size; i++) {
@@ -216,8 +222,9 @@ static int b_pack(lua_State *L) {
         size_t size = optsize(L, opt, &fmt);
         int toalign = gettoalign(totalsize, &h, opt, size);
         totalsize += toalign;
-        while (toalign-- > 0)
+        while (toalign-- > 0) {
             luaL_addchar(&b, '\0');
+        }
         switch (opt) {
             case 'b':
             case 'B':
@@ -251,8 +258,9 @@ static int b_pack(lua_State *L) {
             case 's': {
                 size_t l;
                 const char *s = luaL_checklstring(L, arg++, &l);
-                if (size == 0)
+                if (size == 0) {
                     size = l;
+                }
                 luaL_argcheck(L, l >= (size_t)size, arg, "string too short");
                 luaL_addlstring(&b, s, size);
                 if (opt == 's') {
@@ -284,12 +292,13 @@ static lua_Number getinteger(const char *buff, int endian, int issigned, int siz
             l |= (Uinttype)(unsigned char)buff[i];
         }
     }
-    if (!issigned)
+    if (!issigned) {
         return (lua_Number)l;
-    else { /* signed format */
+    } else { /* signed format */
         Uinttype mask = (Uinttype)(~((Uinttype)0)) << (size * 8 - 1);
-        if (l & mask)  /* negative value? */
-            l |= mask; /* signal extension */
+        if (l & mask) { /* negative value? */
+            l |= mask;  /* signal extension */
+        }
         return (lua_Number)(Inttype)l;
     }
 }
@@ -349,8 +358,9 @@ static int b_unpack(lua_State *L) {
             }
             case 'c': {
                 if (size == 0) {
-                    if (n == 0 || !lua_isnumber(L, -1))
+                    if (n == 0 || !lua_isnumber(L, -1)) {
                         luaL_error(L, "format 'c0' needs a previous size");
+                    }
                     size = lua_tonumber(L, -1);
                     lua_pop(L, 1);
                     n--;
@@ -362,8 +372,9 @@ static int b_unpack(lua_State *L) {
             }
             case 's': {
                 const char *e = (const char *)memchr(data + pos, '\0', ld - pos);
-                if (e == NULL)
+                if (e == NULL) {
                     luaL_error(L, "unfinished string in data");
+                }
                 size = (e - (data + pos)) + 1;
                 lua_pushlstring(L, data + pos, size - 1);
                 n++;
@@ -387,12 +398,14 @@ static int b_size(lua_State *L) {
         int opt = *fmt++;
         size_t size = optsize(L, opt, &fmt);
         pos += gettoalign(pos, &h, opt, size);
-        if (opt == 's')
+        if (opt == 's') {
             luaL_argerror(L, 1, "option 's' has no fixed size");
-        else if (opt == 'c' && size == 0)
+        } else if (opt == 'c' && size == 0) {
             luaL_argerror(L, 1, "option 'c0' has no fixed size");
-        if (!isalnum(opt))
+        }
+        if (!isalnum(opt)) {
             controloptions(L, opt, &fmt, &h);
+        }
         pos += size;
     }
     lua_pushinteger(L, pos);

@@ -55,8 +55,9 @@
 static void anetSetError(char *err, const char *fmt, ...) {
     va_list ap;
 
-    if (!err)
+    if (!err) {
         return;
+    }
     va_start(ap, fmt);
     vsnprintf(err, ANET_ERR_LEN, fmt, ap);
     va_end(ap);
@@ -66,8 +67,9 @@ int anetGetError(int fd) {
     int sockerr = 0;
     socklen_t errlen = sizeof(sockerr);
 
-    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &errlen) == -1)
+    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &errlen) == -1) {
         sockerr = errno;
+    }
     return sockerr;
 }
 
@@ -84,13 +86,15 @@ int anetSetBlock(char *err, int fd, int non_block) {
 
     /* Check if this flag has been set or unset, if so,
      * then there is no need to call fcntl to set/unset it again. */
-    if (!!(flags & O_NONBLOCK) == !!non_block)
+    if (!!(flags & O_NONBLOCK) == !!non_block) {
         return ANET_OK;
+    }
 
-    if (non_block)
+    if (non_block) {
         flags |= O_NONBLOCK;
-    else
+    } else {
         flags &= ~O_NONBLOCK;
+    }
 
     if (fcntl(fd, F_SETFL, flags) == -1) {
         anetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
@@ -118,8 +122,9 @@ int anetCloexec(int fd) {
         r = fcntl(fd, F_GETFD);
     } while (r == -1 && errno == EINTR);
 
-    if (r == -1 || (r & FD_CLOEXEC))
+    if (r == -1 || (r & FD_CLOEXEC)) {
         return r;
+    }
 
     flags = r | FD_CLOEXEC;
 
@@ -157,8 +162,9 @@ int anetKeepAlive(char *err, int fd, int interval) {
      * delay as interval / 3, as we send three probes before detecting
      * an error (see the next setsockopt call). */
     val = interval / 3;
-    if (val == 0)
+    if (val == 0) {
         val = 1;
+    }
     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
         anetSetError(err, "setsockopt TCP_KEEPINTVL: %s\n", strerror(errno));
         return ANET_ERR;
@@ -240,8 +246,9 @@ int anetResolve(char *err, char *host, char *ipbuf, size_t ipbuf_len, int flags)
     int rv;
 
     memset(&hints, 0, sizeof(hints));
-    if (flags & ANET_IP_ONLY)
+    if (flags & ANET_IP_ONLY) {
         hints.ai_flags = AI_NUMERICHOST;
+    }
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM; /* specify socktype to avoid dups */
 
@@ -309,12 +316,15 @@ static int anetTcpGenericConnect(char *err, const char *addr, int port, const ch
         /* Try to create the socket and to connect it.
          * If we fail in the socket() call, or on connect(), we retry with
          * the next entry in servinfo. */
-        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
-        if (anetSetReuseAddr(err, s) == ANET_ERR)
+        }
+        if (anetSetReuseAddr(err, s) == ANET_ERR) {
             goto error;
-        if (flags & ANET_CONNECT_NONBLOCK && anetNonBlock(err, s) != ANET_OK)
+        }
+        if (flags & ANET_CONNECT_NONBLOCK && anetNonBlock(err, s) != ANET_OK) {
             goto error;
+        }
         if (source_addr) {
             int bound = 0;
             /* Using getaddrinfo saves us from self-determining IPv4 vs IPv6 */
@@ -337,8 +347,9 @@ static int anetTcpGenericConnect(char *err, const char *addr, int port, const ch
         if (connect(s, p->ai_addr, p->ai_addrlen) == -1) {
             /* If the socket is non-blocking, it is ok for connect() to
              * return an EINPROGRESS error here. */
-            if (errno == EINPROGRESS && flags & ANET_CONNECT_NONBLOCK)
+            if (errno == EINPROGRESS && flags & ANET_CONNECT_NONBLOCK) {
                 goto end;
+            }
             close(s);
             s = ANET_ERR;
             continue;
@@ -348,8 +359,9 @@ static int anetTcpGenericConnect(char *err, const char *addr, int port, const ch
          * have a connected socket. Let's return to the caller. */
         goto end;
     }
-    if (p == NULL)
+    if (p == NULL) {
         anetSetError(err, "creating socket: %s", strerror(errno));
+    }
 
 error:
     if (s != ANET_ERR) {
@@ -381,8 +393,9 @@ int anetUnixGenericConnect(char *err, const char *path, int flags) {
     int s;
     struct sockaddr_un sa;
 
-    if ((s = anetCreateSocket(err, AF_LOCAL)) == ANET_ERR)
+    if ((s = anetCreateSocket(err, AF_LOCAL)) == ANET_ERR) {
         return ANET_ERR;
+    }
 
     sa.sun_family = AF_LOCAL;
     redis_strlcpy(sa.sun_path, path, sizeof(sa.sun_path));
@@ -393,8 +406,9 @@ int anetUnixGenericConnect(char *err, const char *path, int flags) {
         }
     }
     if (connect(s, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
-        if (errno == EINPROGRESS && flags & ANET_CONNECT_NONBLOCK)
+        if (errno == EINPROGRESS && flags & ANET_CONNECT_NONBLOCK) {
             return s;
+        }
 
         anetSetError(err, "connect: %s", strerror(errno));
         close(s);
@@ -437,25 +451,31 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
     hints.ai_family = af;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE; /* No effect if bindaddr != NULL */
-    if (bindaddr && !strcmp("*", bindaddr))
+    if (bindaddr && !strcmp("*", bindaddr)) {
         bindaddr = NULL;
-    if (af == AF_INET6 && bindaddr && !strcmp("::*", bindaddr))
+    }
+    if (af == AF_INET6 && bindaddr && !strcmp("::*", bindaddr)) {
         bindaddr = NULL;
+    }
 
     if ((rv = getaddrinfo(bindaddr, _port, &hints, &servinfo)) != 0) {
         anetSetError(err, "%s", gai_strerror(rv));
         return ANET_ERR;
     }
     for (p = servinfo; p != NULL; p = p->ai_next) {
-        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        if ((s = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
+        }
 
-        if (af == AF_INET6 && anetV6Only(err, s) == ANET_ERR)
+        if (af == AF_INET6 && anetV6Only(err, s) == ANET_ERR) {
             goto error;
-        if (anetSetReuseAddr(err, s) == ANET_ERR)
+        }
+        if (anetSetReuseAddr(err, s) == ANET_ERR) {
             goto error;
-        if (anetListen(err, s, p->ai_addr, p->ai_addrlen, backlog) == ANET_ERR)
+        }
+        if (anetListen(err, s, p->ai_addr, p->ai_addrlen, backlog) == ANET_ERR) {
             s = ANET_ERR;
+        }
         goto end;
     }
     if (p == NULL) {
@@ -464,8 +484,9 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
     }
 
 error:
-    if (s != -1)
+    if (s != -1) {
         close(s);
+    }
     s = ANET_ERR;
 end:
     freeaddrinfo(servinfo);
@@ -488,16 +509,19 @@ int anetUnixServer(char *err, char *path, mode_t perm, int backlog) {
         anetSetError(err, "unix socket path too long (%zu), must be under %zu", strlen(path), sizeof(sa.sun_path));
         return ANET_ERR;
     }
-    if ((s = anetCreateSocket(err, AF_LOCAL)) == ANET_ERR)
+    if ((s = anetCreateSocket(err, AF_LOCAL)) == ANET_ERR) {
         return ANET_ERR;
+    }
 
     memset(&sa, 0, sizeof(sa));
     sa.sun_family = AF_LOCAL;
     redis_strlcpy(sa.sun_path, path, sizeof(sa.sun_path));
-    if (anetListen(err, s, (struct sockaddr *)&sa, sizeof(sa), backlog) == ANET_ERR)
+    if (anetListen(err, s, (struct sockaddr *)&sa, sizeof(sa), backlog) == ANET_ERR) {
         return ANET_ERR;
-    if (perm)
+    }
+    if (perm) {
         chmod(sa.sun_path, perm);
+    }
     return s;
 }
 
@@ -538,21 +562,26 @@ int anetTcpAccept(char *err, int serversock, char *ip, size_t ip_len, int *port)
     int fd;
     struct sockaddr_storage sa;
     socklen_t salen = sizeof(sa);
-    if ((fd = anetGenericAccept(err, serversock, (struct sockaddr *)&sa, &salen)) == ANET_ERR)
+    if ((fd = anetGenericAccept(err, serversock, (struct sockaddr *)&sa, &salen)) == ANET_ERR) {
         return ANET_ERR;
+    }
 
     if (sa.ss_family == AF_INET) {
         struct sockaddr_in *s = (struct sockaddr_in *)&sa;
-        if (ip)
+        if (ip) {
             inet_ntop(AF_INET, (void *)&(s->sin_addr), ip, ip_len);
-        if (port)
+        }
+        if (port) {
             *port = ntohs(s->sin_port);
+        }
     } else {
         struct sockaddr_in6 *s = (struct sockaddr_in6 *)&sa;
-        if (ip)
+        if (ip) {
             inet_ntop(AF_INET6, (void *)&(s->sin6_addr), ip, ip_len);
-        if (port)
+        }
+        if (port) {
             *port = ntohs(s->sin6_port);
+        }
     }
     return fd;
 }
@@ -563,8 +592,9 @@ int anetUnixAccept(char *err, int s) {
     int fd;
     struct sockaddr_un sa;
     socklen_t salen = sizeof(sa);
-    if ((fd = anetGenericAccept(err, s, (struct sockaddr *)&sa, &salen)) == ANET_ERR)
+    if ((fd = anetGenericAccept(err, s, (struct sockaddr *)&sa, &salen)) == ANET_ERR) {
         return ANET_ERR;
+    }
 
     return fd;
 }
@@ -574,37 +604,45 @@ int anetFdToString(int fd, char *ip, size_t ip_len, int *port, int remote) {
     socklen_t salen = sizeof(sa);
 
     if (remote) {
-        if (getpeername(fd, (struct sockaddr *)&sa, &salen) == -1)
+        if (getpeername(fd, (struct sockaddr *)&sa, &salen) == -1) {
             goto error;
+        }
     } else {
-        if (getsockname(fd, (struct sockaddr *)&sa, &salen) == -1)
+        if (getsockname(fd, (struct sockaddr *)&sa, &salen) == -1) {
             goto error;
+        }
     }
 
     if (sa.ss_family == AF_INET) {
         struct sockaddr_in *s = (struct sockaddr_in *)&sa;
         if (ip) {
-            if (inet_ntop(AF_INET, (void *)&(s->sin_addr), ip, ip_len) == NULL)
+            if (inet_ntop(AF_INET, (void *)&(s->sin_addr), ip, ip_len) == NULL) {
                 goto error;
+            }
         }
-        if (port)
+        if (port) {
             *port = ntohs(s->sin_port);
+        }
     } else if (sa.ss_family == AF_INET6) {
         struct sockaddr_in6 *s = (struct sockaddr_in6 *)&sa;
         if (ip) {
-            if (inet_ntop(AF_INET6, (void *)&(s->sin6_addr), ip, ip_len) == NULL)
+            if (inet_ntop(AF_INET6, (void *)&(s->sin6_addr), ip, ip_len) == NULL) {
                 goto error;
+            }
         }
-        if (port)
+        if (port) {
             *port = ntohs(s->sin6_port);
+        }
     } else if (sa.ss_family == AF_UNIX) {
         if (ip) {
             int res = snprintf(ip, ip_len, "/unixsocket");
-            if (res < 0 || (unsigned int)res >= ip_len)
+            if (res < 0 || (unsigned int)res >= ip_len) {
                 goto error;
+            }
         }
-        if (port)
+        if (port) {
             *port = 0;
+        }
     } else {
         goto error;
     }
@@ -619,8 +657,9 @@ error:
             ip[0] = '\0';
         }
     }
-    if (port)
+    if (port) {
         *port = 0;
+    }
     return -1;
 }
 
@@ -635,13 +674,15 @@ int anetPipe(int fds[2], int read_flags, int write_flags) {
     pipe_flags = O_CLOEXEC | (read_flags & write_flags);
     if (pipe2(fds, pipe_flags)) {
         /* Fail on real failures, and fallback to simple pipe if pipe2 is unsupported. */
-        if (errno != ENOSYS && errno != EINVAL)
+        if (errno != ENOSYS && errno != EINVAL) {
             return -1;
+        }
         pipe_flags = 0;
     } else {
         /* If the flags on both ends are identical, no need to do anything else. */
-        if ((O_CLOEXEC | read_flags) == (O_CLOEXEC | write_flags))
+        if ((O_CLOEXEC | read_flags) == (O_CLOEXEC | write_flags)) {
             return 0;
+        }
         /* Clear the flags which have already been set using pipe2. */
         read_flags &= ~pipe_flags;
         write_flags &= ~pipe_flags;
@@ -650,27 +691,36 @@ int anetPipe(int fds[2], int read_flags, int write_flags) {
 
     /* When we reach here with pipe_flags of 0, it means pipe2 failed (or was not attempted),
      * so we try to use pipe. Otherwise, we skip and proceed to set specific flags below. */
-    if (pipe_flags == 0 && pipe(fds))
+    if (pipe_flags == 0 && pipe(fds)) {
         return -1;
+    }
 
     /* File descriptor flags.
      * Currently, only one such flag is defined: FD_CLOEXEC, the close-on-exec flag. */
-    if (read_flags & O_CLOEXEC)
-        if (fcntl(fds[0], F_SETFD, FD_CLOEXEC))
+    if (read_flags & O_CLOEXEC) {
+        if (fcntl(fds[0], F_SETFD, FD_CLOEXEC)) {
             goto error;
-    if (write_flags & O_CLOEXEC)
-        if (fcntl(fds[1], F_SETFD, FD_CLOEXEC))
+        }
+    }
+    if (write_flags & O_CLOEXEC) {
+        if (fcntl(fds[1], F_SETFD, FD_CLOEXEC)) {
             goto error;
+        }
+    }
 
     /* File status flags after clearing the file descriptor flag O_CLOEXEC. */
     read_flags &= ~O_CLOEXEC;
-    if (read_flags)
-        if (fcntl(fds[0], F_SETFL, read_flags))
+    if (read_flags) {
+        if (fcntl(fds[0], F_SETFL, read_flags)) {
             goto error;
+        }
+    }
     write_flags &= ~O_CLOEXEC;
-    if (write_flags)
-        if (fcntl(fds[1], F_SETFL, write_flags))
+    if (write_flags) {
+        if (fcntl(fds[1], F_SETFL, write_flags)) {
             goto error;
+        }
+    }
 
     return 0;
 
@@ -697,7 +747,8 @@ int anetSetSockMarkId(char *err, int fd, uint32_t id) {
 
 int anetIsFifo(char *filepath) {
     struct stat sb;
-    if (stat(filepath, &sb) == -1)
+    if (stat(filepath, &sb) == -1) {
         return 0;
+    }
     return S_ISFIFO(sb.st_mode);
 }

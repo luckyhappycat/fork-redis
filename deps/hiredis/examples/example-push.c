@@ -41,12 +41,14 @@
     } while (0)
 
 static void assertReplyAndFree(redisContext *context, redisReply *reply, int type) {
-    if (reply == NULL)
+    if (reply == NULL) {
         panicAbort("NULL reply from server (error: %s)", context->errstr);
+    }
 
     if (reply->type != type) {
-        if (reply->type == REDIS_REPLY_ERROR)
+        if (reply->type == REDIS_REPLY_ERROR) {
             fprintf(stderr, "Redis Error: %s\n", reply->str);
+        }
 
         panicAbort("Expected reply type %d but got type %d", type, reply->type);
     }
@@ -124,8 +126,9 @@ int main(int argc, char **argv) {
     o.push_cb = pushReplyHandler;
 
     c = redisConnectWithOptions(&o);
-    if (c == NULL || c->err)
+    if (c == NULL || c->err) {
         panicAbort("Connection error:  %s", c ? c->errstr : "OOM");
+    }
 
     /* Enable RESP3 and turn on client tracking */
     enableClientTracking(c);

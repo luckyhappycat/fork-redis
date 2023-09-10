@@ -65,8 +65,9 @@ void closeChildInfoPipe(void) {
 
 /* Send save data to parent. */
 void sendChildInfoGeneric(childInfoType info_type, size_t keys, double progress, char *pname) {
-    if (server.child_info_pipe[1] == -1)
+    if (server.child_info_pipe[1] == -1) {
         return;
+    }
 
     static monotime cow_updated = 0;
     static uint64_t cow_update_cost = 0;
@@ -87,8 +88,9 @@ void sendChildInfoGeneric(childInfoType info_type, size_t keys, double progress,
         cow = zmalloc_get_private_dirty(-1);
         cow_updated = getMonotonicUs();
         cow_update_cost = cow_updated - now;
-        if (cow > peak_cow)
+        if (cow > peak_cow) {
             peak_cow = cow;
+        }
         sum_cow += cow;
         update_count++;
 
@@ -118,15 +120,17 @@ void sendChildInfoGeneric(childInfoType info_type, size_t keys, double progress,
 
 /* Update Child info. */
 void updateChildInfo(childInfoType information_type, size_t cow, monotime cow_updated, size_t keys, double progress) {
-    if (cow > server.stat_current_cow_peak)
+    if (cow > server.stat_current_cow_peak) {
         server.stat_current_cow_peak = cow;
+    }
 
     if (information_type == CHILD_INFO_TYPE_CURRENT_INFO) {
         server.stat_current_cow_bytes = cow;
         server.stat_current_cow_updated = cow_updated;
         server.stat_current_save_keys_processed = keys;
-        if (progress != -1)
+        if (progress != -1) {
             server.stat_module_progress = progress;
+        }
     } else if (information_type == CHILD_INFO_TYPE_AOF_COW_SIZE) {
         server.stat_aof_cow_bytes = server.stat_current_cow_peak;
     } else if (information_type == CHILD_INFO_TYPE_RDB_COW_SIZE) {
@@ -146,8 +150,9 @@ int readChildInfo(childInfoType *information_type, size_t *cow, monotime *cow_up
     ssize_t wlen = sizeof(buffer);
 
     /* Do not overlap */
-    if (server.child_info_nread == wlen)
+    if (server.child_info_nread == wlen) {
         server.child_info_nread = 0;
+    }
 
     int nread = read(server.child_info_pipe[0], (char *)&buffer + server.child_info_nread, wlen - server.child_info_nread);
     if (nread > 0) {
@@ -169,8 +174,9 @@ int readChildInfo(childInfoType *information_type, size_t *cow, monotime *cow_up
 
 /* Receive info data from child. */
 void receiveChildInfo(void) {
-    if (server.child_info_pipe[0] == -1)
+    if (server.child_info_pipe[0] == -1) {
         return;
+    }
 
     size_t cow;
     monotime cow_updated;

@@ -38,8 +38,9 @@ int getGenericCommand(client *c);
  *----------------------------------------------------------------------------*/
 
 static int checkStringLength(client *c, long long size, long long append) {
-    if (mustObeyClient(c))
+    if (mustObeyClient(c)) {
         return C_OK;
+    }
     /* 'uint64_t' cast is there just to prevent undefined behavior on overflow */
     long long total = (uint64_t)size + append;
     /* Test configured max-bulk-len represending a limit of the biggest string object,
@@ -91,8 +92,9 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
     }
 
     if (flags & OBJ_SET_GET) {
-        if (getGenericCommand(c) == C_ERR)
+        if (getGenericCommand(c) == C_ERR) {
             return;
+        }
     }
 
     found = (lookupKeyWrite(c->db, key) != NULL);
@@ -136,8 +138,9 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
         for (j = 0; j < c->argc; j++) {
             char *a = c->argv[j]->ptr;
             /* Skip GET which may be repeated multiple times. */
-            if (j >= 3 && (a[0] == 'g' || a[0] == 'G') && (a[1] == 'e' || a[1] == 'E') && (a[2] == 't' || a[2] == 'T') && a[3] == '\0')
+            if (j >= 3 && (a[0] == 'g' || a[0] == 'G') && (a[1] == 'e' || a[1] == 'E') && (a[2] == 't' || a[2] == 'T') && a[3] == '\0') {
                 continue;
+            }
             argv[argc++] = c->argv[j];
             incrRefCount(c->argv[j]);
         }
@@ -169,8 +172,9 @@ static int getExpireMillisecondsOrReply(client *c, robj *expire, int flags, int 
         return C_ERR;
     }
 
-    if (unit == UNIT_SECONDS)
+    if (unit == UNIT_SECONDS) {
         *milliseconds *= 1000;
+    }
 
     if ((flags & OBJ_PX) || (flags & OBJ_EX)) {
         *milliseconds += commandTimeSnapshot();
@@ -279,8 +283,9 @@ void psetexCommand(client *c) {
 int getGenericCommand(client *c) {
     robj *o;
 
-    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.null[c->resp])) == NULL)
+    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.null[c->resp])) == NULL) {
         return C_OK;
+    }
 
     if (checkType(c, o, OBJ_STRING)) {
         return C_ERR;
@@ -325,8 +330,9 @@ void getexCommand(client *c) {
 
     robj *o;
 
-    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.null[c->resp])) == NULL)
+    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.null[c->resp])) == NULL) {
         return;
+    }
 
     if (checkType(c, o, OBJ_STRING)) {
         return;
@@ -374,8 +380,9 @@ void getexCommand(client *c) {
 }
 
 void getdelCommand(client *c) {
-    if (getGenericCommand(c) == C_ERR)
+    if (getGenericCommand(c) == C_ERR) {
         return;
+    }
     if (dbSyncDelete(c->db, c->argv[1])) {
         /* Propagate as DEL command */
         rewriteClientCommandVector(c, 2, shared.del, c->argv[1]);
@@ -386,8 +393,9 @@ void getdelCommand(client *c) {
 }
 
 void getsetCommand(client *c) {
-    if (getGenericCommand(c) == C_ERR)
+    if (getGenericCommand(c) == C_ERR) {
         return;
+    }
     c->argv[2] = tryObjectEncoding(c->argv[2]);
     setKey(c, c->db, c->argv[1], c->argv[2], 0);
     notifyKeyspaceEvent(NOTIFY_STRING, "set", c->argv[1], c->db->id);
@@ -402,8 +410,9 @@ void setrangeCommand(client *c) {
     long offset;
     sds value = c->argv[3]->ptr;
 
-    if (getLongFromObjectOrReply(c, c->argv[2], &offset, NULL) != C_OK)
+    if (getLongFromObjectOrReply(c, c->argv[2], &offset, NULL) != C_OK) {
         return;
+    }
 
     if (offset < 0) {
         addReplyError(c, "offset is out of range");
@@ -419,8 +428,9 @@ void setrangeCommand(client *c) {
         }
 
         /* Return when the resulting string exceeds allowed size */
-        if (checkStringLength(c, offset, sdslen(value)) != C_OK)
+        if (checkStringLength(c, offset, sdslen(value)) != C_OK) {
             return;
+        }
 
         o = createObject(OBJ_STRING, sdsnewlen(NULL, offset + sdslen(value)));
         dbAdd(c->db, c->argv[1], o);
@@ -428,8 +438,9 @@ void setrangeCommand(client *c) {
         size_t olen;
 
         /* Key exists, check type */
-        if (checkType(c, o, OBJ_STRING))
+        if (checkType(c, o, OBJ_STRING)) {
             return;
+        }
 
         /* Return existing string length when setting nothing */
         olen = stringObjectLen(o);
@@ -439,8 +450,9 @@ void setrangeCommand(client *c) {
         }
 
         /* Return when the resulting string exceeds allowed size */
-        if (checkStringLength(c, offset, sdslen(value)) != C_OK)
+        if (checkStringLength(c, offset, sdslen(value)) != C_OK) {
             return;
+        }
 
         /* Create a copy when the object is shared or encoded. */
         o = dbUnshareStringValue(c->db, c->argv[1], o);
@@ -462,12 +474,15 @@ void getrangeCommand(client *c) {
     char *str, llbuf[32];
     size_t strlen;
 
-    if (getLongLongFromObjectOrReply(c, c->argv[2], &start, NULL) != C_OK)
+    if (getLongLongFromObjectOrReply(c, c->argv[2], &start, NULL) != C_OK) {
         return;
-    if (getLongLongFromObjectOrReply(c, c->argv[3], &end, NULL) != C_OK)
+    }
+    if (getLongLongFromObjectOrReply(c, c->argv[3], &end, NULL) != C_OK) {
         return;
-    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.emptybulk)) == NULL || checkType(c, o, OBJ_STRING))
+    }
+    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.emptybulk)) == NULL || checkType(c, o, OBJ_STRING)) {
         return;
+    }
 
     if (o->encoding == OBJ_ENCODING_INT) {
         str = llbuf;
@@ -482,16 +497,21 @@ void getrangeCommand(client *c) {
         addReply(c, shared.emptybulk);
         return;
     }
-    if (start < 0)
+    if (start < 0) {
         start = strlen + start;
-    if (end < 0)
+    }
+    if (end < 0) {
         end = strlen + end;
-    if (start < 0)
+    }
+    if (start < 0) {
         start = 0;
-    if (end < 0)
+    }
+    if (end < 0) {
         end = 0;
-    if ((unsigned long long)end >= strlen)
+    }
+    if ((unsigned long long)end >= strlen) {
         end = strlen - 1;
+    }
 
     /* Precondition: end >= 0 && end < strlen, so the only condition where
      * nothing can be returned is: start > end. */
@@ -545,8 +565,9 @@ void msetGenericCommand(client *c, int nx) {
         setKey(c, c->db, c->argv[j], c->argv[j + 1], setkey_flags);
         notifyKeyspaceEvent(NOTIFY_STRING, "set", c->argv[j], c->db->id);
         /* In MSETNX, It could be that we're overriding the same key, we can't be sure it doesn't exist. */
-        if (nx)
+        if (nx) {
             setkey_flags = SETKEY_ADD_OR_UPDATE;
+        }
     }
     server.dirty += (c->argc - 1) / 2;
     addReply(c, nx ? shared.cone : shared.ok);
@@ -565,10 +586,12 @@ void incrDecrCommand(client *c, long long incr) {
     robj *o, *new;
 
     o = lookupKeyWrite(c->db, c->argv[1]);
-    if (checkType(c, o, OBJ_STRING))
+    if (checkType(c, o, OBJ_STRING)) {
         return;
-    if (getLongLongFromObjectOrReply(c, o, &value, NULL) != C_OK)
+    }
+    if (getLongLongFromObjectOrReply(c, o, &value, NULL) != C_OK) {
         return;
+    }
 
     oldvalue = value;
     if ((incr < 0 && oldvalue < 0 && incr < (LLONG_MIN - oldvalue)) || (incr > 0 && oldvalue > 0 && incr > (LLONG_MAX - oldvalue))) {
@@ -606,16 +629,18 @@ void decrCommand(client *c) {
 void incrbyCommand(client *c) {
     long long incr;
 
-    if (getLongLongFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK)
+    if (getLongLongFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK) {
         return;
+    }
     incrDecrCommand(c, incr);
 }
 
 void decrbyCommand(client *c) {
     long long incr;
 
-    if (getLongLongFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK)
+    if (getLongLongFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK) {
         return;
+    }
     /* Overflow check: negating LLONG_MIN will cause an overflow */
     if (incr == LLONG_MIN) {
         addReplyError(c, "decrement would overflow");
@@ -629,10 +654,12 @@ void incrbyfloatCommand(client *c) {
     robj *o, *new;
 
     o = lookupKeyWrite(c->db, c->argv[1]);
-    if (checkType(c, o, OBJ_STRING))
+    if (checkType(c, o, OBJ_STRING)) {
         return;
-    if (getLongDoubleFromObjectOrReply(c, o, &value, NULL) != C_OK || getLongDoubleFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK)
+    }
+    if (getLongDoubleFromObjectOrReply(c, o, &value, NULL) != C_OK || getLongDoubleFromObjectOrReply(c, c->argv[2], &incr, NULL) != C_OK) {
         return;
+    }
 
     value += incr;
     if (isnan(value) || isinf(value)) {
@@ -640,10 +667,11 @@ void incrbyfloatCommand(client *c) {
         return;
     }
     new = createStringObjectFromLongDouble(value, 1);
-    if (o)
+    if (o) {
         dbReplaceValue(c->db, c->argv[1], new);
-    else
+    } else {
         dbAdd(c->db, c->argv[1], new);
+    }
     signalModifiedKey(c, c->db, c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING, "incrbyfloat", c->argv[1], c->db->id);
     server.dirty++;
@@ -670,13 +698,15 @@ void appendCommand(client *c) {
         totlen = stringObjectLen(c->argv[2]);
     } else {
         /* Key exists, check type */
-        if (checkType(c, o, OBJ_STRING))
+        if (checkType(c, o, OBJ_STRING)) {
             return;
+        }
 
         /* "append" is an argument, so always an sds */
         append = c->argv[2];
-        if (checkStringLength(c, stringObjectLen(o), sdslen(append->ptr)) != C_OK)
+        if (checkStringLength(c, stringObjectLen(o), sdslen(append->ptr)) != C_OK) {
             return;
+        }
 
         /* Append the value */
         o = dbUnshareStringValue(c->db, c->argv[1], o);
@@ -691,8 +721,9 @@ void appendCommand(client *c) {
 
 void strlenCommand(client *c) {
     robj *o;
-    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.czero)) == NULL || checkType(c, o, OBJ_STRING))
+    if ((o = lookupKeyReadOrReply(c, c->argv[1], shared.czero)) == NULL || checkType(c, o, OBJ_STRING)) {
         return;
+    }
     addReplyLongLong(c, stringObjectLen(o));
 }
 
@@ -730,10 +761,12 @@ void lcsCommand(client *c) {
         } else if (!strcasecmp(opt, "WITHMATCHLEN")) {
             withmatchlen = 1;
         } else if (!strcasecmp(opt, "MINMATCHLEN") && moreargs) {
-            if (getLongLongFromObjectOrReply(c, c->argv[j + 1], &minmatchlen, NULL) != C_OK)
+            if (getLongLongFromObjectOrReply(c, c->argv[j + 1], &minmatchlen, NULL) != C_OK) {
                 goto cleanup;
-            if (minmatchlen < 0)
+            }
+            if (minmatchlen < 0) {
                 minmatchlen = 0;
+            }
             j++;
         } else {
             addReplyErrorObject(c, shared.syntaxerr);
@@ -813,8 +846,9 @@ void lcsCommand(client *c) {
 
     /* Do we need to compute the actual LCS string? Allocate it in that case. */
     int computelcs = getidx || !getlen;
-    if (computelcs)
+    if (computelcs) {
         result = sdsnewlen(SDS_NOINIT, idx);
+    }
 
     /* Start with a deferred array if we have to emit the ranges. */
     uint32_t arraylen = 0; /* Number of ranges emitted in the array. */
@@ -850,8 +884,9 @@ void lcsCommand(client *c) {
             }
             /* Emit the range if we matched with the first byte of
              * one of the two strings. We'll exit the loop ASAP. */
-            if (arange_start == 0 || brange_start == 0)
+            if (arange_start == 0 || brange_start == 0) {
                 emit_range = 1;
+            }
             idx--;
             i--;
             j--;
@@ -860,12 +895,14 @@ void lcsCommand(client *c) {
              * LCS between, to understand what direction we need to go. */
             uint32_t lcs1 = LCS(i - 1, j);
             uint32_t lcs2 = LCS(i, j - 1);
-            if (lcs1 > lcs2)
+            if (lcs1 > lcs2) {
                 i--;
-            else
+            } else {
                 j--;
-            if (arange_start != alen)
+            }
+            if (arange_start != alen) {
                 emit_range = 1;
+            }
         }
 
         /* Emit the current range if needed. */
@@ -880,8 +917,9 @@ void lcsCommand(client *c) {
                     addReplyArrayLen(c, 2);
                     addReplyLongLong(c, brange_start);
                     addReplyLongLong(c, brange_end);
-                    if (withmatchlen)
+                    if (withmatchlen) {
                         addReplyLongLong(c, match_len);
+                    }
                     arraylen++;
                 }
             }
@@ -908,9 +946,11 @@ void lcsCommand(client *c) {
     zfree(lcs);
 
 cleanup:
-    if (obja)
+    if (obja) {
         decrRefCount(obja);
-    if (objb)
+    }
+    if (objb) {
         decrRefCount(objb);
+    }
     return;
 }

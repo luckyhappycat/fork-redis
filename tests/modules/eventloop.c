@@ -35,16 +35,18 @@ void onReadable(int fd, void *user_data, int mask) {
 
     while (1) {
         int rd = read(fd, dst + dst_offset, buf_size - dst_offset);
-        if (rd <= 0)
+        if (rd <= 0) {
             return;
+        }
         dst_offset += rd;
 
         /* Received all bytes */
         if (dst_offset == buf_size) {
-            if (memcmp(src, dst, buf_size) == 0)
+            if (memcmp(src, dst, buf_size) == 0) {
                 RedisModule_ReplyWithSimpleString(reply_ctx, "OK");
-            else
+            } else {
                 RedisModule_ReplyWithError(reply_ctx, "ERR bytes mismatch");
+            }
 
             RedisModule_EventLoopDel(fds[0], REDISMODULE_EVENTLOOP_READABLE);
             RedisModule_EventLoopDel(fds[1], REDISMODULE_EVENTLOOP_WRITABLE);
@@ -68,8 +70,9 @@ void onWritable(int fd, void *user_data, int mask) {
 
     while (1) {
         /* Check if we sent all data */
-        if (src_offset >= buf_size)
+        if (src_offset >= buf_size) {
             return;
+        }
         int written = write(fd, src + src_offset, buf_size - src_offset);
         if (written <= 0) {
             return;
@@ -105,17 +108,22 @@ int sendbytes(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     dst_offset = 0;
 
     /* Create a pipe and register it to the event loop. */
-    if (pipe(fds) < 0)
+    if (pipe(fds) < 0) {
         return REDISMODULE_ERR;
-    if (fcntl(fds[0], F_SETFL, O_NONBLOCK) < 0)
+    }
+    if (fcntl(fds[0], F_SETFL, O_NONBLOCK) < 0) {
         return REDISMODULE_ERR;
-    if (fcntl(fds[1], F_SETFL, O_NONBLOCK) < 0)
+    }
+    if (fcntl(fds[1], F_SETFL, O_NONBLOCK) < 0) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_EventLoopAdd(fds[0], REDISMODULE_EVENTLOOP_READABLE, onReadable, "userdataread") != REDISMODULE_OK)
+    if (RedisModule_EventLoopAdd(fds[0], REDISMODULE_EVENTLOOP_READABLE, onReadable, "userdataread") != REDISMODULE_OK) {
         return REDISMODULE_ERR;
-    if (RedisModule_EventLoopAdd(fds[1], REDISMODULE_EVENTLOOP_WRITABLE, onWritable, "userdatawrite") != REDISMODULE_OK)
+    }
+    if (RedisModule_EventLoopAdd(fds[1], REDISMODULE_EVENTLOOP_WRITABLE, onWritable, "userdatawrite") != REDISMODULE_OK) {
         return REDISMODULE_ERR;
+    }
     return REDISMODULE_OK;
 }
 
@@ -123,8 +131,9 @@ int sanity(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (pipe(fds) < 0)
+    if (pipe(fds) < 0) {
         return REDISMODULE_ERR;
+    }
 
     if (RedisModule_EventLoopAdd(fds[0], 9999999, onReadable, NULL) == REDISMODULE_OK || errno != EINVAL) {
         RedisModule_ReplyWithError(ctx, "ERR non-existing event type should fail");
@@ -230,37 +239,44 @@ void eventloopCallback(struct RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_
     REDISMODULE_NOT_USED(data);
 
     RedisModule_Assert(eid.id == REDISMODULE_EVENT_EVENTLOOP);
-    if (subevent == REDISMODULE_SUBEVENT_EVENTLOOP_BEFORE_SLEEP)
+    if (subevent == REDISMODULE_SUBEVENT_EVENTLOOP_BEFORE_SLEEP) {
         beforeSleepCount++;
-    else if (subevent == REDISMODULE_SUBEVENT_EVENTLOOP_AFTER_SLEEP)
+    } else if (subevent == REDISMODULE_SUBEVENT_EVENTLOOP_AFTER_SLEEP) {
         afterSleepCount++;
+    }
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "eventloop", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "eventloop", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* Test basics. */
-    if (RedisModule_CreateCommand(ctx, "test.sanity", sanity, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "test.sanity", sanity, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* Register a command to create a pipe() and send data through it by using
      * event loop API. */
-    if (RedisModule_CreateCommand(ctx, "test.sendbytes", sendbytes, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "test.sendbytes", sendbytes, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* Register a command to return event loop iteration count. */
-    if (RedisModule_CreateCommand(ctx, "test.iteration", iteration, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "test.iteration", iteration, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "test.oneshot", oneshot, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "test.oneshot", oneshot, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_EventLoop, eventloopCallback) != REDISMODULE_OK)
+    if (RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_EventLoop, eventloopCallback) != REDISMODULE_OK) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

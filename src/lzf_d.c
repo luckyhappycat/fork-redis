@@ -197,9 +197,9 @@ size_t lzf_decompress(const void *const in_data, size_t in_len, void *out_data, 
                         op += len;
                     } else {
                         /* overlapping, use octte by octte copying */
-                        do
+                        do {
                             *op++ = *ref++;
-                        while (--len);
+                        } while (--len);
                     }
 
                     break;

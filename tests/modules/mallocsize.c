@@ -82,8 +82,9 @@ void udt_rdb_save(RedisModuleIO *rdb, void *value) {
 }
 
 void *udt_rdb_load(RedisModuleIO *rdb, int encver) {
-    if (encver != 0)
+    if (encver != 0) {
         return NULL;
+    }
     udt_t *udt = RedisModule_Alloc(sizeof(*udt));
     udt->type = RedisModule_LoadUnsigned(rdb);
     switch (udt->type) {
@@ -145,8 +146,9 @@ size_t udt_mem_usage(RedisModuleKeyOptCtx *ctx, const void *value, size_t sample
 
 /* MALLOCSIZE.SETRAW key len */
 int cmd_setraw(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_WRITE);
 
@@ -166,8 +168,9 @@ int cmd_setraw(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 /* MALLOCSIZE.SETSTR key string */
 int cmd_setstr(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_WRITE);
 
@@ -185,8 +188,9 @@ int cmd_setstr(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 /* MALLOCSIZE.SETDICT key field value [field value ...] */
 int cmd_setdict(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 4 || argc % 2)
+    if (argc < 4 || argc % 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_WRITE);
 
@@ -209,8 +213,9 @@ int cmd_setdict(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
-    if (RedisModule_Init(ctx, "mallocsize", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "mallocsize", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     RedisModuleTypeMethods tm = {
         .version = REDISMODULE_TYPE_METHOD_VERSION,
@@ -221,17 +226,21 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     };
 
     mallocsize_type = RedisModule_CreateDataType(ctx, "allocsize", 0, &tm);
-    if (mallocsize_type == NULL)
+    if (mallocsize_type == NULL) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "mallocsize.setraw", cmd_setraw, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "mallocsize.setraw", cmd_setraw, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "mallocsize.setstr", cmd_setstr, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "mallocsize.setstr", cmd_setstr, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "mallocsize.setdict", cmd_setdict, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "mallocsize.setdict", cmd_setdict, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

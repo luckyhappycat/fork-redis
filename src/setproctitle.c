@@ -88,8 +88,9 @@ int spt_clearenv(void) {
     extern char **environ;
     static char **tmp;
 
-    if (!(tmp = malloc(sizeof *tmp)))
+    if (!(tmp = malloc(sizeof *tmp))) {
         return errno;
+    }
 
     tmp[0] = NULL;
     environ = tmp;
@@ -105,16 +106,18 @@ static int spt_copyenv(int envc, char *oldenv[]) {
     int i, error;
     int envsize;
 
-    if (environ != oldenv)
+    if (environ != oldenv) {
         return 0;
+    }
 
     /* Copy environ into envcopy before clearing it. Shallow copy is
      * enough as clearenv() only clears the environ array.
      */
     envsize = (envc + 1) * sizeof(char *);
     envcopy = malloc(envsize);
-    if (!envcopy)
+    if (!envcopy) {
         return ENOMEM;
+    }
     memcpy(envcopy, oldenv, envsize);
 
     /* Note that the state after clearenv() failure is undefined, but we'll
@@ -128,8 +131,9 @@ static int spt_copyenv(int envc, char *oldenv[]) {
 
     /* Set environ from envcopy */
     for (i = 0; envcopy[i]; i++) {
-        if (!(eq = strchr(envcopy[i], '=')))
+        if (!(eq = strchr(envcopy[i], '='))) {
             continue;
+        }
 
         *eq = '\0';
         error = (0 != setenv(envcopy[i], eq + 1, 1)) ? errno : 0;
@@ -161,11 +165,13 @@ static int spt_copyargs(int argc, char *argv[]) {
     int i;
 
     for (i = 1; i < argc || (i >= argc && argv[i]); i++) {
-        if (!argv[i])
+        if (!argv[i]) {
             continue;
+        }
 
-        if (!(tmp = strdup(argv[i])))
+        if (!(tmp = strdup(argv[i]))) {
             return errno;
+        }
 
         argv[i] = tmp;
     }
@@ -188,8 +194,9 @@ void spt_init(int argc, char *argv[]) {
     char *base, *end, *nul, *tmp;
     int i, error, envc;
 
-    if (!(base = argv[0]))
+    if (!(base = argv[0])) {
         return;
+    }
 
     /* We start with end pointing at the end of argv[0] */
     nul = &base[strlen(base)];
@@ -201,22 +208,26 @@ void spt_init(int argc, char *argv[]) {
      * envp).
      */
     for (i = 0; i < argc || (i >= argc && argv[i]); i++) {
-        if (!argv[i] || argv[i] < end)
+        if (!argv[i] || argv[i] < end) {
             continue;
+        }
 
-        if (end >= argv[i] && end <= argv[i] + strlen(argv[i]))
+        if (end >= argv[i] && end <= argv[i] + strlen(argv[i])) {
             end = argv[i] + strlen(argv[i]) + 1;
+        }
     }
 
     /* In case the envp array was not an immediate extension to argv,
      * scan it explicitly.
      */
     for (i = 0; envp[i]; i++) {
-        if (envp[i] < end)
+        if (envp[i] < end) {
             continue;
+        }
 
-        if (end >= envp[i] && end <= envp[i] + strlen(envp[i]))
+        if (end >= envp[i] && end <= envp[i] + strlen(envp[i])) {
             end = envp[i] + strlen(envp[i]) + 1;
+        }
     }
     envc = i;
 
@@ -224,32 +235,38 @@ void spt_init(int argc, char *argv[]) {
      * the old memory for the purpose of updating the title so we need
      * to keep the original value elsewhere.
      */
-    if (!(SPT.arg0 = strdup(argv[0])))
+    if (!(SPT.arg0 = strdup(argv[0]))) {
         goto syerr;
+    }
 
 #if __linux__
-    if (!(tmp = strdup(program_invocation_name)))
+    if (!(tmp = strdup(program_invocation_name))) {
         goto syerr;
+    }
 
     program_invocation_name = tmp;
 
-    if (!(tmp = strdup(program_invocation_short_name)))
+    if (!(tmp = strdup(program_invocation_short_name))) {
         goto syerr;
+    }
 
     program_invocation_short_name = tmp;
 #elif __APPLE__
-    if (!(tmp = strdup(getprogname())))
+    if (!(tmp = strdup(getprogname()))) {
         goto syerr;
+    }
 
     setprogname(tmp);
 #endif
 
     /* Now make a full deep copy of the environment and argv[] */
-    if ((error = spt_copyenv(envc, envp)))
+    if ((error = spt_copyenv(envc, envp))) {
         goto error;
+    }
 
-    if ((error = spt_copyargs(argc, argv)))
+    if ((error = spt_copyargs(argc, argv))) {
         goto error;
+    }
 
     SPT.nul = nul;
     SPT.base = base;
@@ -272,8 +289,9 @@ void setproctitle(const char *fmt, ...) {
     char *nul;
     int len, error;
 
-    if (!SPT.base)
+    if (!SPT.base) {
         return;
+    }
 
     if (fmt) {
         va_start(ap, fmt);

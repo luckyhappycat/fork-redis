@@ -57,11 +57,12 @@ int test_threads() {
                                 printf("Unable to allocate %d bytes in thread %d, iter %d, alloc %d. %d\n", sz, tid, i, j, x);
                                 exit(1);
                             }
-                            for (int k = 0; k < sz; k++)
+                            for (int k = 0; k < sz; k++) {
                                 ptrs[j][k] = tid + k;
+                            }
                         }
                         for (int j = 0; j < numAllocs; j += 64) {
-                            for (int k = 0, sz = ptrsz[j]; k < sz; k++)
+                            for (int k = 0, sz = ptrsz[j]; k < sz; k++) {
                                 if (ptrs[j][k] != (uint8_t)(tid + k)) {
                                     printf(
                                         "Memory error in thread %d, iter %d, alloc %d @ %d : %02X!=%02X\n", tid, i, j, k, ptrs[j][k],
@@ -69,6 +70,7 @@ int test_threads() {
                                     );
                                     exit(1);
                                 }
+                            }
                             je_free(ptrs[j]);
                         }
                     }

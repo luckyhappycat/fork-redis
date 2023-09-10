@@ -87,12 +87,15 @@ lwCanvas *lwDrawSchotter(int console_cols, int squares_per_row, int squares_per_
                 float r1 = (float)rand() / (float)RAND_MAX / squares_per_col * y;
                 float r2 = (float)rand() / (float)RAND_MAX / squares_per_col * y;
                 float r3 = (float)rand() / (float)RAND_MAX / squares_per_col * y;
-                if (rand() % 2)
+                if (rand() % 2) {
                     r1 = -r1;
-                if (rand() % 2)
+                }
+                if (rand() % 2) {
                     r2 = -r2;
-                if (rand() % 2)
+                }
+                if (rand() % 2) {
                     r3 = -r3;
+                }
                 angle = r1;
                 sx += r2 * square_side / 3;
                 sy += r3 * square_side / 3;
@@ -116,28 +119,37 @@ static sds renderCanvas(lwCanvas *canvas) {
             /* We need to emit groups of 8 bits according to a specific
              * arrangement. See lwTranslatePixelsGroup() for more info. */
             int byte = 0;
-            if (lwGetPixel(canvas, x, y))
+            if (lwGetPixel(canvas, x, y)) {
                 byte |= (1 << 0);
-            if (lwGetPixel(canvas, x, y + 1))
+            }
+            if (lwGetPixel(canvas, x, y + 1)) {
                 byte |= (1 << 1);
-            if (lwGetPixel(canvas, x, y + 2))
+            }
+            if (lwGetPixel(canvas, x, y + 2)) {
                 byte |= (1 << 2);
-            if (lwGetPixel(canvas, x + 1, y))
+            }
+            if (lwGetPixel(canvas, x + 1, y)) {
                 byte |= (1 << 3);
-            if (lwGetPixel(canvas, x + 1, y + 1))
+            }
+            if (lwGetPixel(canvas, x + 1, y + 1)) {
                 byte |= (1 << 4);
-            if (lwGetPixel(canvas, x + 1, y + 2))
+            }
+            if (lwGetPixel(canvas, x + 1, y + 2)) {
                 byte |= (1 << 5);
-            if (lwGetPixel(canvas, x, y + 3))
+            }
+            if (lwGetPixel(canvas, x, y + 3)) {
                 byte |= (1 << 6);
-            if (lwGetPixel(canvas, x + 1, y + 3))
+            }
+            if (lwGetPixel(canvas, x + 1, y + 3)) {
                 byte |= (1 << 7);
+            }
             char unicode[3];
             lwTranslatePixelsGroup(byte, unicode);
             text = sdscatlen(text, unicode, 3);
         }
-        if (y != canvas->height - 1)
+        if (y != canvas->height - 1) {
             text = sdscatlen(text, "\n", 1);
+        }
     }
     return text;
 }
@@ -155,29 +167,38 @@ void lolwut5Command(client *c) {
     long squares_per_col = 12;
 
     /* Parse the optional arguments if any. */
-    if (c->argc > 1 && getLongFromObjectOrReply(c, c->argv[1], &cols, NULL) != C_OK)
+    if (c->argc > 1 && getLongFromObjectOrReply(c, c->argv[1], &cols, NULL) != C_OK) {
         return;
+    }
 
-    if (c->argc > 2 && getLongFromObjectOrReply(c, c->argv[2], &squares_per_row, NULL) != C_OK)
+    if (c->argc > 2 && getLongFromObjectOrReply(c, c->argv[2], &squares_per_row, NULL) != C_OK) {
         return;
+    }
 
-    if (c->argc > 3 && getLongFromObjectOrReply(c, c->argv[3], &squares_per_col, NULL) != C_OK)
+    if (c->argc > 3 && getLongFromObjectOrReply(c, c->argv[3], &squares_per_col, NULL) != C_OK) {
         return;
+    }
 
     /* Limits. We want LOLWUT to be always reasonably fast and cheap to execute
      * so we have maximum number of columns, rows, and output resolution. */
-    if (cols < 1)
+    if (cols < 1) {
         cols = 1;
-    if (cols > 1000)
+    }
+    if (cols > 1000) {
         cols = 1000;
-    if (squares_per_row < 1)
+    }
+    if (squares_per_row < 1) {
         squares_per_row = 1;
-    if (squares_per_row > 200)
+    }
+    if (squares_per_row > 200) {
         squares_per_row = 200;
-    if (squares_per_col < 1)
+    }
+    if (squares_per_col < 1) {
         squares_per_col = 1;
-    if (squares_per_col > 200)
+    }
+    if (squares_per_col > 200) {
         squares_per_col = 200;
+    }
 
     /* Generate some computer art and reply. */
     lwCanvas *canvas = lwDrawSchotter(cols, squares_per_row, squares_per_col);

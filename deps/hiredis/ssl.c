@@ -154,8 +154,9 @@ static int initOpensslLocks(void) {
     }
     nlocks = CRYPTO_num_locks();
     ossl_locks = hi_malloc(sizeof(*ossl_locks) * nlocks);
-    if (ossl_locks == NULL)
+    if (ossl_locks == NULL) {
         return REDIS_ERR;
+    }
 
     for (ii = 0; ii < nlocks; ii++) {
         sslLockInit(ossl_locks + ii);
@@ -202,8 +203,9 @@ const char *redisSSLContextGetError(redisSSLContextError error) {
 }
 
 void redisFreeSSLContext(redisSSLContext *ctx) {
-    if (!ctx)
+    if (!ctx) {
         return;
+    }
 
     if (ctx->server_name) {
         hi_free(ctx->server_name);
@@ -251,8 +253,9 @@ redisSSLContext *redisCreateSSLContextWithOptions(redisSSLOptions *options, redi
 #endif
 
     redisSSLContext *ctx = hi_calloc(1, sizeof(redisSSLContext));
-    if (ctx == NULL)
+    if (ctx == NULL) {
         goto error;
+    }
 
     const SSL_METHOD *ssl_method;
 #if OPENSSL_VERSION_NUMBER >= OPENSSL_1_1_0
@@ -263,8 +266,9 @@ redisSSLContext *redisCreateSSLContextWithOptions(redisSSLOptions *options, redi
 
     ctx->ssl_ctx = SSL_CTX_new(ssl_method);
     if (!ctx->ssl_ctx) {
-        if (error)
+        if (error) {
             *error = REDIS_SSL_CTX_CREATE_FAILED;
+        }
         goto error;
     }
 
@@ -277,8 +281,9 @@ redisSSLContext *redisCreateSSLContextWithOptions(redisSSLOptions *options, redi
     SSL_CTX_set_verify(ctx->ssl_ctx, options->verify_mode, NULL);
 
     if ((cert_filename != NULL && private_key_filename == NULL) || (private_key_filename != NULL && cert_filename == NULL)) {
-        if (error)
+        if (error) {
             *error = REDIS_SSL_CTX_CERT_KEY_REQUIRED;
+        }
         goto error;
     }
 
@@ -287,8 +292,9 @@ redisSSLContext *redisCreateSSLContextWithOptions(redisSSLOptions *options, redi
         if (0 == strcmp(cacert_filename, "wincert")) {
             win_store = CertOpenSystemStore(NULL, "Root");
             if (!win_store) {
-                if (error)
+                if (error) {
                     *error = REDIS_SSL_CTX_OS_CERTSTORE_OPEN_FAILED;
+                }
                 goto error;
             }
             X509_STORE *store = SSL_CTX_get_cert_store(ctx->ssl_ctx);
@@ -297,8 +303,9 @@ redisSSLContext *redisCreateSSLContextWithOptions(redisSSLOptions *options, redi
                 x509 = d2i_X509(NULL, (const unsigned char **)&win_ctx->pbCertEncoded, win_ctx->cbCertEncoded);
                 if (x509) {
                     if ((1 != X509_STORE_add_cert(store, x509)) || (1 != SSL_CTX_add_client_CA(ctx->ssl_ctx, x509))) {
-                        if (error)
+                        if (error) {
                             *error = REDIS_SSL_CTX_OS_CERT_ADD_FAILED;
+                        }
                         goto error;
                     }
                     X509_free(x509);
@@ -309,33 +316,38 @@ redisSSLContext *redisCreateSSLContextWithOptions(redisSSLOptions *options, redi
         } else
 #endif
             if (!SSL_CTX_load_verify_locations(ctx->ssl_ctx, cacert_filename, capath)) {
-            if (error)
+            if (error) {
                 *error = REDIS_SSL_CTX_CA_CERT_LOAD_FAILED;
+            }
             goto error;
         }
     } else {
         if (!SSL_CTX_set_default_verify_paths(ctx->ssl_ctx)) {
-            if (error)
+            if (error) {
                 *error = REDIS_SSL_CTX_CLIENT_DEFAULT_CERT_FAILED;
+            }
             goto error;
         }
     }
 
     if (cert_filename) {
         if (!SSL_CTX_use_certificate_chain_file(ctx->ssl_ctx, cert_filename)) {
-            if (error)
+            if (error) {
                 *error = REDIS_SSL_CTX_CLIENT_CERT_LOAD_FAILED;
+            }
             goto error;
         }
         if (!SSL_CTX_use_PrivateKey_file(ctx->ssl_ctx, private_key_filename, SSL_FILETYPE_PEM)) {
-            if (error)
+            if (error) {
                 *error = REDIS_SSL_CTX_PRIVATE_KEY_LOAD_FAILED;
+            }
             goto error;
         }
     }
 
-    if (server_name)
+    if (server_name) {
         ctx->server_name = hi_strdup(server_name);
+    }
 
     return ctx;
 
@@ -386,9 +398,9 @@ static int redisSSLConnect(redisContext *c, SSL *ssl) {
 
     if (c->err == 0) {
         char err[512];
-        if (rv == SSL_ERROR_SYSCALL)
+        if (rv == SSL_ERROR_SYSCALL) {
             snprintf(err, sizeof(err) - 1, "SSL_connect failed: %s", strerror(errno));
-        else {
+        } else {
             unsigned long e = ERR_peek_last_error();
             snprintf(err, sizeof(err) - 1, "SSL_connect failed: %s", ERR_reason_error_string(e));
         }
@@ -414,14 +426,16 @@ int redisInitiateSSL(redisContext *c, SSL *ssl) {
  */
 
 int redisInitiateSSLWithContext(redisContext *c, redisSSLContext *redis_ssl_ctx) {
-    if (!c || !redis_ssl_ctx)
+    if (!c || !redis_ssl_ctx) {
         return REDIS_ERR;
+    }
 
     /* We want to verify that redisSSLConnect() won't fail on this, as it will
      * not own the SSL object in that case and we'll end up leaking.
      */
-    if (c->privctx)
+    if (c->privctx) {
         return REDIS_ERR;
+    }
 
     SSL *ssl = SSL_new(redis_ssl_ctx->ssl_ctx);
     if (!ssl) {
@@ -443,8 +457,9 @@ int redisInitiateSSLWithContext(redisContext *c, redisSSLContext *redis_ssl_ctx)
     return REDIS_OK;
 
 error:
-    if (ssl)
+    if (ssl) {
         SSL_free(ssl);
+    }
     return REDIS_ERR;
 }
 
@@ -471,8 +486,9 @@ static int maybeCheckWant(redisSSL *rssl, int rv) {
 static void redisSSLFree(void *privctx) {
     redisSSL *rsc = privctx;
 
-    if (!rsc)
+    if (!rsc) {
         return;
+    }
     if (rsc->ssl) {
         SSL_free(rsc->ssl);
         rsc->ssl = NULL;

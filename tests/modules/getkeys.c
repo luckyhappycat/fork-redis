@@ -20,8 +20,9 @@ int getkeys_command(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
             size_t len;
             const char *str = RedisModule_StringPtrLen(argv[i], &len);
 
-            if (len == 3 && !strncasecmp(str, "key", 3) && i + 1 < argc)
+            if (len == 3 && !strncasecmp(str, "key", 3) && i + 1 < argc) {
                 RedisModule_KeyAtPos(ctx, i + 1);
+            }
         }
 
         return REDISMODULE_OK;
@@ -53,8 +54,9 @@ int getkeys_command_with_flags(RedisModuleCtx *ctx, RedisModuleString **argv, in
             size_t len;
             const char *str = RedisModule_StringPtrLen(argv[i], &len);
 
-            if (len == 3 && !strncasecmp(str, "key", 3) && i + 1 < argc)
+            if (len == 3 && !strncasecmp(str, "key", 3) && i + 1 < argc) {
                 RedisModule_KeyAtPosWithFlags(ctx, i + 1, REDISMODULE_CMD_KEY_RO | REDISMODULE_CMD_KEY_ACCESS);
+            }
         }
 
         return REDISMODULE_OK;
@@ -98,16 +100,17 @@ int getkeys_introspect(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_OK;
     }
 
-    if (RedisModule_StringToLongLong(argv[1], &with_flags) != REDISMODULE_OK)
+    if (RedisModule_StringToLongLong(argv[1], &with_flags) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "ERR invalid integer");
+    }
 
     int num_keys, *keyflags = NULL;
     int *keyidx = RedisModule_GetCommandKeysWithFlags(ctx, &argv[2], argc - 2, &num_keys, with_flags ? &keyflags : NULL);
 
     if (!keyidx) {
-        if (!errno)
+        if (!errno) {
             RedisModule_ReplyWithEmptyArray(ctx);
-        else {
+        } else {
             char err[100];
             switch (errno) {
                 case ENOENT:
@@ -134,14 +137,15 @@ int getkeys_introspect(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
             RedisModule_ReplyWithArray(ctx, 2);
             RedisModule_ReplyWithString(ctx, argv[2 + keyidx[i]]);
             char *sflags = "";
-            if (keyflags[i] & REDISMODULE_CMD_KEY_RO)
+            if (keyflags[i] & REDISMODULE_CMD_KEY_RO) {
                 sflags = "RO";
-            else if (keyflags[i] & REDISMODULE_CMD_KEY_RW)
+            } else if (keyflags[i] & REDISMODULE_CMD_KEY_RW) {
                 sflags = "RW";
-            else if (keyflags[i] & REDISMODULE_CMD_KEY_OW)
+            } else if (keyflags[i] & REDISMODULE_CMD_KEY_OW) {
                 sflags = "OW";
-            else if (keyflags[i] & REDISMODULE_CMD_KEY_RM)
+            } else if (keyflags[i] & REDISMODULE_CMD_KEY_RM) {
                 sflags = "RM";
+            }
             RedisModule_ReplyWithCString(ctx, sflags);
         }
 
@@ -155,20 +159,25 @@ int getkeys_introspect(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
-    if (RedisModule_Init(ctx, "getkeys", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "getkeys", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "getkeys.command", getkeys_command, "getkeys-api", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "getkeys.command", getkeys_command, "getkeys-api", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "getkeys.command_with_flags", getkeys_command_with_flags, "getkeys-api", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "getkeys.command_with_flags", getkeys_command_with_flags, "getkeys-api", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "getkeys.fixed", getkeys_fixed, "", 2, 4, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "getkeys.fixed", getkeys_fixed, "", 2, 4, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "getkeys.introspect", getkeys_introspect, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "getkeys.introspect", getkeys_introspect, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

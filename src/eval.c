@@ -49,8 +49,9 @@ sds ldbCatStackValue(sds s, lua_State *lua, int idx);
 
 static void dictLuaScriptDestructor(dict *d, void *val) {
     UNUSED(d);
-    if (val == NULL)
+    if (val == NULL) {
         return; /* Lazy freeing will set value to NULL. */
+    }
     decrRefCount(((luaScript *)val)->body);
     zfree(val);
 }
@@ -148,14 +149,16 @@ int luaRedisBreakpointCommand(lua_State *lua) {
  * Can take multiple arguments that will be separated by commas.
  * Nothing is returned to the caller. */
 int luaRedisDebugCommand(lua_State *lua) {
-    if (!ldb.active)
+    if (!ldb.active) {
         return 0;
+    }
     int argc = lua_gettop(lua);
     sds log = sdscatprintf(sdsempty(), "<debug> line %d: ", ldb.currentline);
     while (argc--) {
         log = ldbCatStackValue(log, lua, -1 - argc);
-        if (argc != 0)
+        if (argc != 0) {
             log = sdscatlen(log, ", ", 2);
+        }
     }
     ldbLog(log);
     return 0;
@@ -271,10 +274,11 @@ void scriptingInit(int setup) {
 /* Release resources related to Lua scripting.
  * This function is used in order to reset the scripting environment. */
 void scriptingRelease(int async) {
-    if (async)
+    if (async) {
         freeLuaScriptsAsync(lctx.lua_scripts);
-    else
+    } else {
         dictRelease(lctx.lua_scripts);
+    }
     lctx.lua_scripts_mem = 0;
     lua_close(lctx.lua);
 }
@@ -304,8 +308,9 @@ static void evalCalcFunctionName(int evalsha, sds script, char *out_funcname) {
         /* Convert to lowercase. We don't use tolower since the function
          * managed to always show up in the profiler output consuming
          * a non trivial amount of time. */
-        for (j = 0; j < 40; j++)
+        for (j = 0; j < 40; j++) {
             out_funcname[j + 2] = (sha[j] >= 'A' && sha[j] <= 'Z') ? sha[j] + ('a' - 'A') : sha[j];
+        }
         out_funcname[42] = '\0';
     }
 }
@@ -322,8 +327,9 @@ int evalExtractShebangFlags(sds body, uint64_t *out_flags, ssize_t *out_shebang_
         int numparts, j;
         char *shebang_end = strchr(body, '\n');
         if (shebang_end == NULL) {
-            if (err)
+            if (err) {
                 *err = sdsnew("Invalid script shebang");
+            }
             return C_ERR;
         }
         shebang_len = shebang_end - body;
@@ -331,15 +337,17 @@ int evalExtractShebangFlags(sds body, uint64_t *out_flags, ssize_t *out_shebang_
         sds *parts = sdssplitargs(shebang, &numparts);
         sdsfree(shebang);
         if (!parts || numparts == 0) {
-            if (err)
+            if (err) {
                 *err = sdsnew("Invalid engine in script shebang");
+            }
             sdsfreesplitres(parts, numparts);
             return C_ERR;
         }
         /* Verify lua interpreter was specified */
         if (strcmp(parts[0], "#!lua")) {
-            if (err)
+            if (err) {
                 *err = sdscatfmt(sdsempty(), "Unexpected engine in script shebang: %s", parts[0]);
+            }
             sdsfreesplitres(parts, numparts);
             return C_ERR;
         }
@@ -352,12 +360,14 @@ int evalExtractShebangFlags(sds body, uint64_t *out_flags, ssize_t *out_shebang_
                 for (jj = 0; jj < numflags; jj++) {
                     scriptFlag *sf;
                     for (sf = scripts_flags_def; sf->flag; sf++) {
-                        if (!strcmp(flags[jj], sf->str))
+                        if (!strcmp(flags[jj], sf->str)) {
                             break;
+                        }
                     }
                     if (!sf->flag) {
-                        if (err)
+                        if (err) {
                             *err = sdscatfmt(sdsempty(), "Unexpected flag in script shebang: %s", flags[jj]);
+                        }
                         sdsfreesplitres(flags, numflags);
                         sdsfreesplitres(parts, numparts);
                         return C_ERR;
@@ -367,16 +377,18 @@ int evalExtractShebangFlags(sds body, uint64_t *out_flags, ssize_t *out_shebang_
                 sdsfreesplitres(flags, numflags);
             } else {
                 /* We only support function flags options for lua scripts */
-                if (err)
+                if (err) {
                     *err = sdscatfmt(sdsempty(), "Unknown lua shebang option: %s", parts[j]);
+                }
                 sdsfreesplitres(parts, numparts);
                 return C_ERR;
             }
         }
         sdsfreesplitres(parts, numparts);
     }
-    if (out_shebang_len)
+    if (out_shebang_len) {
         *out_shebang_len = shebang_len;
+    }
     *out_flags = script_flags;
     return C_OK;
 }
@@ -386,23 +398,27 @@ int evalExtractShebangFlags(sds body, uint64_t *out_flags, ssize_t *out_shebang_
 uint64_t evalGetCommandFlags(client *c, uint64_t cmd_flags) {
     char funcname[43];
     int evalsha = c->cmd->proc == evalShaCommand || c->cmd->proc == evalShaRoCommand;
-    if (evalsha && sdslen(c->argv[1]->ptr) != 40)
+    if (evalsha && sdslen(c->argv[1]->ptr) != 40) {
         return cmd_flags;
+    }
     uint64_t script_flags;
     evalCalcFunctionName(evalsha, c->argv[1]->ptr, funcname);
     char *lua_cur_script = funcname + 2;
     c->cur_script = dictFind(lctx.lua_scripts, lua_cur_script);
     if (!c->cur_script) {
-        if (evalsha)
+        if (evalsha) {
             return cmd_flags;
-        if (evalExtractShebangFlags(c->argv[1]->ptr, &script_flags, NULL, NULL) == C_ERR)
+        }
+        if (evalExtractShebangFlags(c->argv[1]->ptr, &script_flags, NULL, NULL) == C_ERR) {
             return cmd_flags;
+        }
     } else {
         luaScript *l = dictGetVal(c->cur_script);
         script_flags = l->flags;
     }
-    if (script_flags & SCRIPT_FLAG_EVAL_COMPAT_MODE)
+    if (script_flags & SCRIPT_FLAG_EVAL_COMPAT_MODE) {
         return cmd_flags;
+    }
     return scriptFlagsToCmdFlags(cmd_flags, script_flags);
 }
 
@@ -477,8 +493,9 @@ void evalGenericCommand(client *c, int evalsha) {
     long long numkeys;
 
     /* Get the number of arguments that are keys */
-    if (getLongLongFromObjectOrReply(c, c->argv[2], &numkeys, NULL) != C_OK)
+    if (getLongLongFromObjectOrReply(c, c->argv[2], &numkeys, NULL) != C_OK) {
         return;
+    }
     if (numkeys > (c->argc - 3)) {
         addReplyError(c, "Number of keys can't be greater than number of args");
         return;
@@ -491,8 +508,9 @@ void evalGenericCommand(client *c, int evalsha) {
         funcname[0] = 'f', funcname[1] = '_';
         memcpy(funcname + 2, dictGetKey(c->cur_script), 40);
         funcname[42] = '\0';
-    } else
+    } else {
         evalCalcFunctionName(evalsha, c->argv[1]->ptr, funcname);
+    }
 
     /* Push the pcall error handler function on the stack. */
     lua_getglobal(lua, "__redis__err__handler");
@@ -522,8 +540,9 @@ void evalGenericCommand(client *c, int evalsha) {
 
     char *lua_cur_script = funcname + 2;
     dictEntry *de = c->cur_script;
-    if (!de)
+    if (!de) {
         de = dictFind(lctx.lua_scripts, lua_cur_script);
+    }
     luaScript *l = dictGetVal(de);
     int ro = c->cmd->proc == evalRoCommand || c->cmd->proc == evalShaRoCommand;
 
@@ -544,10 +563,11 @@ void evalCommand(client *c) {
     /* Explicitly feed monitor here so that lua commands appear after their
      * script command. */
     replicationFeedMonitors(c, server.monitors, c->db->id, c->argv, c->argc);
-    if (!(c->flags & CLIENT_LUA_DEBUG))
+    if (!(c->flags & CLIENT_LUA_DEBUG)) {
         evalGenericCommand(c, 0);
-    else
+    } else {
         evalGenericCommandWithDebugging(c, 0);
+    }
 }
 
 void evalRoCommand(client *c) {
@@ -566,9 +586,9 @@ void evalShaCommand(client *c) {
         addReplyErrorObject(c, shared.noscripterr);
         return;
     }
-    if (!(c->flags & CLIENT_LUA_DEBUG))
+    if (!(c->flags & CLIENT_LUA_DEBUG)) {
         evalGenericCommand(c, 1);
-    else {
+    } else {
         addReplyError(c, "Please use EVAL instead of EVALSHA for debugging");
         return;
     }
@@ -616,15 +636,17 @@ void scriptCommand(client *c) {
 
         addReplyArrayLen(c, c->argc - 2);
         for (j = 2; j < c->argc; j++) {
-            if (dictFind(lctx.lua_scripts, c->argv[j]->ptr))
+            if (dictFind(lctx.lua_scripts, c->argv[j]->ptr)) {
                 addReply(c, shared.cone);
-            else
+            } else {
                 addReply(c, shared.czero);
+            }
         }
     } else if (c->argc == 3 && !strcasecmp(c->argv[1]->ptr, "load")) {
         sds sha = luaCreateFunction(c, c->argv[2]);
-        if (sha == NULL)
+        if (sha == NULL) {
             return; /* The error was sent by luaCreateFunction(). */
+        }
         addReplyBulkCBuffer(c, sha, 40);
     } else if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr, "kill")) {
         scriptKill(c, 1);
@@ -684,8 +706,9 @@ void ldbInit(void) {
 void ldbFlushLog(list *log) {
     listNode *ln;
 
-    while ((ln = listFirst(log)) != NULL)
+    while ((ln = listFirst(log)) != NULL) {
         listDelNode(log, ln);
+    }
 }
 
 int ldbIsEnabled(void) {
@@ -896,8 +919,9 @@ void evalGenericCommandWithDebugging(client *c, int evalsha) {
  * one-based, and returning a special string for out of range lines. */
 char *ldbGetSourceLine(int line) {
     int idx = line - 1;
-    if (idx < 0 || idx >= ldb.lines)
+    if (idx < 0 || idx >= ldb.lines) {
         return "<out of range source code line>";
+    }
     return ldb.src[idx];
 }
 
@@ -905,9 +929,11 @@ char *ldbGetSourceLine(int line) {
 int ldbIsBreakpoint(int line) {
     int j;
 
-    for (j = 0; j < ldb.bpcount; j++)
-        if (ldb.bp[j] == line)
+    for (j = 0; j < ldb.bpcount; j++) {
+        if (ldb.bp[j] == line) {
             return 1;
+        }
+    }
     return 0;
 }
 
@@ -915,8 +941,9 @@ int ldbIsBreakpoint(int line) {
  * Returns 1 if the breakpoint was added (or was already set). 0 if there is
  * no space for the breakpoint or if the line is invalid. */
 int ldbAddBreakpoint(int line) {
-    if (line <= 0 || line > ldb.lines)
+    if (line <= 0 || line > ldb.lines) {
         return 0;
+    }
     if (!ldbIsBreakpoint(line) && ldb.bpcount != LDB_BREAKPOINTS_MAX) {
         ldb.bp[ldb.bpcount++] = line;
         return 1;
@@ -946,8 +973,9 @@ sds *ldbReplParseCommand(int *argcp, char **err) {
     static char *protocol_error = "protocol error";
     sds *argv = NULL;
     int argc = 0;
-    if (sdslen(ldb.cbuf) == 0)
+    if (sdslen(ldb.cbuf) == 0) {
         return NULL;
+    }
 
     /* Working on a copy is simpler in this case. We can modify it freely
      * for the sake of simpler parsing. */
@@ -960,43 +988,52 @@ sds *ldbReplParseCommand(int *argcp, char **err) {
 
     /* Seek and parse *<count>\r\n. */
     p = strchr(p, '*');
-    if (!p)
+    if (!p) {
         goto protoerr;
+    }
     char *plen = p + 1; /* Multi bulk len pointer. */
     p = strstr(p, "\r\n");
-    if (!p)
+    if (!p) {
         goto keep_reading;
+    }
     *p = '\0';
     p += 2;
     *argcp = atoi(plen);
-    if (*argcp <= 0 || *argcp > 1024)
+    if (*argcp <= 0 || *argcp > 1024) {
         goto protoerr;
+    }
 
     /* Parse each argument. */
     argv = zmalloc(sizeof(sds) * (*argcp));
     argc = 0;
     while (argc < *argcp) {
         /* reached the end but there should be more data to read */
-        if (*p == '\0')
+        if (*p == '\0') {
             goto keep_reading;
+        }
 
-        if (*p != '$')
+        if (*p != '$') {
             goto protoerr;
+        }
         plen = p + 1; /* Bulk string len pointer. */
         p = strstr(p, "\r\n");
-        if (!p)
+        if (!p) {
             goto keep_reading;
+        }
         *p = '\0';
         p += 2;
         int slen = atoi(plen); /* Length of this arg. */
-        if (slen <= 0 || slen > 1024)
+        if (slen <= 0 || slen > 1024) {
             goto protoerr;
-        if ((size_t)(p + slen + 2 - copy) > sdslen(copy))
+        }
+        if ((size_t)(p + slen + 2 - copy) > sdslen(copy)) {
             goto keep_reading;
+        }
         argv[argc++] = sdsnewlen(p, slen);
         p += slen; /* Skip the already parsed argument. */
-        if (p[0] != '\r' || p[1] != '\n')
+        if (p[0] != '\r' || p[1] != '\n') {
             goto protoerr;
+        }
         p += 2; /* Skip \r\n. */
     }
     sdsfree(copy);
@@ -1017,14 +1054,15 @@ void ldbLogSourceLine(int lnum) {
     int bp = ldbIsBreakpoint(lnum);
     int current = ldb.currentline == lnum;
 
-    if (current && bp)
+    if (current && bp) {
         prefix = "->#";
-    else if (current)
+    } else if (current) {
         prefix = "-> ";
-    else if (bp)
+    } else if (bp) {
         prefix = "  #";
-    else
+    } else {
         prefix = "   ";
+    }
     sds thisline = sdscatprintf(sdsempty(), "%s%-3d %s", prefix, lnum, line);
     ldbLog(thisline);
 }
@@ -1038,8 +1076,9 @@ void ldbList(int around, int context) {
     int j;
 
     for (j = 1; j <= ldb.lines; j++) {
-        if (around != 0 && abs(around - j) > context)
+        if (around != 0 && abs(around - j) > context) {
             continue;
+        }
         ldbLogSourceLine(j);
     }
 }
@@ -1055,8 +1094,9 @@ void ldbList(int around, int context) {
 sds ldbCatStackValueRec(sds s, lua_State *lua, int idx, int level) {
     int t = lua_type(lua, idx);
 
-    if (level++ == LDB_MAX_VALUES_DEPTH)
+    if (level++ == LDB_MAX_VALUES_DEPTH) {
         return sdscat(s, "<max recursion level reached! Nested table?>");
+    }
 
     switch (t) {
         case LUA_TSTRING: {
@@ -1084,8 +1124,9 @@ sds ldbCatStackValueRec(sds s, lua_State *lua, int idx, int level) {
             lua_pushnil(lua); /* The first key to start the iteration is nil. */
             while (lua_next(lua, idx - 1)) {
                 /* Test if so far the table looks like an array. */
-                if (is_array && (lua_type(lua, -2) != LUA_TNUMBER || lua_tonumber(lua, -2) != expected_index))
+                if (is_array && (lua_type(lua, -2) != LUA_TNUMBER || lua_tonumber(lua, -2) != expected_index)) {
                     is_array = 0;
+                }
                 /* Stack now: table, key, value */
                 /* Array repr. */
                 repr1 = ldbCatStackValueRec(repr1, lua, -1, level);
@@ -1100,10 +1141,12 @@ sds ldbCatStackValueRec(sds s, lua_State *lua, int idx, int level) {
                 expected_index++;
             }
             /* Strip the last " ;" from both the representations. */
-            if (sdslen(repr1))
+            if (sdslen(repr1)) {
                 sdsrange(repr1, 0, -3);
-            if (sdslen(repr2))
+            }
+            if (sdslen(repr2)) {
                 sdsrange(repr2, 0, -3);
+            }
             /* Select the right one and discard the other. */
             s = sdscatlen(s, "{", 1);
             s = sdscatsds(s, is_array ? repr1 : repr2);
@@ -1117,14 +1160,15 @@ sds ldbCatStackValueRec(sds s, lua_State *lua, int idx, int level) {
         case LUA_TLIGHTUSERDATA: {
             const void *p = lua_topointer(lua, idx);
             char *typename = "unknown";
-            if (t == LUA_TFUNCTION)
+            if (t == LUA_TFUNCTION) {
                 typename = "function";
-            else if (t == LUA_TUSERDATA)
+            } else if (t == LUA_TUSERDATA) {
                 typename = "userdata";
-            else if (t == LUA_TTHREAD)
+            } else if (t == LUA_TTHREAD) {
                 typename = "thread";
-            else if (t == LUA_TLIGHTUSERDATA)
+            } else if (t == LUA_TLIGHTUSERDATA) {
                 typename = "light-userdata";
+            }
             s = sdscatprintf(s, "\"%s@%p\"", typename, p);
         } break;
         default:
@@ -1245,8 +1289,9 @@ char *ldbRedisProtocolToHuman_MultiBulk(sds *o, char *reply) {
     *o = sdscatlen(*o, "[", 1);
     for (j = 0; j < mbulklen; j++) {
         p = ldbRedisProtocolToHuman(o, p);
-        if (j != mbulklen - 1)
+        if (j != mbulklen - 1) {
             *o = sdscatlen(*o, ",", 1);
+        }
     }
     *o = sdscatlen(*o, "]", 1);
     return p;
@@ -1262,8 +1307,9 @@ char *ldbRedisProtocolToHuman_Set(sds *o, char *reply) {
     *o = sdscatlen(*o, "~(", 2);
     for (j = 0; j < mbulklen; j++) {
         p = ldbRedisProtocolToHuman(o, p);
-        if (j != mbulklen - 1)
+        if (j != mbulklen - 1) {
             *o = sdscatlen(*o, ",", 1);
+        }
     }
     *o = sdscatlen(*o, ")", 1);
     return p;
@@ -1281,8 +1327,9 @@ char *ldbRedisProtocolToHuman_Map(sds *o, char *reply) {
         p = ldbRedisProtocolToHuman(o, p);
         *o = sdscatlen(*o, " => ", 4);
         p = ldbRedisProtocolToHuman(o, p);
-        if (j != mbulklen - 1)
+        if (j != mbulklen - 1) {
             *o = sdscatlen(*o, ",", 1);
+        }
     }
     *o = sdscatlen(*o, "}", 1);
     return p;
@@ -1296,10 +1343,11 @@ char *ldbRedisProtocolToHuman_Null(sds *o, char *reply) {
 
 char *ldbRedisProtocolToHuman_Bool(sds *o, char *reply) {
     char *p = strchr(reply + 1, '\r');
-    if (reply[1] == 't')
+    if (reply[1] == 't') {
         *o = sdscatlen(*o, "#true", 5);
-    else
+    } else {
         *o = sdscatlen(*o, "#false", 6);
+    }
     return p + 2;
 }
 
@@ -1387,8 +1435,9 @@ void ldbBreak(sds *argv, int argc) {
         } else {
             ldbLog(sdscatfmt(sdsempty(), "%i breakpoints set:", ldb.bpcount));
             int j;
-            for (j = 0; j < ldb.bpcount; j++)
+            for (j = 0; j < ldb.bpcount; j++) {
                 ldbLogSourceLine(ldb.bp[j]);
+            }
         }
     } else {
         int j;
@@ -1410,10 +1459,11 @@ void ldbBreak(sds *argv, int argc) {
                         ldbLog(sdsnew("Wrong line number."));
                     }
                 } else if (line < 0) {
-                    if (ldbDelBreakpoint(-line))
+                    if (ldbDelBreakpoint(-line)) {
                         ldbLog(sdsnew("Breakpoint removed."));
-                    else
+                    } else {
                         ldbLog(sdsnew("No breakpoint in the specified line."));
+                    }
                 }
             }
         }
@@ -1474,8 +1524,9 @@ void ldbRedis(lua_State *lua, sds *argv, int argc) {
     lua_getglobal(lua, "redis");
     lua_pushstring(lua, "call");
     lua_gettable(lua, -2); /* Stack: redis, redis.call */
-    for (j = 1; j < argc; j++)
+    for (j = 1; j < argc; j++) {
         lua_pushlstring(lua, argv[j], sdslen(argv[j]));
+    }
     ldb.step = 1;                   /* Force redis.call() to log. */
     lua_pcall(lua, argc - 1, 1, 0); /* Stack: redis, result */
     ldb.step = 0;                   /* Disable logging. */
@@ -1507,8 +1558,9 @@ void ldbMaxlen(sds *argv, int argc) {
     if (argc == 2) {
         int newval = atoi(argv[1]);
         ldb.maxlen_hint_sent = 1; /* User knows about this command. */
-        if (newval != 0 && newval <= 60)
+        if (newval != 0 && newval <= 60) {
             newval = 60;
+        }
         ldb.maxlen = newval;
     }
     if (ldb.maxlen) {
@@ -1616,20 +1668,23 @@ int ldbRepl(lua_State *lua) {
             ldbRedis(lua, argv, argc);
             ldbSendLogs();
         } else if ((!strcasecmp(argv[0], "p") || !strcasecmp(argv[0], "print"))) {
-            if (argc == 2)
+            if (argc == 2) {
                 ldbPrint(lua, argv[1]);
-            else
+            } else {
                 ldbPrintAll(lua);
+            }
             ldbSendLogs();
         } else if (!strcasecmp(argv[0], "l") || !strcasecmp(argv[0], "list")) {
             int around = ldb.currentline, ctx = 5;
             if (argc > 1) {
                 int num = atoi(argv[1]);
-                if (num > 0)
+                if (num > 0) {
                     around = num;
+                }
             }
-            if (argc > 2)
+            if (argc > 2) {
                 ctx = atoi(argv[2]);
+            }
             ldbList(around, ctx);
             ldbSendLogs();
         } else if (!strcasecmp(argv[0], "w") || !strcasecmp(argv[0], "whole")) {
@@ -1665,8 +1720,9 @@ void luaLdbLineHook(lua_State *lua, lua_Debug *ar) {
     int timeout = 0;
 
     /* Events outside our script are not interesting. */
-    if (strstr(ar->short_src, "user_script") == NULL)
+    if (strstr(ar->short_src, "user_script") == NULL) {
         return;
+    }
 
     /* Check if a timeout occurred. */
     if (ar->event == LUA_HOOKCOUNT && ldb.step == 0 && bp == 0) {
@@ -1682,10 +1738,11 @@ void luaLdbLineHook(lua_State *lua, lua_Debug *ar) {
 
     if (ldb.step || bp) {
         char *reason = "step over";
-        if (bp)
+        if (bp) {
             reason = ldb.luabp ? "redis.breakpoint() called" : "break point";
-        else if (timeout)
+        } else if (timeout) {
             reason = "timeout reached, infinite loop?";
+        }
         ldb.step = 0;
         ldb.luabp = 0;
         ldbLog(sdscatprintf(sdsempty(), "* Stopped at %d, stop reason = %s", ldb.currentline, reason));

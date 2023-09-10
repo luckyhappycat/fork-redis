@@ -91,8 +91,9 @@ void blockClient(client *c, int btype) {
 
     c->flags |= CLIENT_BLOCKED;
     c->bstate.btype = btype;
-    if (!(c->flags & CLIENT_MODULE))
+    if (!(c->flags & CLIENT_MODULE)) {
         server.blocked_clients++; /* We count blocked client stats on regular clients and not on module clients */
+    }
     server.blocked_clients_by_type[btype]++;
     addClientToTimeoutTable(c);
 }
@@ -107,10 +108,12 @@ void updateStatsOnUnblock(client *c, long blocked_us, long reply_us, int had_err
     c->lastcmd->microseconds += total_cmd_duration;
     c->lastcmd->calls++;
     server.stat_numcommands++;
-    if (had_errors)
+    if (had_errors) {
         c->lastcmd->failed_calls++;
-    if (server.latency_tracking_enabled)
+    }
+    if (server.latency_tracking_enabled) {
         updateCommandLatencyHistogram(&(c->lastcmd->latency_histogram), total_cmd_duration * 1000);
+    }
     /* Log the command into the Slow log if needed. */
     slowlogPushCurrentCommand(c, c->lastcmd, total_cmd_duration);
     c->duration = 0;
@@ -186,8 +189,9 @@ void unblockClient(client *c, int queue_for_reprocessing) {
     } else if (c->bstate.btype == BLOCKED_WAIT || c->bstate.btype == BLOCKED_WAITAOF) {
         unblockClientWaitingReplicas(c);
     } else if (c->bstate.btype == BLOCKED_MODULE) {
-        if (moduleClientIsBlockedOnKeys(c))
+        if (moduleClientIsBlockedOnKeys(c)) {
             unblockClientWaitingData(c);
+        }
         unblockClientFromModule(c);
     } else if (c->bstate.btype == BLOCKED_POSTPONE) {
         listDelNode(server.postponed_clients, c->postponed_list_node);
@@ -212,15 +216,17 @@ void unblockClient(client *c, int queue_for_reprocessing) {
 
     /* Clear the flags, and put the client in the unblocked list so that
      * we'll process new commands in its query buffer ASAP. */
-    if (!(c->flags & CLIENT_MODULE))
+    if (!(c->flags & CLIENT_MODULE)) {
         server.blocked_clients--; /* We count blocked client stats on regular clients and not on module clients */
+    }
     server.blocked_clients_by_type[c->bstate.btype]--;
     c->flags &= ~CLIENT_BLOCKED;
     c->bstate.btype = BLOCKED_NONE;
     c->bstate.unblock_on_nokey = 0;
     removeClientFromTimeoutTable(c);
-    if (queue_for_reprocessing)
+    if (queue_for_reprocessing) {
         queueClientForReprocessing(c);
+    }
 }
 
 /* This function gets called when a blocked client timed out in order to
@@ -246,8 +252,9 @@ void replyToBlockedClientTimedOut(client *c) {
 /* If one or more clients are blocked on the SHUTDOWN command, this function
  * sends them an error reply and unblocks them. */
 void replyToClientsBlockedOnShutdown(void) {
-    if (server.blocked_clients_by_type[BLOCKED_SHUTDOWN] == 0)
+    if (server.blocked_clients_by_type[BLOCKED_SHUTDOWN] == 0) {
         return;
+    }
     listNode *ln;
     listIter li;
     listRewind(server.clients, &li);
@@ -280,8 +287,9 @@ void disconnectAllBlockedClients(void) {
              * command processing will start from scratch, and the command will
              * be either executed or rejected. (unlike LIST blocked clients for
              * which the command is already in progress in a way. */
-            if (c->bstate.btype == BLOCKED_POSTPONE)
+            if (c->bstate.btype == BLOCKED_POSTPONE) {
                 continue;
+            }
 
             unblockClientOnError(
                 c,
@@ -317,8 +325,9 @@ void handleClientsBlockedOnKeys(void) {
     /* In case we are already in the process of unblocking clients we should
      * not make a recursive call, in order to prevent breaking fairness. */
     static int in_handling_blocked_clients = 0;
-    if (in_handling_blocked_clients)
+    if (in_handling_blocked_clients) {
         return;
+    }
     in_handling_blocked_clients = 1;
 
     /* This function is called only when also_propagate is in its basic state
@@ -408,8 +417,9 @@ void blockForKeys(client *c, int btype, robj **keys, int numkeys, mstime_t timeo
     /* Currently we assume key blocking will require reprocessing the command.
      * However in case of modules, they have a different way to handle the reprocessing
      * which does not require setting the pending command flag */
-    if (btype != BLOCKED_MODULE)
+    if (btype != BLOCKED_MODULE) {
         c->flags |= CLIENT_PENDING_COMMAND;
+    }
     blockClient(c, btype);
 }
 
@@ -419,8 +429,9 @@ static void unblockClientWaitingData(client *c) {
     dictEntry *de;
     dictIterator *di;
 
-    if (dictSize(c->bstate.keys) == 0)
+    if (dictSize(c->bstate.keys) == 0) {
         return;
+    }
 
     di = dictGetIterator(c->bstate.keys);
     /* The client may wait for multiple keys, so unblock it for every key. */
@@ -472,13 +483,15 @@ static void signalKeyAsReadyLogic(redisDb *db, robj *key, int type, int deleted)
 
     if (deleted) {
         /* Key deleted and no clients blocking for this key? No need to queue it. */
-        if (dictFind(db->blocking_keys_unblock_on_nokey, key) == NULL)
+        if (dictFind(db->blocking_keys_unblock_on_nokey, key) == NULL) {
             return;
+        }
         /* Note: if we made it here it means the key is also present in db->blocking_keys */
     } else {
         /* No clients blocking for this key? No need to queue it. */
-        if (dictFind(db->blocking_keys, key) == NULL)
+        if (dictFind(db->blocking_keys, key) == NULL) {
             return;
+        }
     }
 
     dictEntry *de, *existing;
@@ -543,8 +556,9 @@ static void releaseBlockedEntry(client *c, dictEntry *de, int remove_key) {
             dictDelete(c->db->blocking_keys_unblock_on_nokey, key);
         }
     }
-    if (remove_key)
+    if (remove_key) {
         dictDelete(c->bstate.keys, key);
+    }
 }
 
 void signalKeyAsReady(redisDb *db, robj *key, int type) {
@@ -584,10 +598,11 @@ static void handleClientsBlockedOnKey(readyList *rl) {
              *    or in case the key was deleted, since the group is no longer valid. */
             if ((o != NULL && (receiver->bstate.btype == getBlockedTypeByType(o->type))) ||
                 (o != NULL && (receiver->bstate.btype == BLOCKED_MODULE)) || (receiver->bstate.unblock_on_nokey)) {
-                if (receiver->bstate.btype != BLOCKED_MODULE)
+                if (receiver->bstate.btype != BLOCKED_MODULE) {
                     unblockClientOnKey(receiver, rl->key);
-                else
+                } else {
                     moduleUnblockClientOnKey(receiver, rl->key);
+                }
             }
         }
     }
@@ -702,19 +717,22 @@ static void moduleUnblockClientOnKey(client *c, robj *key) {
  * command with timeout reply. */
 void unblockClientOnTimeout(client *c) {
     replyToBlockedClientTimedOut(c);
-    if (c->flags & CLIENT_PENDING_COMMAND)
+    if (c->flags & CLIENT_PENDING_COMMAND) {
         c->flags &= ~CLIENT_PENDING_COMMAND;
+    }
     unblockClient(c, 1);
 }
 
 /* Unblock a client which is currently Blocked with error.
  * If err_str is provided it will be used to reply to the blocked client */
 void unblockClientOnError(client *c, const char *err_str) {
-    if (err_str)
+    if (err_str) {
         addReplyError(c, err_str);
+    }
     updateStatsOnUnblock(c, 0, 0, 1);
-    if (c->flags & CLIENT_PENDING_COMMAND)
+    if (c->flags & CLIENT_PENDING_COMMAND) {
         c->flags &= ~CLIENT_PENDING_COMMAND;
+    }
     unblockClient(c, 1);
 }
 
@@ -727,10 +745,12 @@ void totalNumberOfBlockingKeys(unsigned long *blocking_keys, unsigned long *blok
         bkeys += dictSize(server.db[j].blocking_keys);
         bkeys_on_nokey += dictSize(server.db[j].blocking_keys_unblock_on_nokey);
     }
-    if (blocking_keys)
+    if (blocking_keys) {
         *blocking_keys = bkeys;
-    if (bloking_keys_on_nokey)
+    }
+    if (bloking_keys_on_nokey) {
         *bloking_keys_on_nokey = bkeys_on_nokey;
+    }
 }
 
 void blockedBeforeSleep(void) {
@@ -739,8 +759,9 @@ void blockedBeforeSleep(void) {
 
     /* Unblock all the clients blocked for synchronous replication
      * in WAIT or WAITAOF. */
-    if (listLength(server.clients_waiting_acks))
+    if (listLength(server.clients_waiting_acks)) {
         processClientsWaitingReplicas();
+    }
 
     /* Try to process blocked clients every once in while.
      *
@@ -752,10 +773,12 @@ void blockedBeforeSleep(void) {
 
     /* Check if there are clients unblocked by modules that implement
      * blocking commands. */
-    if (moduleCount())
+    if (moduleCount()) {
         moduleHandleBlockedClients();
+    }
 
     /* Try to process pending commands for clients that were just unblocked. */
-    if (listLength(server.unblocked_clients))
+    if (listLength(server.unblocked_clients)) {
         processUnblockedClients();
+    }
 }

@@ -51,8 +51,9 @@ int stream_addn(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_WRITE);
     for (i = 0; i < n; i++) {
-        if (RedisModule_StreamAdd(key, REDISMODULE_STREAM_ADD_AUTOID, NULL, &argv[3], (argc - 3) / 2) == REDISMODULE_ERR)
+        if (RedisModule_StreamAdd(key, REDISMODULE_STREAM_ADD_AUTOID, NULL, &argv[3], (argc - 3) / 2) == REDISMODULE_ERR) {
             break;
+        }
     }
     RedisModule_ReplyWithLongLong(ctx, i);
     RedisModule_CloseKey(key);
@@ -61,8 +62,9 @@ int stream_addn(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 /* STREAM.DELETE key stream-id */
 int stream_delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModuleStreamID id;
     if (RedisModule_StringToStreamID(argv[2], &id) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "Invalid stream ID");
@@ -145,8 +147,9 @@ int stream_range(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
             /* check if this is a "selfdestruct" field */
             size_t field_len;
             const char *field_str = RedisModule_StringPtrLen(field, &field_len);
-            if (!strncmp(field_str, "selfdestruct", field_len))
+            if (!strncmp(field_str, "selfdestruct", field_len)) {
                 delete = 1;
+            }
         }
         if (delete) {
             assert(RedisModule_StreamIteratorDelete(key) == REDISMODULE_OK);
@@ -227,19 +230,25 @@ int stream_trim(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
-    if (RedisModule_Init(ctx, "stream", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "stream", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "stream.add", stream_add, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "stream.add", stream_add, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "stream.addn", stream_addn, "write", 1, 1, 1) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "stream.addn", stream_addn, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "stream.delete", stream_delete, "write", 1, 1, 1) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "stream.delete", stream_delete, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "stream.range", stream_range, "write", 1, 1, 1) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "stream.range", stream_range, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "stream.trim", stream_trim, "write", 1, 1, 1) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "stream.trim", stream_trim, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

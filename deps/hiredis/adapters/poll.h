@@ -26,8 +26,9 @@ typedef struct redisPollEvents {
 } redisPollEvents;
 
 static double redisPollTimevalToDouble(struct timeval *tv) {
-    if (tv == NULL)
+    if (tv == NULL) {
         return 0.0;
+    }
     return tv->tv_sec + tv->tv_usec / 1000000.00;
 }
 
@@ -57,21 +58,25 @@ static int redisPollTick(redisAsyncContext *ac, double timeout) {
     int itimeout;
 
     redisPollEvents *e = (redisPollEvents *)ac->ev.data;
-    if (!e)
+    if (!e) {
         return 0;
+    }
 
     /* local flags, won't get changed during callbacks */
     reading = e->reading;
     writing = e->writing;
-    if (!reading && !writing)
+    if (!reading && !writing) {
         return 0;
+    }
 
     pfd.fd = e->fd;
     pfd.events = 0;
-    if (reading)
+    if (reading) {
         pfd.events = POLLIN;
-    if (writing)
+    }
+    if (writing) {
         pfd.events |= POLLOUT;
+    }
 
     if (timeout >= 0.0) {
         itimeout = (int)(timeout * 1000.0);
@@ -82,8 +87,9 @@ static int redisPollTick(redisAsyncContext *ac, double timeout) {
     ns = poll(&pfd, 1, itimeout);
     if (ns < 0) {
         /* ignore the EINTR error */
-        if (errno != EINTR)
+        if (errno != EINTR) {
             return ns;
+        }
         ns = 0;
     }
 
@@ -118,10 +124,11 @@ static int redisPollTick(redisAsyncContext *ac, double timeout) {
     }
 
     /* do a delayed cleanup if required */
-    if (e->deleted)
+    if (e->deleted) {
         hi_free(e);
-    else
+    } else {
         e->in_tick = 0;
+    }
 
     return handled;
 }
@@ -150,10 +157,11 @@ static void redisPollCleanup(void *data) {
     redisPollEvents *e = (redisPollEvents *)data;
 
     /* if we are currently processing a tick, postpone deletion */
-    if (e->in_tick)
+    if (e->in_tick) {
         e->deleted = 1;
-    else
+    } else {
         hi_free(e);
+    }
 }
 
 static void redisPollScheduleTimer(void *data, struct timeval tv) {
@@ -167,13 +175,15 @@ static int redisPollAttach(redisAsyncContext *ac) {
     redisPollEvents *e;
 
     /* Nothing should be attached when something is already attached */
-    if (ac->ev.data != NULL)
+    if (ac->ev.data != NULL) {
         return REDIS_ERR;
+    }
 
     /* Create container for context and r/w events */
     e = (redisPollEvents *)hi_malloc(sizeof(*e));
-    if (e == NULL)
+    if (e == NULL) {
         return REDIS_ERR;
+    }
     memset(e, 0, sizeof(*e));
 
     e->context = ac;

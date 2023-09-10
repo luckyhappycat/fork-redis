@@ -239,8 +239,9 @@ static int cmdIsKeyLoaded(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 }
 
 static int cmdDelKeyCopy(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     cached_time = RedisModule_CachedMicroseconds();
 
@@ -257,8 +258,9 @@ static int cmdDelKeyCopy(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 /* Call INCR and propagate using RM_Call with `!`. */
 static int cmdIncrCase1(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleCallReply *rep = RedisModule_Call(ctx, "INCR", "s!", argv[1]);
     if (!rep) {
@@ -272,8 +274,9 @@ static int cmdIncrCase1(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 /* Call INCR and propagate using RM_Replicate. */
 static int cmdIncrCase2(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleCallReply *rep = RedisModule_Call(ctx, "INCR", "s", argv[1]);
     if (!rep) {
@@ -288,8 +291,9 @@ static int cmdIncrCase2(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 /* Call INCR and propagate using RM_ReplicateVerbatim. */
 static int cmdIncrCase3(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 2)
+    if (argc != 2) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModuleCallReply *rep = RedisModule_Call(ctx, "INCR", "s", argv[1]);
     if (!rep) {

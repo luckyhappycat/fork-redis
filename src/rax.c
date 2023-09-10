@@ -129,8 +129,9 @@ static inline int raxStackPush(raxStack *ts, void *ptr) {
 /* Pop an item from the stack, the function returns NULL if there are no
  * items to pop. */
 static inline void *raxStackPop(raxStack *ts) {
-    if (ts->items == 0)
+    if (ts->items == 0) {
         return NULL;
+    }
     ts->items--;
     return ts->stack[ts->items];
 }
@@ -138,15 +139,17 @@ static inline void *raxStackPop(raxStack *ts) {
 /* Return the stack item at the top of the stack without actually consuming
  * it. */
 static inline void *raxStackPeek(raxStack *ts) {
-    if (ts->items == 0)
+    if (ts->items == 0) {
         return NULL;
+    }
     return ts->stack[ts->items - 1];
 }
 
 /* Free the stack in case we used heap allocation. */
 static inline void raxStackFree(raxStack *ts) {
-    if (ts->stack != ts->static_items)
+    if (ts->stack != ts->static_items) {
         rax_free(ts->stack);
+    }
 }
 
 /* ----------------------------------------------------------------------------
@@ -180,11 +183,13 @@ static inline void raxStackFree(raxStack *ts) {
  * Returns the new node pointer. On out of memory NULL is returned. */
 raxNode *raxNewNode(size_t children, int datafield) {
     size_t nodesize = sizeof(raxNode) + children + raxPadding(children) + sizeof(raxNode *) * children;
-    if (datafield)
+    if (datafield) {
         nodesize += sizeof(void *);
+    }
     raxNode *node = rax_malloc(nodesize);
-    if (node == NULL)
+    if (node == NULL) {
         return NULL;
+    }
     node->iskey = 0;
     node->isnull = 0;
     node->iscompr = 0;
@@ -196,8 +201,9 @@ raxNode *raxNewNode(size_t children, int datafield) {
  * returns NULL. */
 rax *raxNew(void) {
     rax *rax = rax_malloc(sizeof(*rax));
-    if (rax == NULL)
+    if (rax == NULL) {
         return NULL;
+    }
     rax->numele = 0;
     rax->numnodes = 1;
     rax->head = raxNewNode(0, 0);
@@ -212,8 +218,9 @@ rax *raxNew(void) {
 /* realloc the node to make room for auxiliary data in order
  * to store an item in that node. On out of memory NULL is returned. */
 raxNode *raxReallocForData(raxNode *n, void *data) {
-    if (data == NULL)
+    if (data == NULL) {
         return n; /* No reallocation needed, setting isnull=1 */
+    }
     size_t curlen = raxNodeCurrentLength(n);
     return rax_realloc(n, curlen + sizeof(void *));
 }
@@ -232,8 +239,9 @@ void raxSetData(raxNode *n, void *data) {
 
 /* Get the node auxiliary data. */
 void *raxGetData(raxNode *n) {
-    if (n->isnull)
+    if (n->isnull) {
         return NULL;
+    }
     void **ndata = (void **)((char *)n + raxNodeCurrentLength(n) - sizeof(void *));
     void *data;
     memcpy(&data, ndata, sizeof(data));
@@ -260,8 +268,9 @@ raxNode *raxAddChild(raxNode *n, unsigned char c, raxNode **childptr, raxNode **
 
     /* Alloc the new child we will link to 'n'. */
     raxNode *child = raxNewNode(0, 0);
-    if (child == NULL)
+    if (child == NULL) {
         return NULL;
+    }
 
     /* Make space in the original node. */
     raxNode *newn = rax_realloc(n, newlen);
@@ -301,8 +310,9 @@ raxNode *raxAddChild(raxNode *n, unsigned char c, raxNode **childptr, raxNode **
      * loop. */
     int pos;
     for (pos = 0; pos < n->size; pos++) {
-        if (n->data[pos] > c)
+        if (n->data[pos] > c) {
             break;
+        }
     }
 
     /* Now, if present, move auxiliary data pointer at the end
@@ -399,15 +409,17 @@ raxNode *raxCompressNode(raxNode *n, unsigned char *s, size_t len, raxNode **chi
 
     /* Allocate the child to link to this node. */
     *child = raxNewNode(0, 0);
-    if (*child == NULL)
+    if (*child == NULL) {
         return NULL;
+    }
 
     /* Make space in the parent node. */
     newsize = sizeof(raxNode) + len + raxPadding(len) + sizeof(raxNode *);
     if (n->iskey) {
         data = raxGetData(n); /* To restore it later. */
-        if (!n->isnull)
+        if (!n->isnull) {
             newsize += sizeof(void *);
+        }
     }
     raxNode *newn = rax_realloc(n, newsize);
     if (newn == NULL) {
@@ -419,8 +431,9 @@ raxNode *raxCompressNode(raxNode *n, unsigned char *s, size_t len, raxNode **chi
     n->iscompr = 1;
     n->size = len;
     memcpy(n->data, s, len);
-    if (n->iskey)
+    if (n->iskey) {
         raxSetData(n, data);
+    }
     raxNode **childfield = raxNodeLastChildPtr(n);
     memcpy(childfield, child, sizeof(*child));
     return n;
@@ -467,29 +480,35 @@ static inline size_t raxLowWalk(rax *rax, unsigned char *s, size_t len, raxNode 
 
         if (h->iscompr) {
             for (j = 0; j < h->size && i < len; j++, i++) {
-                if (v[j] != s[i])
+                if (v[j] != s[i]) {
                     break;
+                }
             }
-            if (j != h->size)
+            if (j != h->size) {
                 break;
+            }
         } else {
             /* Even when h->size is large, linear scan provides good
              * performances compared to other approaches that are in theory
              * more sounding, like performing a binary search. */
             for (j = 0; j < h->size; j++) {
-                if (v[j] == s[i])
+                if (v[j] == s[i]) {
                     break;
+                }
             }
-            if (j == h->size)
+            if (j == h->size) {
                 break;
+            }
             i++;
         }
 
-        if (ts)
+        if (ts) {
             raxStackPush(ts, h); /* Save stack of parent nodes. */
+        }
         raxNode **children = raxNodeFirstChildPtr(h);
-        if (h->iscompr)
+        if (h->iscompr) {
             j = 0; /* Compressed node only child is at index 0. */
+        }
         memcpy(&h, children + j, sizeof(h));
         parentlink = children + j;
         j = 0; /* If the new node is non compressed and we do not
@@ -498,12 +517,15 @@ static inline size_t raxLowWalk(rax *rax, unsigned char *s, size_t len, raxNode 
                   the searched key. */
     }
     debugnode("Lookup stop node is", h);
-    if (stopnode)
+    if (stopnode) {
         *stopnode = h;
-    if (plink)
+    }
+    if (plink) {
         *plink = parentlink;
-    if (splitpos && h->iscompr)
+    }
+    if (splitpos && h->iscompr) {
         *splitpos = j;
+    }
     return i;
 }
 
@@ -535,8 +557,9 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
         /* Make space for the value pointer if needed. */
         if (!h->iskey || (h->isnull && overwrite)) {
             h = raxReallocForData(h, data);
-            if (h)
+            if (h) {
                 memcpy(parentlink, &h, sizeof(h));
+            }
         }
         if (h == NULL) {
             errno = ENOMEM;
@@ -545,10 +568,12 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
 
         /* Update the existing key if there is already one. */
         if (h->iskey) {
-            if (old)
+            if (old) {
                 *old = raxGetData(h);
-            if (overwrite)
+            }
+            if (overwrite) {
                 raxSetData(h, data);
+            }
             errno = 0;
             return 0; /* Element already exists. */
         }
@@ -715,8 +740,9 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
 
         if (trimmedlen) {
             nodesize = sizeof(raxNode) + trimmedlen + raxPadding(trimmedlen) + sizeof(raxNode *);
-            if (h->iskey && !h->isnull)
+            if (h->iskey && !h->isnull) {
                 nodesize += sizeof(void *);
+            }
             trimmed = rax_malloc(nodesize);
         }
 
@@ -793,13 +819,15 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
         /* Allocate postfix & trimmed nodes ASAP to fail for OOM gracefully. */
         size_t postfixlen = h->size - j;
         size_t nodesize = sizeof(raxNode) + postfixlen + raxPadding(postfixlen) + sizeof(raxNode *);
-        if (data != NULL)
+        if (data != NULL) {
             nodesize += sizeof(void *);
+        }
         raxNode *postfix = rax_malloc(nodesize);
 
         nodesize = sizeof(raxNode) + j + raxPadding(j) + sizeof(raxNode *);
-        if (h->iskey && !h->isnull)
+        if (h->iskey && !h->isnull) {
             nodesize += sizeof(void *);
+        }
         raxNode *trimmed = rax_malloc(nodesize);
 
         if (postfix == NULL || trimmed == NULL) {
@@ -860,11 +888,13 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
         if (h->size == 0 && len - i > 1) {
             debugf("Inserting compressed node\n");
             size_t comprsize = len - i;
-            if (comprsize > RAX_NODE_MAX_SIZE)
+            if (comprsize > RAX_NODE_MAX_SIZE) {
                 comprsize = RAX_NODE_MAX_SIZE;
+            }
             raxNode *newh = raxCompressNode(h, s + i, comprsize, &child);
-            if (newh == NULL)
+            if (newh == NULL) {
                 goto oom;
+            }
             h = newh;
             memcpy(parentlink, &h, sizeof(h));
             parentlink = raxNodeLastChildPtr(h);
@@ -873,8 +903,9 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
             debugf("Inserting normal node\n");
             raxNode **new_parentlink;
             raxNode *newh = raxAddChild(h, s[i], &child, &new_parentlink);
-            if (newh == NULL)
+            if (newh == NULL) {
                 goto oom;
+            }
             h = newh;
             memcpy(parentlink, &h, sizeof(h));
             parentlink = new_parentlink;
@@ -884,11 +915,13 @@ int raxGenericInsert(rax *rax, unsigned char *s, size_t len, void *data, void **
         h = child;
     }
     raxNode *newh = raxReallocForData(h, data);
-    if (newh == NULL)
+    if (newh == NULL) {
         goto oom;
+    }
     h = newh;
-    if (!h->iskey)
+    if (!h->iskey) {
         rax->numele++;
+    }
     raxSetData(h, data);
     memcpy(parentlink, &h, sizeof(h));
     return 1; /* Element inserted. */
@@ -931,8 +964,9 @@ void *raxFind(rax *rax, unsigned char *s, size_t len) {
     debugf("### Lookup: %.*s\n", (int)len, s);
     int splitpos = 0;
     size_t i = raxLowWalk(rax, s, len, &h, NULL, &splitpos, NULL);
-    if (i != len || (h->iscompr && splitpos != 0) || !h->iskey)
+    if (i != len || (h->iscompr && splitpos != 0) || !h->iskey) {
         return raxNotFound;
+    }
     return raxGetData(h);
 }
 
@@ -946,8 +980,9 @@ raxNode **raxFindParentLink(raxNode *parent, raxNode *child) {
     raxNode *c;
     while (1) {
         memcpy(&c, cp, sizeof(c));
-        if (c == child)
+        if (c == child) {
             break;
+        }
         cp++;
     }
     return cp;
@@ -964,13 +999,15 @@ raxNode *raxRemoveChild(raxNode *parent, raxNode *child) {
      * it into a normal node without children. */
     if (parent->iscompr) {
         void *data = NULL;
-        if (parent->iskey)
+        if (parent->iskey) {
             data = raxGetData(parent);
+        }
         parent->isnull = 0;
         parent->iscompr = 0;
         parent->size = 0;
-        if (parent->iskey)
+        if (parent->iskey) {
             raxSetData(parent, data);
+        }
         debugnode("raxRemoveChild after", parent);
         return parent;
     }
@@ -989,8 +1026,9 @@ raxNode *raxRemoveChild(raxNode *parent, raxNode *child) {
     while (1) {
         raxNode *aux;
         memcpy(&aux, c, sizeof(aux));
-        if (aux == child)
+        if (aux == child) {
             break;
+        }
         c++;
         e++;
     }
@@ -1010,8 +1048,9 @@ raxNode *raxRemoveChild(raxNode *parent, raxNode *child) {
     size_t shift = ((parent->size + 4) % sizeof(void *)) == 1 ? sizeof(void *) : 0;
 
     /* Move the children pointers before the deletion point. */
-    if (shift)
+    if (shift) {
         memmove(((char *)cp) - shift, cp, (parent->size - taillen - 1) * sizeof(raxNode **));
+    }
 
     /* Move the remaining "tail" pointers at the right position as well. */
     size_t valuelen = (parent->iskey && !parent->isnull) ? sizeof(void *) : 0;
@@ -1045,8 +1084,9 @@ int raxRemove(rax *rax, unsigned char *s, size_t len, void **old) {
         raxStackFree(&ts);
         return 0;
     }
-    if (old)
+    if (old) {
         *old = raxGetData(h);
+    }
     h->iskey = 0;
     rax->numele--;
 
@@ -1070,8 +1110,9 @@ int raxRemove(rax *rax, unsigned char *s, size_t len, void **old) {
             h = raxStackPop(&ts);
             /* If this node has more then one child, or actually holds
              * a key, stop here. */
-            if (h->iskey || (!h->iscompr && h->size != 1))
+            if (h->iskey || (!h->iscompr && h->size != 1)) {
                 break;
+            }
         }
         if (child) {
             debugf("Unlinking child %p from parent %p\n", (void *)child, (void *)h);
@@ -1102,8 +1143,9 @@ int raxRemove(rax *rax, unsigned char *s, size_t len, void **old) {
 
     /* Don't try node compression if our nodes pointers stack is not
      * complete because of OOM while executing raxLowWalk() */
-    if (trycompress && ts.oom)
+    if (trycompress && ts.oom) {
         trycompress = 0;
+    }
 
     /* Recompression: if trycompress is true, 'h' points to a radix tree node
      * that changed in a way that could allow to compress nodes in this
@@ -1159,8 +1201,9 @@ int raxRemove(rax *rax, unsigned char *s, size_t len, void **old) {
         raxNode *parent;
         while (1) {
             parent = raxStackPop(&ts);
-            if (!parent || parent->iskey || (!parent->iscompr && parent->size != 1))
+            if (!parent || parent->iskey || (!parent->iscompr && parent->size != 1)) {
                 break;
+            }
             h = parent;
             debugnode("Going up to", h);
         }
@@ -1172,12 +1215,14 @@ int raxRemove(rax *rax, unsigned char *s, size_t len, void **old) {
         while (h->size != 0) {
             raxNode **cp = raxNodeLastChildPtr(h);
             memcpy(&h, cp, sizeof(h));
-            if (h->iskey || (!h->iscompr && h->size != 1))
+            if (h->iskey || (!h->iscompr && h->size != 1)) {
                 break;
+            }
             /* Stop here if going to the next node would result into
              * a compressed node larger than h->size can hold. */
-            if (comprsize + h->size > RAX_NODE_MAX_SIZE)
+            if (comprsize + h->size > RAX_NODE_MAX_SIZE) {
                 break;
+            }
             nodes++;
             comprsize += h->size;
         }
@@ -1210,8 +1255,9 @@ int raxRemove(rax *rax, unsigned char *s, size_t len, void **old) {
                 memcpy(&h, cp, sizeof(h));
                 rax_free(tofree);
                 rax->numnodes--;
-                if (h->iskey || (!h->iscompr && h->size != 1))
+                if (h->iskey || (!h->iscompr && h->size != 1)) {
                     break;
+                }
             }
             debugnode("New node", new);
 
@@ -1248,8 +1294,9 @@ void raxRecursiveFree(rax *rax, raxNode *n, void (*free_callback)(void *)) {
         cp--;
     }
     debugnode("free depth-first", n);
-    if (free_callback && n->iskey && !n->isnull)
+    if (free_callback && n->iskey && !n->isnull) {
         free_callback(raxGetData(n));
+    }
     rax_free(n);
     rax->numnodes--;
 }
@@ -1287,8 +1334,9 @@ void raxStart(raxIterator *it, rax *rt) {
  * is a low level function used to implement the iterator, not callable by
  * the user. Returns 0 on out of memory, otherwise 1 is returned. */
 int raxIteratorAddChars(raxIterator *it, unsigned char *s, size_t len) {
-    if (len == 0)
+    if (len == 0) {
         return 1;
+    }
     if (it->key_max < it->key_len + len) {
         unsigned char *old = (it->key == it->key_static_string) ? NULL : it->key;
         size_t new_max = (it->key_len + len) * 2;
@@ -1298,8 +1346,9 @@ int raxIteratorAddChars(raxIterator *it, unsigned char *s, size_t len) {
             errno = ENOMEM;
             return 0;
         }
-        if (old == NULL)
+        if (old == NULL) {
             memcpy(it->key, it->key_static_string, it->key_len);
+        }
         it->key_max = new_max;
     }
     /* Use memmove since there could be an overlap between 's' and
@@ -1350,16 +1399,19 @@ int raxIteratorNextStep(raxIterator *it, int noup) {
             /* Seek the lexicographically smaller key in this subtree, which
              * is the first one found always going towards the first child
              * of every successive node. */
-            if (!raxStackPush(&it->stack, it->node))
+            if (!raxStackPush(&it->stack, it->node)) {
                 return 0;
+            }
             raxNode **cp = raxNodeFirstChildPtr(it->node);
-            if (!raxIteratorAddChars(it, it->node->data, it->node->iscompr ? it->node->size : 1))
+            if (!raxIteratorAddChars(it, it->node->data, it->node->iscompr ? it->node->size : 1)) {
                 return 0;
+            }
             memcpy(&it->node, cp, sizeof(it->node));
             /* Call the node callback if any, and replace the node pointer
              * if the callback returns true. */
-            if (it->node_cb && it->node_cb(&it->node))
+            if (it->node_cb && it->node_cb(&it->node)) {
                 memcpy(cp, &it->node, sizeof(it->node));
+            }
             /* For "next" step, stop every time we find a key along the
              * way, since the key is lexicographically smaller compared to
              * what follows in the sub-children. */
@@ -1403,21 +1455,24 @@ int raxIteratorNextStep(raxIterator *it, int noup) {
                     int i = 0;
                     while (i < it->node->size) {
                         debugf("SCAN NEXT %c\n", it->node->data[i]);
-                        if (it->node->data[i] > prevchild)
+                        if (it->node->data[i] > prevchild) {
                             break;
+                        }
                         i++;
                         cp++;
                     }
                     if (i != it->node->size) {
                         debugf("SCAN found a new node\n");
                         raxIteratorAddChars(it, it->node->data + i, 1);
-                        if (!raxStackPush(&it->stack, it->node))
+                        if (!raxStackPush(&it->stack, it->node)) {
                             return 0;
+                        }
                         memcpy(&it->node, cp, sizeof(it->node));
                         /* Call the node callback if any, and replace the node
                          * pointer if the callback returns true. */
-                        if (it->node_cb && it->node_cb(&it->node))
+                        if (it->node_cb && it->node_cb(&it->node)) {
                             memcpy(cp, &it->node, sizeof(it->node));
+                        }
                         if (it->node->iskey) {
                             it->data = raxGetData(it->node);
                             return 1;
@@ -1436,15 +1491,18 @@ int raxIteratorNextStep(raxIterator *it, int noup) {
 int raxSeekGreatest(raxIterator *it) {
     while (it->node->size) {
         if (it->node->iscompr) {
-            if (!raxIteratorAddChars(it, it->node->data, it->node->size))
+            if (!raxIteratorAddChars(it, it->node->data, it->node->size)) {
                 return 0;
+            }
         } else {
-            if (!raxIteratorAddChars(it, it->node->data + it->node->size - 1, 1))
+            if (!raxIteratorAddChars(it, it->node->data + it->node->size - 1, 1)) {
                 return 0;
+            }
         }
         raxNode **cp = raxNodeLastChildPtr(it->node);
-        if (!raxStackPush(&it->stack, it->node))
+        if (!raxStackPush(&it->stack, it->node)) {
             return 0;
+        }
         memcpy(&it->node, cp, sizeof(it->node));
     }
     return 1;
@@ -1498,8 +1556,9 @@ int raxIteratorPrevStep(raxIterator *it, int noup) {
             int i = it->node->size - 1;
             while (i >= 0) {
                 debugf("SCAN PREV %c\n", it->node->data[i]);
-                if (it->node->data[i] < prevchild)
+                if (it->node->data[i] < prevchild) {
                     break;
+                }
                 i--;
                 cp--;
             }
@@ -1509,14 +1568,17 @@ int raxIteratorPrevStep(raxIterator *it, int noup) {
             if (i != -1) {
                 debugf("SCAN found a new node\n");
                 /* Enter the node we just found. */
-                if (!raxIteratorAddChars(it, it->node->data + i, 1))
+                if (!raxIteratorAddChars(it, it->node->data + i, 1)) {
                     return 0;
-                if (!raxStackPush(&it->stack, it->node))
+                }
+                if (!raxStackPush(&it->stack, it->node)) {
                     return 0;
+                }
                 memcpy(&it->node, cp, sizeof(it->node));
                 /* Seek sub-tree max. */
-                if (!raxSeekGreatest(it))
+                if (!raxSeekGreatest(it)) {
                     return 0;
+                }
             }
         }
 
@@ -1546,12 +1608,14 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
     /* Set flags according to the operator used to perform the seek. */
     if (op[0] == '>') {
         gt = 1;
-        if (op[1] == '=')
+        if (op[1] == '=') {
             eq = 1;
+        }
     } else if (op[0] == '<') {
         lt = 1;
-        if (op[1] == '=')
+        if (op[1] == '=') {
             eq = 1;
+        }
     } else if (op[0] == '=') {
         eq = 1;
     } else if (op[0] == '^') {
@@ -1580,8 +1644,9 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
         /* Find the greatest key taking always the last child till a
          * final node is found. */
         it->node = it->rt->head;
-        if (!raxSeekGreatest(it))
+        if (!raxSeekGreatest(it)) {
             return 0;
+        }
         assert(it->node->iskey);
         it->data = raxGetData(it->node);
         return 1;
@@ -1594,14 +1659,16 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
     size_t i = raxLowWalk(it->rt, ele, len, &it->node, NULL, &splitpos, &it->stack);
 
     /* Return OOM on incomplete stack info. */
-    if (it->stack.oom)
+    if (it->stack.oom) {
         return 0;
+    }
 
     if (eq && i == len && (!it->node->iscompr || splitpos == 0) && it->node->iskey) {
         /* We found our node, since the key matches and we have an
          * "equal" condition. */
-        if (!raxIteratorAddChars(it, ele, len))
+        if (!raxIteratorAddChars(it, ele, len)) {
             return 0; /* OOM. */
+        }
         it->data = raxGetData(it->node);
     } else if (lt || gt) {
         /* Exact key not found or eq flag not set. We have to set as current
@@ -1618,15 +1685,18 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
              * and call the iterator with the 'noup' flag so that it will try
              * to seek the next/prev child in the current node directly based
              * on the mismatching character. */
-            if (!raxIteratorAddChars(it, ele + i, 1))
+            if (!raxIteratorAddChars(it, ele + i, 1)) {
                 return 0;
+            }
             debugf("Seek normal node on mismatch: %.*s\n", (int)it->key_len, (char *)it->key);
 
             it->flags &= ~RAX_ITER_JUST_SEEKED;
-            if (lt && !raxIteratorPrevStep(it, 1))
+            if (lt && !raxIteratorPrevStep(it, 1)) {
                 return 0;
-            if (gt && !raxIteratorNextStep(it, 1))
+            }
+            if (gt && !raxIteratorNextStep(it, 1)) {
                 return 0;
+            }
             it->flags |= RAX_ITER_JUST_SEEKED; /* Ignore next call. */
         } else if (i != len && it->node->iscompr) {
             debugf("Compressed mismatch: %.*s\n", (int)it->key_len, (char *)it->key);
@@ -1639,13 +1709,16 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
                  * than our seek element, continue forward, otherwise set the
                  * state in order to go back to the next sub-tree. */
                 if (nodechar > keychar) {
-                    if (!raxIteratorNextStep(it, 0))
+                    if (!raxIteratorNextStep(it, 0)) {
                         return 0;
+                    }
                 } else {
-                    if (!raxIteratorAddChars(it, it->node->data, it->node->size))
+                    if (!raxIteratorAddChars(it, it->node->data, it->node->size)) {
                         return 0;
-                    if (!raxIteratorNextStep(it, 1))
+                    }
+                    if (!raxIteratorNextStep(it, 1)) {
                         return 0;
+                    }
                 }
             }
             if (lt) {
@@ -1654,14 +1727,17 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
                  * subtree, otherwise set the state in order to go back to
                  * the previous sub-tree. */
                 if (nodechar < keychar) {
-                    if (!raxSeekGreatest(it))
+                    if (!raxSeekGreatest(it)) {
                         return 0;
+                    }
                     it->data = raxGetData(it->node);
                 } else {
-                    if (!raxIteratorAddChars(it, it->node->data, it->node->size))
+                    if (!raxIteratorAddChars(it, it->node->data, it->node->size)) {
                         return 0;
-                    if (!raxIteratorPrevStep(it, 1))
+                    }
+                    if (!raxIteratorPrevStep(it, 1)) {
                         return 0;
+                    }
                 }
             }
             it->flags |= RAX_ITER_JUST_SEEKED; /* Ignore next call. */
@@ -1688,10 +1764,12 @@ int raxSeek(raxIterator *it, const char *op, unsigned char *ele, size_t len) {
                  * So in that case, we don't seek backward. */
                 it->data = raxGetData(it->node);
             } else {
-                if (gt && !raxIteratorNextStep(it, 0))
+                if (gt && !raxIteratorNextStep(it, 0)) {
                     return 0;
-                if (lt && !raxIteratorPrevStep(it, 0))
+                }
+                if (lt && !raxIteratorPrevStep(it, 0)) {
                     return 0;
+                }
             }
             it->flags |= RAX_ITER_JUST_SEEKED; /* Ignore next call. */
         }
@@ -1770,19 +1848,23 @@ int raxRandomWalk(raxIterator *it, size_t steps) {
         } else {
             /* Select a random child. */
             if (n->iscompr) {
-                if (!raxIteratorAddChars(it, n->data, n->size))
+                if (!raxIteratorAddChars(it, n->data, n->size)) {
                     return 0;
+                }
             } else {
-                if (!raxIteratorAddChars(it, n->data + r, 1))
+                if (!raxIteratorAddChars(it, n->data + r, 1)) {
                     return 0;
+                }
             }
             raxNode **cp = raxNodeFirstChildPtr(n) + r;
-            if (!raxStackPush(&it->stack, n))
+            if (!raxStackPush(&it->stack, n)) {
                 return 0;
+            }
             memcpy(&n, cp, sizeof(n));
         }
-        if (n->iskey)
+        if (n->iskey) {
             steps--;
+        }
     }
     it->node = n;
     it->data = raxGetData(it->node);
@@ -1795,33 +1877,37 @@ int raxRandomWalk(raxIterator *it, size_t steps) {
 int raxCompare(raxIterator *iter, const char *op, unsigned char *key, size_t key_len) {
     int eq = 0, lt = 0, gt = 0;
 
-    if (op[0] == '=' || op[1] == '=')
+    if (op[0] == '=' || op[1] == '=') {
         eq = 1;
-    if (op[0] == '>')
+    }
+    if (op[0] == '>') {
         gt = 1;
-    else if (op[0] == '<')
+    } else if (op[0] == '<') {
         lt = 1;
-    else if (op[1] != '=')
+    } else if (op[1] != '=') {
         return 0; /* Syntax error. */
+    }
 
     size_t minlen = key_len < iter->key_len ? key_len : iter->key_len;
     int cmp = memcmp(iter->key, key, minlen);
 
     /* Handle == */
-    if (lt == 0 && gt == 0)
+    if (lt == 0 && gt == 0) {
         return cmp == 0 && key_len == iter->key_len;
+    }
 
     /* Handle >, >=, <, <= */
     if (cmp == 0) {
         /* Same prefix: longer wins. */
-        if (eq && key_len == iter->key_len)
+        if (eq && key_len == iter->key_len) {
             return 1;
-        else if (lt)
+        } else if (lt) {
             return iter->key_len < key_len;
-        else if (gt)
+        } else if (gt) {
             return iter->key_len > key_len;
-        else
+        } else {
             return 0; /* Avoid warning, just 'eq' is handled before. */
+        }
     } else if (cmp > 0) {
         return gt ? 1 : 0;
     } else /* (cmp < 0) */ {
@@ -1831,8 +1917,9 @@ int raxCompare(raxIterator *iter, const char *op, unsigned char *key, size_t key
 
 /* Free the iterator. */
 void raxStop(raxIterator *it) {
-    if (it->key != it->key_static_string)
+    if (it->key != it->key_static_string) {
         rax_free(it->key);
+    }
     raxStackFree(&it->stack);
 }
 
@@ -1891,16 +1978,18 @@ void raxRecursiveShow(int level, int lpad, raxNode *n) {
      * of " `-(x) " and " -> " respectively. */
     if (level) {
         lpad += (numchildren > 1) ? 7 : 4;
-        if (numchildren == 1)
+        if (numchildren == 1) {
             lpad += numchars;
+        }
     }
     raxNode **cp = raxNodeFirstChildPtr(n);
     for (int i = 0; i < numchildren; i++) {
         char *branch = " `-(%c) ";
         if (numchildren > 1) {
             printf("\n");
-            for (int j = 0; j < lpad; j++)
+            for (int j = 0; j < lpad; j++) {
                 putchar(' ');
+            }
             printf(branch, n->data[i]);
         } else {
             printf(" -> ");
@@ -1920,8 +2009,9 @@ void raxShow(rax *rax) {
 
 /* Used by debugnode() macro to show info about a given node. */
 void raxDebugShowNode(const char *msg, raxNode *n) {
-    if (raxDebugMsg == 0)
+    if (raxDebugMsg == 0) {
         return;
+    }
     printf("%s: %p [%.*s] key:%u size:%u children:", msg, (void *)n, (int)n->size, (char *)n->data, n->iskey, n->size);
     int numcld = n->iscompr ? 1 : n->size;
     raxNode **cldptr = raxNodeLastChildPtr(n) - (numcld - 1);
@@ -1968,10 +2058,12 @@ unsigned long raxTouch(raxNode *n) {
         }
         raxNode *child;
         memcpy(&child, cp, sizeof(child));
-        if (child == (void *)0x65d1760)
+        if (child == (void *)0x65d1760) {
             count++;
-        if (count > 1)
+        }
+        if (count > 1) {
             exit(1);
+        }
         sum += raxTouch(child);
         cp++;
     }

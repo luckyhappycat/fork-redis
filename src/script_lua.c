@@ -324,11 +324,13 @@ static void redisProtocolToLuaType_Map(struct ReplyParser *parser, void *ctx, si
     for (size_t j = 0; j < len; j++) {
         parseReply(parser, lua);
         parseReply(parser, lua);
-        if (lua)
+        if (lua) {
             lua_settable(lua, -3);
+        }
     }
-    if (lua)
+    if (lua) {
         lua_settable(lua, -3);
+    }
 }
 
 static void redisProtocolToLuaType_Set(struct ReplyParser *parser, void *ctx, size_t len, const char *proto) {
@@ -359,8 +361,9 @@ static void redisProtocolToLuaType_Set(struct ReplyParser *parser, void *ctx, si
             lua_settable(lua, -3);
         }
     }
-    if (lua)
+    if (lua) {
         lua_settable(lua, -3);
+    }
 }
 
 static void redisProtocolToLuaType_Array(struct ReplyParser *parser, void *ctx, size_t len, const char *proto) {
@@ -376,11 +379,13 @@ static void redisProtocolToLuaType_Array(struct ReplyParser *parser, void *ctx, 
         lua_newtable(lua);
     }
     for (size_t j = 0; j < len; j++) {
-        if (lua)
+        if (lua) {
             lua_pushnumber(lua, j + 1);
+        }
         parseReply(parser, lua);
-        if (lua)
+        if (lua) {
             lua_settable(lua, -3);
+        }
     }
 }
 
@@ -584,10 +589,11 @@ static void luaReplyToRedisReply(client *c, client *script_client, lua_State *lu
             addReplyBulkCBuffer(c, (char *)lua_tostring(lua, -1), lua_strlen(lua, -1));
             break;
         case LUA_TBOOLEAN:
-            if (script_client->resp == 2)
+            if (script_client->resp == 2) {
                 addReply(c, lua_toboolean(lua, -1) ? shared.cone : shared.null[c->resp]);
-            else
+            } else {
                 addReplyBool(c, lua_toboolean(lua, -1));
+            }
             break;
         case LUA_TNUMBER:
             addReplyLongLong(c, (long long)lua_tonumber(lua, -1));
@@ -791,8 +797,9 @@ static robj **luaArgsToRedisArgv(lua_State *lua, int *argc, int *argv_len) {
             obj_s = dbuf;
         } else {
             obj_s = (char *)lua_tolstring(lua, j + 1, &obj_len);
-            if (obj_s == NULL)
+            if (obj_s == NULL) {
                 break; /* Not a string. */
+            }
         }
         /* Try to use a cached object. */
         if (j < LUA_CMD_OBJCACHE_SIZE && lua_args_cached_objects[j] && lua_args_cached_objects_len[j] >= obj_len) {
@@ -833,8 +840,9 @@ void freeLuaRedisArgv(robj **argv, int argc, int argv_len) {
         if (j < LUA_CMD_OBJCACHE_SIZE && o->refcount == 1 && (o->encoding == OBJ_ENCODING_RAW || o->encoding == OBJ_ENCODING_EMBSTR) &&
             sdslen(o->ptr) <= LUA_CMD_OBJCACHE_MAX_LEN) {
             sds s = o->ptr;
-            if (lua_args_cached_objects[j])
+            if (lua_args_cached_objects[j]) {
                 decrRefCount(lua_args_cached_objects[j]);
+            }
             lua_args_cached_objects[j] = o;
             lua_args_cached_objects_len[j] = sdsalloc(s);
         } else {
@@ -925,16 +933,19 @@ static int luaRedisGenericCommand(lua_State *lua, int raise_error) {
             listDelNode(c->reply, listFirst(c->reply));
         }
     }
-    if (raise_error && reply[0] != '-')
+    if (raise_error && reply[0] != '-') {
         raise_error = 0;
+    }
     redisProtocolToLuaType(lua, reply);
 
     /* If the debugger is active, log the reply from Redis. */
-    if (ldbIsEnabled())
+    if (ldbIsEnabled()) {
         ldbLogRedisReply(reply);
+    }
 
-    if (reply != c->buf)
+    if (reply != c->buf) {
         sdsfree(reply);
+    }
     c->reply_bytes = 0;
 
 cleanup:
@@ -1094,8 +1105,9 @@ static int luaRedisAclCheckCmdPermissionsCommand(lua_State *lua) {
     robj **argv = luaArgsToRedisArgv(lua, &argc, &argv_len);
 
     /* Require at least one argument */
-    if (argv == NULL)
+    if (argv == NULL) {
         return luaError(lua);
+    }
 
     /* Find command */
     struct redisCommand *cmd;
@@ -1112,10 +1124,11 @@ static int luaRedisAclCheckCmdPermissionsCommand(lua_State *lua) {
     }
 
     freeLuaRedisArgv(argv, argc, argv_len);
-    if (raise_error)
+    if (raise_error) {
         return luaError(lua);
-    else
+    } else {
         return 1;
+    }
 }
 
 /* redis.log() */
@@ -1136,8 +1149,9 @@ static int luaLogCommand(lua_State *lua) {
         luaPushError(lua, "Invalid debug level.");
         return luaError(lua);
     }
-    if (level < server.verbosity)
+    if (level < server.verbosity) {
         return 0;
+    }
 
     /* Glue together all the arguments */
     log = sdsempty();
@@ -1147,8 +1161,9 @@ static int luaLogCommand(lua_State *lua) {
 
         s = (char *)lua_tolstring(lua, (-argc) + j, &len);
         if (s) {
-            if (j != 1)
+            if (j != 1) {
                 log = sdscatlen(log, " ", 1);
+            }
             log = sdscatlen(log, s, len);
         }
     }
@@ -1541,12 +1556,15 @@ static void luaMaskCountHook(lua_State *lua, lua_Debug *ar) {
 }
 
 void luaErrorInformationDiscard(errorInfo *err_info) {
-    if (err_info->msg)
+    if (err_info->msg) {
         sdsfree(err_info->msg);
-    if (err_info->source)
+    }
+    if (err_info->source) {
         sdsfree(err_info->source);
-    if (err_info->line)
+    }
+    if (err_info->line) {
         sdsfree(err_info->line);
+    }
 }
 
 void luaExtractErrorInformation(lua_State *lua, errorInfo *err_info) {
@@ -1678,8 +1696,9 @@ void luaCallFunction(scriptRunCtx *run_ctx, lua_State *lua, robj **keys, size_t 
     }
 
     /* Perform some cleanup that we need to do both on error and success. */
-    if (delhook)
+    if (delhook) {
         lua_sethook(lua, NULL, 0, 0); /* Disable hook */
+    }
 
     /* remove run_ctx from registry, its only applicable for the current script. */
     luaSaveOnRegistry(lua, REGISTRY_RUN_CTX_NAME, NULL);

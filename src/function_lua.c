@@ -208,8 +208,9 @@ static void luaRegisterFunctionArgsInitialize(registerFunctionArgs *register_f_a
 
 static void luaRegisterFunctionArgsDispose(lua_State *lua, registerFunctionArgs *register_f_args) {
     sdsfree(register_f_args->name);
-    if (register_f_args->desc)
+    if (register_f_args->desc) {
         sdsfree(register_f_args->desc);
+    }
     lua_unref(lua, register_f_args->lua_f_ctx->lua_function_ref);
     zfree(register_f_args->lua_f_ctx);
 }
@@ -330,10 +331,12 @@ static int luaRegisterFunctionReadNamedArgs(lua_State *lua, registerFunctionArgs
     return C_OK;
 
 error:
-    if (name)
+    if (name) {
         sdsfree(name);
-    if (desc)
+    }
+    if (desc) {
         sdsfree(desc);
+    }
     if (lua_f_ctx) {
         lua_unref(lua, lua_f_ctx->lua_function_ref);
         zfree(lua_f_ctx);
@@ -367,10 +370,12 @@ static int luaRegisterFunctionReadPositionalArgs(lua_State *lua, registerFunctio
     return C_OK;
 
 error:
-    if (name)
+    if (name) {
         sdsfree(name);
-    if (desc)
+    }
+    if (desc) {
         sdsfree(desc);
+    }
     luaPushError(lua, err);
     return C_ERR;
 }

@@ -73,8 +73,9 @@ typedef struct aeApiState {
 static int aeApiCreate(aeEventLoop *eventLoop) {
     int i;
     aeApiState *state = zmalloc(sizeof(aeApiState));
-    if (!state)
+    if (!state) {
         return -1;
+    }
 
     state->portfd = port_create();
     if (state->portfd == -1) {
@@ -112,8 +113,9 @@ static int aeApiLookupPending(aeApiState *state, int fd) {
     uint_t i;
 
     for (i = 0; i < state->npending; i++) {
-        if (state->pending_fds[i] == fd)
+        if (state->pending_fds[i] == fd) {
             return (i);
+        }
     }
 
     return (-1);
@@ -126,25 +128,30 @@ static int aeApiAssociate(const char *where, int portfd, int fd, int mask) {
     int events = 0;
     int rv, err;
 
-    if (mask & AE_READABLE)
+    if (mask & AE_READABLE) {
         events |= POLLIN;
-    if (mask & AE_WRITABLE)
+    }
+    if (mask & AE_WRITABLE) {
         events |= POLLOUT;
+    }
 
-    if (evport_debug)
+    if (evport_debug) {
         fprintf(stderr, "%s: port_associate(%d, 0x%x) = ", where, fd, events);
+    }
 
     rv = port_associate(portfd, PORT_SOURCE_FD, fd, events, (void *)(uintptr_t)mask);
     err = errno;
 
-    if (evport_debug)
+    if (evport_debug) {
         fprintf(stderr, "%d (%s)\n", rv, rv == 0 ? "no error" : strerror(err));
+    }
 
     if (rv == -1) {
         fprintf(stderr, "%s: port_associate: %s\n", where, strerror(err));
 
-        if (err == EAGAIN)
+        if (err == EAGAIN) {
             fprintf(stderr, "aeApiAssociate: event port limit exceeded.");
+        }
     }
 
     return rv;
@@ -154,8 +161,9 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     int fullmask, pfd;
 
-    if (evport_debug)
+    if (evport_debug) {
         fprintf(stderr, "aeApiAddEvent: fd %d mask 0x%x\n", fd, mask);
+    }
 
     /*
      * Since port_associate's "events" argument replaces any existing events, we
@@ -172,8 +180,9 @@ static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * it safer by simply updating pending_mask.  The fd will be
          * re-associated as usual when aeApiPoll is called again.
          */
-        if (evport_debug)
+        if (evport_debug) {
             fprintf(stderr, "aeApiAddEvent: adding to pending fd %d\n", fd);
+        }
         state->pending_masks[pfd] |= fullmask;
         return 0;
     }
@@ -185,14 +194,16 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
     aeApiState *state = eventLoop->apidata;
     int fullmask, pfd;
 
-    if (evport_debug)
+    if (evport_debug) {
         fprintf(stderr, "del fd %d mask 0x%x\n", fd, mask);
+    }
 
     pfd = aeApiLookupPending(state, fd);
 
     if (pfd != -1) {
-        if (evport_debug)
+        if (evport_debug) {
             fprintf(stderr, "deleting event from pending fd %d\n", fd);
+        }
 
         /*
          * This fd was just returned from aeApiPoll, so it's not currently
@@ -201,8 +212,9 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
          */
         state->pending_masks[pfd] &= ~mask;
 
-        if (state->pending_masks[pfd] == AE_NONE)
+        if (state->pending_masks[pfd] == AE_NONE) {
             state->pending_fds[pfd] = -1;
+        }
 
         return;
     }
@@ -221,8 +233,9 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int mask) {
          * We're removing *all* events, so use port_dissociate to remove the
          * association completely.  Failure here indicates a bug.
          */
-        if (evport_debug)
+        if (evport_debug) {
             fprintf(stderr, "aeApiDelEvent: port_dissociate(%d)\n", fd);
+        }
 
         if (port_dissociate(state->portfd, PORT_SOURCE_FD, fd) != 0) {
             perror("aeApiDelEvent: port_dissociate");
@@ -253,9 +266,10 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
      * this file for an explanation of why.
      */
     for (i = 0; i < state->npending; i++) {
-        if (state->pending_fds[i] == -1)
+        if (state->pending_fds[i] == -1) {
             /* This fd has since been deleted. */
             continue;
+        }
 
         if (aeApiAssociate("aeApiPoll", state->portfd, state->pending_fds[i], state->pending_masks[i]) != 0) {
             /* See aeApiDelEvent for why this case is fatal. */
@@ -282,8 +296,9 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
      */
     nevents = 1;
     if (port_getn(state->portfd, event, MAX_EVENT_BATCHSZ, &nevents, tsp) == -1 && (errno != ETIME || nevents == 0)) {
-        if (errno == ETIME || errno == EINTR)
+        if (errno == ETIME || errno == EINTR) {
             return 0;
+        }
 
         /* Any other error indicates a bug. */
         panic("aeApiPoll: port_getn, %s", strerror(errno));
@@ -293,16 +308,19 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
 
     for (i = 0; i < nevents; i++) {
         mask = 0;
-        if (event[i].portev_events & POLLIN)
+        if (event[i].portev_events & POLLIN) {
             mask |= AE_READABLE;
-        if (event[i].portev_events & POLLOUT)
+        }
+        if (event[i].portev_events & POLLOUT) {
             mask |= AE_WRITABLE;
+        }
 
         eventLoop->fired[i].fd = event[i].portev_object;
         eventLoop->fired[i].mask = mask;
 
-        if (evport_debug)
+        if (evport_debug) {
             fprintf(stderr, "aeApiPoll: fd %d mask 0x%x\n", (int)event[i].portev_object, mask);
+        }
 
         state->pending_fds[i] = event[i].portev_object;
         state->pending_masks[i] = (uintptr_t)event[i].portev_user;

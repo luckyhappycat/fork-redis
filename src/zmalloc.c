@@ -112,23 +112,27 @@ void *extend_to_usable(void *ptr, size_t size) {
  * '*usable' is set to the usable size if non NULL. */
 static inline void *ztrymalloc_usable_internal(size_t size, size_t *usable) {
     /* Possible overflow, return NULL, so that the caller can panic or handle a failed allocation. */
-    if (size >= SIZE_MAX / 2)
+    if (size >= SIZE_MAX / 2) {
         return NULL;
+    }
     void *ptr = malloc(MALLOC_MIN_SIZE(size) + PREFIX_SIZE);
 
-    if (!ptr)
+    if (!ptr) {
         return NULL;
+    }
 #ifdef HAVE_MALLOC_SIZE
     size = zmalloc_size(ptr);
     update_zmalloc_stat_alloc(size);
-    if (usable)
+    if (usable) {
         *usable = size;
+    }
     return ptr;
 #else
     *((size_t *)ptr) = size;
     update_zmalloc_stat_alloc(size + PREFIX_SIZE);
-    if (usable)
+    if (usable) {
         *usable = size;
+    }
     return (char *)ptr + PREFIX_SIZE;
 #endif
 }
@@ -139,16 +143,18 @@ void *ztrymalloc_usable(size_t size, size_t *usable) {
 #ifdef HAVE_MALLOC_SIZE
     ptr = extend_to_usable(ptr, usable_size);
 #endif
-    if (usable)
+    if (usable) {
         *usable = usable_size;
+    }
     return ptr;
 }
 
 /* Allocate memory or panic */
 void *zmalloc(size_t size) {
     void *ptr = ztrymalloc_usable_internal(size, NULL);
-    if (!ptr)
+    if (!ptr) {
         zmalloc_oom_handler(size);
+    }
     return ptr;
 }
 
@@ -163,13 +169,15 @@ void *ztrymalloc(size_t size) {
 void *zmalloc_usable(size_t size, size_t *usable) {
     size_t usable_size = 0;
     void *ptr = ztrymalloc_usable_internal(size, &usable_size);
-    if (!ptr)
+    if (!ptr) {
         zmalloc_oom_handler(size);
+    }
 #ifdef HAVE_MALLOC_SIZE
     ptr = extend_to_usable(ptr, usable_size);
 #endif
-    if (usable)
+    if (usable) {
         *usable = usable_size;
+    }
     return ptr;
 }
 
@@ -178,18 +186,21 @@ void *zmalloc_usable(size_t size, size_t *usable) {
  * Currently implemented only for jemalloc. Used for online defragmentation. */
 #ifdef HAVE_DEFRAG
 void *zmalloc_no_tcache(size_t size) {
-    if (size >= SIZE_MAX / 2)
+    if (size >= SIZE_MAX / 2) {
         zmalloc_oom_handler(size);
+    }
     void *ptr = mallocx(size + PREFIX_SIZE, MALLOCX_TCACHE_NONE);
-    if (!ptr)
+    if (!ptr) {
         zmalloc_oom_handler(size);
+    }
     update_zmalloc_stat_alloc(zmalloc_size(ptr));
     return ptr;
 }
 
 void zfree_no_tcache(void *ptr) {
-    if (ptr == NULL)
+    if (ptr == NULL) {
         return;
+    }
     update_zmalloc_stat_free(zmalloc_size(ptr));
     dallocx(ptr, MALLOCX_TCACHE_NONE);
 }
@@ -199,23 +210,27 @@ void zfree_no_tcache(void *ptr) {
  * '*usable' is set to the usable size if non NULL. */
 static inline void *ztrycalloc_usable_internal(size_t size, size_t *usable) {
     /* Possible overflow, return NULL, so that the caller can panic or handle a failed allocation. */
-    if (size >= SIZE_MAX / 2)
+    if (size >= SIZE_MAX / 2) {
         return NULL;
+    }
     void *ptr = calloc(1, MALLOC_MIN_SIZE(size) + PREFIX_SIZE);
-    if (ptr == NULL)
+    if (ptr == NULL) {
         return NULL;
+    }
 
 #ifdef HAVE_MALLOC_SIZE
     size = zmalloc_size(ptr);
     update_zmalloc_stat_alloc(size);
-    if (usable)
+    if (usable) {
         *usable = size;
+    }
     return ptr;
 #else
     *((size_t *)ptr) = size;
     update_zmalloc_stat_alloc(size + PREFIX_SIZE);
-    if (usable)
+    if (usable) {
         *usable = size;
+    }
     return (char *)ptr + PREFIX_SIZE;
 #endif
 }
@@ -226,8 +241,9 @@ void *ztrycalloc_usable(size_t size, size_t *usable) {
 #ifdef HAVE_MALLOC_SIZE
     ptr = extend_to_usable(ptr, usable_size);
 #endif
-    if (usable)
+    if (usable) {
         *usable = usable_size;
+    }
     return ptr;
 }
 
@@ -241,16 +257,18 @@ void *zcalloc_num(size_t num, size_t size) {
         return NULL;
     }
     void *ptr = ztrycalloc_usable_internal(num * size, NULL);
-    if (!ptr)
+    if (!ptr) {
         zmalloc_oom_handler(num * size);
+    }
     return ptr;
 }
 
 /* Allocate memory and zero it or panic */
 void *zcalloc(size_t size) {
     void *ptr = ztrycalloc_usable_internal(size, NULL);
-    if (!ptr)
+    if (!ptr) {
         zmalloc_oom_handler(size);
+    }
     return ptr;
 }
 
@@ -265,13 +283,15 @@ void *ztrycalloc(size_t size) {
 void *zcalloc_usable(size_t size, size_t *usable) {
     size_t usable_size = 0;
     void *ptr = ztrycalloc_usable_internal(size, &usable_size);
-    if (!ptr)
+    if (!ptr) {
         zmalloc_oom_handler(size);
+    }
 #ifdef HAVE_MALLOC_SIZE
     ptr = extend_to_usable(ptr, usable_size);
 #endif
-    if (usable)
+    if (usable) {
         *usable = usable_size;
+    }
     return ptr;
 }
 
@@ -287,19 +307,22 @@ static inline void *ztryrealloc_usable_internal(void *ptr, size_t size, size_t *
     /* not allocating anything, just redirect to free. */
     if (size == 0 && ptr != NULL) {
         zfree(ptr);
-        if (usable)
+        if (usable) {
             *usable = 0;
+        }
         return NULL;
     }
     /* Not freeing anything, just redirect to malloc. */
-    if (ptr == NULL)
+    if (ptr == NULL) {
         return ztrymalloc_usable(size, usable);
+    }
 
     /* Possible overflow, return NULL, so that the caller can panic or handle a failed allocation. */
     if (size >= SIZE_MAX / 2) {
         zfree(ptr);
-        if (usable)
+        if (usable) {
             *usable = 0;
+        }
         return NULL;
     }
 
@@ -307,32 +330,36 @@ static inline void *ztryrealloc_usable_internal(void *ptr, size_t size, size_t *
     oldsize = zmalloc_size(ptr);
     newptr = realloc(ptr, size);
     if (newptr == NULL) {
-        if (usable)
+        if (usable) {
             *usable = 0;
+        }
         return NULL;
     }
 
     update_zmalloc_stat_free(oldsize);
     size = zmalloc_size(newptr);
     update_zmalloc_stat_alloc(size);
-    if (usable)
+    if (usable) {
         *usable = size;
+    }
     return newptr;
 #else
     realptr = (char *)ptr - PREFIX_SIZE;
     oldsize = *((size_t *)realptr);
     newptr = realloc(realptr, size + PREFIX_SIZE);
     if (newptr == NULL) {
-        if (usable)
+        if (usable) {
             *usable = 0;
+        }
         return NULL;
     }
 
     *((size_t *)newptr) = size;
     update_zmalloc_stat_free(oldsize);
     update_zmalloc_stat_alloc(size);
-    if (usable)
+    if (usable) {
         *usable = size;
+    }
     return (char *)newptr + PREFIX_SIZE;
 #endif
 }
@@ -343,16 +370,18 @@ void *ztryrealloc_usable(void *ptr, size_t size, size_t *usable) {
 #ifdef HAVE_MALLOC_SIZE
     ptr = extend_to_usable(ptr, usable_size);
 #endif
-    if (usable)
+    if (usable) {
         *usable = usable_size;
+    }
     return ptr;
 }
 
 /* Reallocate memory and zero it or panic */
 void *zrealloc(void *ptr, size_t size) {
     ptr = ztryrealloc_usable_internal(ptr, size, NULL);
-    if (!ptr && size != 0)
+    if (!ptr && size != 0) {
         zmalloc_oom_handler(size);
+    }
     return ptr;
 }
 
@@ -367,13 +396,15 @@ void *ztryrealloc(void *ptr, size_t size) {
 void *zrealloc_usable(void *ptr, size_t size, size_t *usable) {
     size_t usable_size = 0;
     ptr = ztryrealloc_usable(ptr, size, &usable_size);
-    if (!ptr && size != 0)
+    if (!ptr && size != 0) {
         zmalloc_oom_handler(size);
+    }
 #ifdef HAVE_MALLOC_SIZE
     ptr = extend_to_usable(ptr, usable_size);
 #endif
-    if (usable)
+    if (usable) {
         *usable = usable_size;
+    }
     return ptr;
 }
 
@@ -397,8 +428,9 @@ void zfree(void *ptr) {
     size_t oldsize;
 #endif
 
-    if (ptr == NULL)
+    if (ptr == NULL) {
         return;
+    }
 #ifdef HAVE_MALLOC_SIZE
     update_zmalloc_stat_free(zmalloc_size(ptr));
     free(ptr);
@@ -417,8 +449,9 @@ void zfree_usable(void *ptr, size_t *usable) {
     size_t oldsize;
 #endif
 
-    if (ptr == NULL)
+    if (ptr == NULL) {
         return;
+    }
 #ifdef HAVE_MALLOC_SIZE
     update_zmalloc_stat_free(*usable = zmalloc_size(ptr));
     free(ptr);
@@ -454,13 +487,15 @@ void zmalloc_set_oom_handler(void (*oom_handler)(size_t)) {
 void zmadvise_dontneed(void *ptr) {
 #if defined(USE_JEMALLOC) && defined(__linux__)
     static size_t page_size = 0;
-    if (page_size == 0)
+    if (page_size == 0) {
         page_size = sysconf(_SC_PAGESIZE);
+    }
     size_t page_size_mask = page_size - 1;
 
     size_t real_size = zmalloc_size(ptr);
-    if (real_size < page_size)
+    if (real_size < page_size) {
         return;
+    }
 
     /* We need to align the pointer upwards according to page size, because
      * the memory address is increased upwards and we only can free memory
@@ -498,44 +533,53 @@ int get_proc_stat_ll(int i, long long *res) {
     int fd, l;
     char *p, *x;
 
-    if ((fd = open("/proc/self/stat", O_RDONLY)) == -1)
+    if ((fd = open("/proc/self/stat", O_RDONLY)) == -1) {
         return 0;
+    }
     if ((l = read(fd, buf, sizeof(buf) - 1)) <= 0) {
         close(fd);
         return 0;
     }
     close(fd);
     buf[l] = '\0';
-    if (buf[l - 1] == '\n')
+    if (buf[l - 1] == '\n') {
         buf[l - 1] = '\0';
+    }
 
     /* Skip pid and process name (surrounded with parentheses) */
     p = strrchr(buf, ')');
-    if (!p)
+    if (!p) {
         return 0;
+    }
     p++;
-    while (*p == ' ')
+    while (*p == ' ') {
         p++;
-    if (*p == '\0')
+    }
+    if (*p == '\0') {
         return 0;
+    }
     i -= 3;
-    if (i < 0)
+    if (i < 0) {
         return 0;
+    }
 
     while (p && i--) {
         p = strchr(p, ' ');
-        if (p)
+        if (p) {
             p++;
-        else
+        } else {
             return 0;
+        }
     }
     x = strchr(p, ' ');
-    if (x)
+    if (x) {
         *x = '\0';
+    }
 
     *res = strtoll(p, &x, 10);
-    if (*x != '\0')
+    if (*x != '\0') {
         return 0;
+    }
     return 1;
 #else
     UNUSED(i);
@@ -550,8 +594,9 @@ size_t zmalloc_get_rss(void) {
     long long rss;
 
     /* RSS is the 24th field in /proc/<pid>/stat */
-    if (!get_proc_stat_ll(24, &rss))
+    if (!get_proc_stat_ll(24, &rss)) {
         return 0;
+    }
     rss *= page;
     return rss;
 }
@@ -566,8 +611,9 @@ size_t zmalloc_get_rss(void) {
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
-    if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS)
+    if (task_for_pid(current_task(), getpid(), &task) != KERN_SUCCESS) {
         return 0;
+    }
     task_info(task, TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
 
     return t_info.resident_size;
@@ -615,8 +661,9 @@ size_t zmalloc_get_rss(void) {
     mib[3] = getpid();
     mib[4] = sizeof(info);
     mib[5] = 1;
-    if (sysctl(mib, __arraycount(mib), &info, &infolen, NULL, 0) == 0)
+    if (sysctl(mib, __arraycount(mib), &info, &infolen, NULL, 0) == 0) {
         return (size_t)info.p_vm_rssize * getpagesize();
+    }
 
     return 0L;
 }
@@ -629,11 +676,13 @@ size_t zmalloc_get_rss(void) {
     size_t rss = 0;
     ssize_t cookie = 0;
 
-    if (get_thread_info(find_thread(0), &th) != B_OK)
+    if (get_thread_info(find_thread(0), &th) != B_OK) {
         return 0;
+    }
 
-    while (get_next_area_info(th.team, &cookie, &info) == B_OK)
+    while (get_next_area_info(th.team, &cookie, &info) == B_OK) {
         rss += info.ram_size;
+    }
 
     return rss;
 }
@@ -649,8 +698,9 @@ size_t zmalloc_get_rss(void) {
 
     snprintf(filename, 256, "/proc/%ld/psinfo", (long)getpid());
 
-    if ((fd = open(filename, O_RDONLY)) == -1)
+    if ((fd = open(filename, O_RDONLY)) == -1) {
         return 0;
+    }
     if (ioctl(fd, PIOCPSINFO, &info) == -1) {
         close(fd);
         return 0;
@@ -706,8 +756,9 @@ int jemalloc_purge(void) {
     size_t sz = sizeof(unsigned);
     if (!je_mallctl("arenas.narenas", &narenas, &sz, NULL, 0)) {
         snprintf(tmp, sizeof(tmp), "arena.%d.purge", narenas);
-        if (!je_mallctl(tmp, NULL, 0, NULL, 0))
+        if (!je_mallctl(tmp, NULL, 0, NULL, 0)) {
             return 0;
+        }
     }
     return -1;
 }
@@ -762,8 +813,9 @@ size_t zmalloc_get_smap_bytes_by_field(char *field, long pid) {
         fp = fopen(filename, "r");
     }
 
-    if (!fp)
+    if (!fp) {
         return 0;
+    }
     while (fgets(line, sizeof(line), fp) != NULL) {
         if (strncmp(line, field, flen) == 0) {
             char *p = strchr(line, 'k');
@@ -787,8 +839,9 @@ size_t zmalloc_get_smap_bytes_by_field(char *field, long pid) {
 size_t zmalloc_get_smap_bytes_by_field(char *field, long pid) {
 #if defined(__APPLE__)
     struct proc_regioninfo pri;
-    if (pid == -1)
+    if (pid == -1) {
         pid = getpid();
+    }
     if (proc_pidinfo(pid, PROC_PIDREGIONINFO, 0, &pri, PROC_PIDREGIONINFO_SIZE) == PROC_PIDREGIONINFO_SIZE) {
         int pagesize = getpagesize();
         if (!strcmp(field, "Private_Dirty:")) {
@@ -841,8 +894,9 @@ size_t zmalloc_get_memory_size(void) {
 #endif
     int64_t size = 0; /* 64-bit */
     size_t len = sizeof(size);
-    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
+    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) {
         return (size_t)size;
+    }
     return 0L; /* Failed? */
 
 #elif defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
@@ -860,8 +914,9 @@ size_t zmalloc_get_memory_size(void) {
 #endif
     unsigned int size = 0; /* 32-bit */
     size_t len = sizeof(size);
-    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0)
+    if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) {
         return (size_t)size;
+    }
     return 0L; /* Failed? */
 #else
     return 0L; /* Unknown method to get the data. */

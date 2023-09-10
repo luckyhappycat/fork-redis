@@ -66,10 +66,11 @@ int fork_exitcode(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 int fork_kill(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
-    if (RedisModule_KillForkChild(child_pid) != REDISMODULE_OK)
+    if (RedisModule_KillForkChild(child_pid) != REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, "KillForkChild failed");
-    else
+    } else {
         RedisModule_ReplyWithLongLong(ctx, 1);
+    }
     child_pid = -1;
     return REDISMODULE_OK;
 }
@@ -77,17 +78,21 @@ int fork_kill(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     UNUSED(argv);
     UNUSED(argc);
-    if (RedisModule_Init(ctx, "fork", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "fork", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "fork.create", fork_create, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "fork.create", fork_create, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "fork.exitcode", fork_exitcode, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "fork.exitcode", fork_exitcode, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "fork.kill", fork_kill, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "fork.kill", fork_kill, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

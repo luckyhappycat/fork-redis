@@ -88,29 +88,33 @@ class RedisQtAdapter : public QObject {
 
    private:
     void addRead() {
-        if (m_read)
+        if (m_read) {
             return;
+        }
         m_read = new QSocketNotifier(m_ctx->c.fd, QSocketNotifier::Read, 0);
         connect(m_read, SIGNAL(activated(int)), this, SLOT(read()));
     }
 
     void delRead() {
-        if (!m_read)
+        if (!m_read) {
             return;
+        }
         delete m_read;
         m_read = 0;
     }
 
     void addWrite() {
-        if (m_write)
+        if (m_write) {
             return;
+        }
         m_write = new QSocketNotifier(m_ctx->c.fd, QSocketNotifier::Write, 0);
         connect(m_write, SIGNAL(activated(int)), this, SLOT(write()));
     }
 
     void delWrite() {
-        if (!m_write)
+        if (!m_write) {
             return;
+        }
         delete m_write;
         m_write = 0;
     }

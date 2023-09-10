@@ -36,8 +36,9 @@ int main(int argc, char **argv) {
         int writelen = 1 + rand() % 31;
         int j;
 
-        for (j = 0; j < writelen; j++)
+        for (j = 0; j < writelen; j++) {
             buf[j] = (char)rand();
+        }
         lseek(fd, offset, SEEK_SET);
         printf("Writing %d bytes at offset %lu\n", writelen, offset);
         write(fd, buf, writelen);

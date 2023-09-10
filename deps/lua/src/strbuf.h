@@ -82,8 +82,9 @@ static inline size_t strbuf_empty_length(strbuf_t *s) {
 }
 
 static inline void strbuf_ensure_empty_length(strbuf_t *s, size_t len) {
-    if (len > strbuf_empty_length(s))
+    if (len > strbuf_empty_length(s)) {
         strbuf_resize(s, s->length + len);
+    }
 }
 
 static inline char *strbuf_empty_ptr(strbuf_t *s) {
@@ -123,8 +124,9 @@ static inline void strbuf_ensure_null(strbuf_t *s) {
 }
 
 static inline char *strbuf_string(strbuf_t *s, size_t *len) {
-    if (len)
+    if (len) {
         *len = s->length;
+    }
 
     return s->buf;
 }

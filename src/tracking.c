@@ -160,8 +160,9 @@ void enableBcastTrackingForPrefix(client *c, char *prefix, size_t plen) {
         raxInsert(PrefixTable, (unsigned char *)prefix, plen, bs, NULL);
     }
     if (raxTryInsert(bs->clients, (unsigned char *)&c, sizeof(c), NULL, NULL)) {
-        if (c->client_tracking_prefixes == NULL)
+        if (c->client_tracking_prefixes == NULL) {
             c->client_tracking_prefixes = raxNew();
+        }
         raxInsert(c->client_tracking_prefixes, (unsigned char *)prefix, plen, NULL, NULL);
     }
 }
@@ -174,8 +175,9 @@ void enableBcastTrackingForPrefix(client *c, char *prefix, size_t plen) {
  * inform it of the condition. Multiple clients can redirect the invalidation
  * messages to the same client ID. */
 void enableTracking(client *c, uint64_t redirect_to, uint64_t options, robj **prefix, size_t numprefix) {
-    if (!(c->flags & CLIENT_TRACKING))
+    if (!(c->flags & CLIENT_TRACKING)) {
         server.tracking_clients++;
+    }
     c->flags |= CLIENT_TRACKING;
     c->flags &= ~(CLIENT_TRACKING_BROKEN_REDIR | CLIENT_TRACKING_BCAST | CLIENT_TRACKING_OPTIN | CLIENT_TRACKING_OPTOUT | CLIENT_TRACKING_NOLOOP);
     c->client_tracking_redirection = redirect_to;
@@ -191,8 +193,9 @@ void enableTracking(client *c, uint64_t redirect_to, uint64_t options, robj **pr
     /* For broadcasting, set the list of prefixes in the client. */
     if (options & CLIENT_TRACKING_BCAST) {
         c->flags |= CLIENT_TRACKING_BCAST;
-        if (numprefix == 0)
+        if (numprefix == 0) {
             enableBcastTrackingForPrefix(c, "", 0);
+        }
         for (size_t j = 0; j < numprefix; j++) {
             sds sdsprefix = prefix[j]->ptr;
             enableBcastTrackingForPrefix(c, sdsprefix, sdslen(sdsprefix));
@@ -215,8 +218,9 @@ void trackingRememberKeys(client *tracking, client *executing) {
     uint64_t optin = tracking->flags & CLIENT_TRACKING_OPTIN;
     uint64_t optout = tracking->flags & CLIENT_TRACKING_OPTOUT;
     uint64_t caching_given = tracking->flags & CLIENT_TRACKING_CACHING;
-    if ((optin && !caching_given) || (optout && caching_given))
+    if ((optin && !caching_given) || (optout && caching_given)) {
         return;
+    }
 
     getKeysResult result = GETKEYS_RESULT_INIT;
     int numkeys = getKeysFromCommand(executing->cmd, executing->argv, executing->argc, &result);
@@ -242,8 +246,9 @@ void trackingRememberKeys(client *tracking, client *executing) {
             int inserted = raxTryInsert(TrackingTable, (unsigned char *)sdskey, sdslen(sdskey), ids, NULL);
             serverAssert(inserted == 1);
         }
-        if (raxTryInsert(ids, (unsigned char *)&tracking->id, sizeof(tracking->id), NULL, NULL))
+        if (raxTryInsert(ids, (unsigned char *)&tracking->id, sizeof(tracking->id), NULL, NULL)) {
             TrackingTableTotalItems++;
+        }
     }
     getKeysFreeResult(&result);
 }
@@ -277,12 +282,14 @@ void sendTrackingMessage(client *c, char *keyname, size_t keylen, int proto) {
                 addReplyBulkCBuffer(c, "tracking-redir-broken", 21);
                 addReplyLongLong(c, c->client_tracking_redirection);
             }
-            if (!(old_flags & CLIENT_PUSHING))
+            if (!(old_flags & CLIENT_PUSHING)) {
                 c->flags &= ~CLIENT_PUSHING;
+            }
             return;
         }
-        if (!(old_flags & CLIENT_PUSHING))
+        if (!(old_flags & CLIENT_PUSHING)) {
             c->flags &= ~CLIENT_PUSHING;
+        }
         c = redir;
         using_redirection = 1;
         old_flags = c->flags;
@@ -305,8 +312,9 @@ void sendTrackingMessage(client *c, char *keyname, size_t keylen, int proto) {
          * redirecting to another client. We can't send anything to
          * it since RESP2 does not support push messages in the same
          * connection. */
-        if (!(old_flags & CLIENT_PUSHING))
+        if (!(old_flags & CLIENT_PUSHING)) {
             c->flags &= ~CLIENT_PUSHING;
+        }
         return;
     }
 
@@ -318,8 +326,9 @@ void sendTrackingMessage(client *c, char *keyname, size_t keylen, int proto) {
         addReplyBulkCBuffer(c, keyname, keylen);
     }
     updateClientMemUsageAndBucket(c);
-    if (!(old_flags & CLIENT_PUSHING))
+    if (!(old_flags & CLIENT_PUSHING)) {
         c->flags &= ~CLIENT_PUSHING;
+    }
 }
 
 /* This function is called when a key is modified in Redis and in the case
@@ -333,10 +342,12 @@ void trackingRememberKeyToBroadcast(client *c, char *keyname, size_t keylen) {
     raxStart(&ri, PrefixTable);
     raxSeek(&ri, "^", NULL, 0);
     while (raxNext(&ri)) {
-        if (ri.key_len > keylen)
+        if (ri.key_len > keylen) {
             continue;
-        if (ri.key_len != 0 && memcmp(ri.key, keyname, ri.key_len) != 0)
+        }
+        if (ri.key_len != 0 && memcmp(ri.key, keyname, ri.key_len) != 0) {
             continue;
+        }
         bcastState *bs = ri.data;
         /* We insert the client pointer as associated value in the radix
          * tree. This way we know who was the client that did the last
@@ -364,18 +375,21 @@ void trackingRememberKeyToBroadcast(client *c, char *keyname, size_t keylen) {
  * just to notify the clients that are in the table for this key, that would
  * otherwise miss the fact we are no longer tracking the key for them. */
 void trackingInvalidateKey(client *c, robj *keyobj, int bcast) {
-    if (TrackingTable == NULL)
+    if (TrackingTable == NULL) {
         return;
+    }
 
     unsigned char *key = (unsigned char *)keyobj->ptr;
     size_t keylen = sdslen(keyobj->ptr);
 
-    if (bcast && raxSize(PrefixTable) > 0)
+    if (bcast && raxSize(PrefixTable) > 0) {
         trackingRememberKeyToBroadcast(c, (char *)key, keylen);
+    }
 
     rax *ids = raxFind(TrackingTable, key, keylen);
-    if (ids == raxNotFound)
+    if (ids == raxNotFound) {
         return;
+    }
 
     raxIterator ri;
     raxStart(&ri, ids);
@@ -419,13 +433,15 @@ void trackingInvalidateKey(client *c, robj *keyobj, int bcast) {
 }
 
 void trackingHandlePendingKeyInvalidations(void) {
-    if (!listLength(server.tracking_pending_keys))
+    if (!listLength(server.tracking_pending_keys)) {
         return;
+    }
 
     /* Flush pending invalidation messages only when we are not in nested call.
      * So the messages are not interleaved with transaction response. */
-    if (server.execution_nesting)
+    if (server.execution_nesting) {
         return;
+    }
 
     listNode *ln;
     listIter li;
@@ -444,8 +460,9 @@ void trackingHandlePendingKeyInvalidations(void) {
                 );
             }
         }
-        if (key != NULL)
+        if (key != NULL) {
             decrRefCount(key);
+        }
     }
     listEmpty(server.tracking_pending_keys);
 }
@@ -508,10 +525,12 @@ void trackingInvalidateKeysOnFlush(int async) {
  * modified. */
 void trackingLimitUsedSlots(void) {
     static unsigned int timeout_counter = 0;
-    if (TrackingTable == NULL)
+    if (TrackingTable == NULL) {
         return;
-    if (server.tracking_table_max_keys == 0)
+    }
+    if (server.tracking_table_max_keys == 0) {
         return; /* No limits set. */
+    }
     size_t max_keys = server.tracking_table_max_keys;
     if (raxSize(TrackingTable) <= max_keys) {
         timeout_counter = 0;
@@ -530,8 +549,9 @@ void trackingLimitUsedSlots(void) {
         effort--;
         raxSeek(&ri, "^", NULL, 0);
         raxRandomWalk(&ri, 0);
-        if (raxEOF(&ri))
+        if (raxEOF(&ri)) {
             break;
+        }
         robj *keyobj = createStringObject((char *)ri.key, ri.key_len);
         trackingInvalidateKey(NULL, keyobj, 0);
         decrRefCount(keyobj);
@@ -565,13 +585,15 @@ sds trackingBuildBroadcastReply(client *c, rax *keys) {
         raxStart(&ri, keys);
         raxSeek(&ri, "^", NULL, 0);
         while (raxNext(&ri)) {
-            if (ri.data != c)
+            if (ri.data != c) {
                 count++;
+            }
         }
         raxStop(&ri);
 
-        if (count == 0)
+        if (count == 0) {
             return NULL;
+        }
     }
 
     /* Create the array reply with the list of keys once, then send
@@ -586,8 +608,9 @@ sds trackingBuildBroadcastReply(client *c, rax *keys) {
     raxStart(&ri, keys);
     raxSeek(&ri, "^", NULL, 0);
     while (raxNext(&ri)) {
-        if (c && ri.data == c)
+        if (c && ri.data == c) {
             continue;
+        }
         len = ll2string(buf, sizeof(buf), ri.key_len);
         proto = sdscatlen(proto, "$", 1);
         proto = sdscatlen(proto, buf, len);
@@ -606,8 +629,9 @@ void trackingBroadcastInvalidationMessages(void) {
     raxIterator ri, ri2;
 
     /* Return ASAP if there is nothing to do here. */
-    if (TrackingTable == NULL || !server.tracking_clients)
+    if (TrackingTable == NULL || !server.tracking_clients) {
         return;
+    }
 
     raxStart(&ri, PrefixTable);
     raxSeek(&ri, "^", NULL, 0);
@@ -658,13 +682,15 @@ uint64_t trackingGetTotalItems(void) {
 }
 
 uint64_t trackingGetTotalKeys(void) {
-    if (TrackingTable == NULL)
+    if (TrackingTable == NULL) {
         return 0;
+    }
     return raxSize(TrackingTable);
 }
 
 uint64_t trackingGetTotalPrefixes(void) {
-    if (PrefixTable == NULL)
+    if (PrefixTable == NULL) {
         return 0;
+    }
     return raxSize(PrefixTable);
 }

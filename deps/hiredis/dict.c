@@ -54,8 +54,9 @@ static int _dictInit(dict *ht, dictType *type, void *privDataPtr);
 static unsigned int dictGenHashFunction(const unsigned char *buf, int len) {
     unsigned int hash = 5381;
 
-    while (len--)
+    while (len--) {
         hash = ((hash << 5) + hash) + (*buf++); /* hash * 33 + c */
+    }
     return hash;
 }
 
@@ -73,8 +74,9 @@ static void _dictReset(dict *ht) {
 /* Create a new hash table */
 static dict *dictCreate(dictType *type, void *privDataPtr) {
     dict *ht = hi_malloc(sizeof(*ht));
-    if (ht == NULL)
+    if (ht == NULL) {
         return NULL;
+    }
 
     _dictInit(ht, type, privDataPtr);
     return ht;
@@ -95,15 +97,17 @@ static int dictExpand(dict *ht, unsigned long size) {
 
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hashtable */
-    if (ht->used > size)
+    if (ht->used > size) {
         return DICT_ERR;
+    }
 
     _dictInit(&n, ht->type, ht->privdata);
     n.size = realsize;
     n.sizemask = realsize - 1;
     n.table = hi_calloc(realsize, sizeof(dictEntry *));
-    if (n.table == NULL)
+    if (n.table == NULL) {
         return DICT_ERR;
+    }
 
     /* Copy all the elements from the old to the new table:
      * note that if the old hash table is empty ht->size is zero,
@@ -112,8 +116,9 @@ static int dictExpand(dict *ht, unsigned long size) {
     for (i = 0; i < ht->size && ht->used > 0; i++) {
         dictEntry *he, *nextHe;
 
-        if (ht->table[i] == NULL)
+        if (ht->table[i] == NULL) {
             continue;
+        }
 
         /* For each hash entry on this slot... */
         he = ht->table[i];
@@ -145,13 +150,15 @@ static int dictAdd(dict *ht, void *key, void *val) {
 
     /* Get the index of the new element, or -1 if
      * the element already exists. */
-    if ((index = _dictKeyIndex(ht, key)) == -1)
+    if ((index = _dictKeyIndex(ht, key)) == -1) {
         return DICT_ERR;
+    }
 
     /* Allocates the memory and stores key */
     entry = hi_malloc(sizeof(*entry));
-    if (entry == NULL)
+    if (entry == NULL) {
         return DICT_ERR;
+    }
 
     entry->next = ht->table[index];
     ht->table[index] = entry;
@@ -172,12 +179,14 @@ static int dictReplace(dict *ht, void *key, void *val) {
 
     /* Try to add the element. If the key
      * does not exists dictAdd will succeed. */
-    if (dictAdd(ht, key, val) == DICT_OK)
+    if (dictAdd(ht, key, val) == DICT_OK) {
         return 1;
+    }
     /* It already exists, get the entry */
     entry = dictFind(ht, key);
-    if (entry == NULL)
+    if (entry == NULL) {
         return 0;
+    }
 
     /* Free the old value and set the new one */
     /* Set the new value and free the old one. Note that it is important
@@ -196,8 +205,9 @@ static int dictDelete(dict *ht, const void *key) {
     unsigned int h;
     dictEntry *de, *prevde;
 
-    if (ht->size == 0)
+    if (ht->size == 0) {
         return DICT_ERR;
+    }
     h = dictHashKey(ht, key) & ht->sizemask;
     de = ht->table[h];
 
@@ -205,10 +215,11 @@ static int dictDelete(dict *ht, const void *key) {
     while (de) {
         if (dictCompareHashKeys(ht, key, de->key)) {
             /* Unlink the element from the list */
-            if (prevde)
+            if (prevde) {
                 prevde->next = de->next;
-            else
+            } else {
                 ht->table[h] = de->next;
+            }
 
             dictFreeEntryKey(ht, de);
             dictFreeEntryVal(ht, de);
@@ -230,8 +241,9 @@ static int _dictClear(dict *ht) {
     for (i = 0; i < ht->size && ht->used > 0; i++) {
         dictEntry *he, *nextHe;
 
-        if ((he = ht->table[i]) == NULL)
+        if ((he = ht->table[i]) == NULL) {
             continue;
+        }
         while (he) {
             nextHe = he->next;
             dictFreeEntryKey(ht, he);
@@ -258,13 +270,15 @@ static dictEntry *dictFind(dict *ht, const void *key) {
     dictEntry *he;
     unsigned int h;
 
-    if (ht->size == 0)
+    if (ht->size == 0) {
         return NULL;
+    }
     h = dictHashKey(ht, key) & ht->sizemask;
     he = ht->table[h];
     while (he) {
-        if (dictCompareHashKeys(ht, key, he->key))
+        if (dictCompareHashKeys(ht, key, he->key)) {
             return he;
+        }
         he = he->next;
     }
     return NULL;
@@ -281,8 +295,9 @@ static dictEntry *dictNext(dictIterator *iter) {
     while (1) {
         if (iter->entry == NULL) {
             iter->index++;
-            if (iter->index >= (signed)iter->ht->size)
+            if (iter->index >= (signed)iter->ht->size) {
                 break;
+            }
             iter->entry = iter->ht->table[iter->index];
         } else {
             iter->entry = iter->nextEntry;
@@ -303,10 +318,12 @@ static dictEntry *dictNext(dictIterator *iter) {
 static int _dictExpandIfNeeded(dict *ht) {
     /* If the hash table is empty expand it to the initial size,
      * if the table is "full" double its size. */
-    if (ht->size == 0)
+    if (ht->size == 0) {
         return dictExpand(ht, DICT_HT_INITIAL_SIZE);
-    if (ht->used == ht->size)
+    }
+    if (ht->used == ht->size) {
         return dictExpand(ht, ht->size * 2);
+    }
     return DICT_OK;
 }
 
@@ -314,11 +331,13 @@ static int _dictExpandIfNeeded(dict *ht) {
 static unsigned long _dictNextPower(unsigned long size) {
     unsigned long i = DICT_HT_INITIAL_SIZE;
 
-    if (size >= LONG_MAX)
+    if (size >= LONG_MAX) {
         return LONG_MAX;
+    }
     while (1) {
-        if (i >= size)
+        if (i >= size) {
             return i;
+        }
         i *= 2;
     }
 }
@@ -331,15 +350,17 @@ static int _dictKeyIndex(dict *ht, const void *key) {
     dictEntry *he;
 
     /* Expand the hashtable if needed */
-    if (_dictExpandIfNeeded(ht) == DICT_ERR)
+    if (_dictExpandIfNeeded(ht) == DICT_ERR) {
         return -1;
+    }
     /* Compute the key hash value */
     h = dictHashKey(ht, key) & ht->sizemask;
     /* Search if this slot does not already contain the given key */
     he = ht->table[h];
     while (he) {
-        if (dictCompareHashKeys(ht, key, he->key))
+        if (dictCompareHashKeys(ht, key, he->key)) {
             return -1;
+        }
         he = he->next;
     }
     return h;

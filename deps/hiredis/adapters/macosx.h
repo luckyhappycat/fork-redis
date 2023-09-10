@@ -80,12 +80,14 @@ static int redisMacOSAttach(redisAsyncContext *redisAsyncCtx, CFRunLoopRef runLo
     redisContext *redisCtx = &(redisAsyncCtx->c);
 
     /* Nothing should be attached when something is already attached */
-    if (redisAsyncCtx->ev.data != NULL)
+    if (redisAsyncCtx->ev.data != NULL) {
         return REDIS_ERR;
+    }
 
     RedisRunLoop *redisRunLoop = (RedisRunLoop *)hi_calloc(1, sizeof(RedisRunLoop));
-    if (redisRunLoop == NULL)
+    if (redisRunLoop == NULL) {
         return REDIS_ERR;
+    }
 
     /* Setup redis stuff */
     redisRunLoop->context = redisAsyncCtx;
@@ -102,12 +104,14 @@ static int redisMacOSAttach(redisAsyncContext *redisAsyncCtx, CFRunLoopRef runLo
 
     redisRunLoop->socketRef =
         CFSocketCreateWithNative(NULL, redisCtx->fd, kCFSocketReadCallBack | kCFSocketWriteCallBack, redisMacOSAsyncCallback, &socketCtx);
-    if (!redisRunLoop->socketRef)
+    if (!redisRunLoop->socketRef) {
         return freeRedisRunLoop(redisRunLoop);
+    }
 
     redisRunLoop->sourceRef = CFSocketCreateRunLoopSource(NULL, redisRunLoop->socketRef, 0);
-    if (!redisRunLoop->sourceRef)
+    if (!redisRunLoop->sourceRef) {
         return freeRedisRunLoop(redisRunLoop);
+    }
 
     CFRunLoopAddSource(runLoop, redisRunLoop->sourceRef, kCFRunLoopDefaultMode);
 

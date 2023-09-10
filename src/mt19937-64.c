@@ -70,8 +70,9 @@ static int mti = NN + 1;
 /* initializes mt[NN] with a seed */
 void init_genrand64(unsigned long long seed) {
     mt[0] = seed;
-    for (mti = 1; mti < NN; mti++)
+    for (mti = 1; mti < NN; mti++) {
         mt[mti] = (6364136223846793005ULL * (mt[mti - 1] ^ (mt[mti - 1] >> 62)) + mti);
+    }
 }
 
 /* initialize by an array with array-length */
@@ -91,8 +92,9 @@ void init_by_array64(unsigned long long init_key[], unsigned long long key_lengt
             mt[0] = mt[NN - 1];
             i = 1;
         }
-        if (j >= key_length)
+        if (j >= key_length) {
             j = 0;
+        }
     }
     for (k = NN - 1; k; k--) {
         mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 62)) * 2862933555777941757ULL)) - i; /* non linear */
@@ -116,8 +118,9 @@ unsigned long long genrand64_int64(void) {
 
         /* if init_genrand64() has not been called, */
         /* a default initial seed is used     */
-        if (mti == NN + 1)
+        if (mti == NN + 1) {
             init_genrand64(5489ULL);
+        }
 
         for (i = 0; i < NN - MM; i++) {
             x = (mt[i] & UM) | (mt[i + 1] & LM);
@@ -171,14 +174,16 @@ int main(void) {
     printf("1000 outputs of genrand64_int64()\n");
     for (i = 0; i < 1000; i++) {
         printf("%20llu ", genrand64_int64());
-        if (i % 5 == 4)
+        if (i % 5 == 4) {
             printf("\n");
+        }
     }
     printf("\n1000 outputs of genrand64_real2()\n");
     for (i = 0; i < 1000; i++) {
         printf("%10.8f ", genrand64_real2());
-        if (i % 5 == 4)
+        if (i % 5 == 4) {
             printf("\n");
+        }
     }
     return 0;
 }

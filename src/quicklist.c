@@ -218,8 +218,9 @@ REDIS_STATIC int __quicklistCompressNode(quicklistNode *node) {
 #ifdef REDIS_TEST
     node->attempted_compress = 1;
 #endif
-    if (node->dont_compress)
+    if (node->dont_compress) {
         return 0;
+    }
 
     /* validate that the node is neither
      * tail nor head (it has prev and next)*/
@@ -227,8 +228,9 @@ REDIS_STATIC int __quicklistCompressNode(quicklistNode *node) {
 
     node->recompress = 0;
     /* Don't bother compressing small values */
-    if (node->sz < MIN_COMPRESS_BYTES)
+    if (node->sz < MIN_COMPRESS_BYTES) {
         return 0;
+    }
 
     quicklistLZF *lzf = zmalloc(sizeof(*lzf) + node->sz);
 
@@ -307,16 +309,18 @@ size_t quicklistGetLzf(const quicklistNode *node, void **data) {
  * to our "interior" compress depth then compress the next node we find.
  * If compress depth is larger than the entire list, we return immediately. */
 REDIS_STATIC void __quicklistCompress(const quicklist *quicklist, quicklistNode *node) {
-    if (quicklist->len == 0)
+    if (quicklist->len == 0) {
         return;
+    }
 
     /* The head and tail should never be compressed (we should not attempt to recompress them) */
     assert(quicklist->head->recompress == 0 && quicklist->tail->recompress == 0);
 
     /* If length is less than our compress depth (from both sides),
      * we can't compress anything. */
-    if (!quicklistAllowsCompression(quicklist) || quicklist->len < (unsigned int)(quicklist->compress * 2))
+    if (!quicklistAllowsCompression(quicklist) || quicklist->len < (unsigned int)(quicklist->compress * 2)) {
         return;
+    }
 
 #if 0
     /* Optimized cases for small depth counts */
@@ -358,20 +362,23 @@ REDIS_STATIC void __quicklistCompress(const quicklist *quicklist, quicklistNode 
         quicklistDecompressNode(forward);
         quicklistDecompressNode(reverse);
 
-        if (forward == node || reverse == node)
+        if (forward == node || reverse == node) {
             in_depth = 1;
+        }
 
         /* We passed into compress depth of opposite side of the quicklist
          * so there's no need to compress anything and we can exit. */
-        if (forward == reverse || forward->next == reverse)
+        if (forward == reverse || forward->next == reverse) {
             return;
+        }
 
         forward = forward->next;
         reverse = reverse->prev;
     }
 
-    if (!in_depth)
+    if (!in_depth) {
         quicklistCompressNode(node);
+    }
 
     /* At this point, forward and reverse are one node beyond depth */
     quicklistCompressNode(forward);
@@ -402,22 +409,26 @@ REDIS_STATIC void __quicklistInsertNode(quicklist *quicklist, quicklistNode *old
         new_node->prev = old_node;
         if (old_node) {
             new_node->next = old_node->next;
-            if (old_node->next)
+            if (old_node->next) {
                 old_node->next->prev = new_node;
+            }
             old_node->next = new_node;
         }
-        if (quicklist->tail == old_node)
+        if (quicklist->tail == old_node) {
             quicklist->tail = new_node;
+        }
     } else {
         new_node->next = old_node;
         if (old_node) {
             new_node->prev = old_node->prev;
-            if (old_node->prev)
+            if (old_node->prev) {
                 old_node->prev->next = new_node;
+            }
             old_node->prev = new_node;
         }
-        if (quicklist->head == old_node)
+        if (quicklist->head == old_node) {
             quicklist->head = new_node;
+        }
     }
     /* If this insert creates the only element so far, initialize head/tail. */
     if (quicklist->len == 0) {
@@ -427,8 +438,9 @@ REDIS_STATIC void __quicklistInsertNode(quicklist *quicklist, quicklistNode *old
     /* Update len first, so in __quicklistCompress we know exactly len */
     quicklist->len++;
 
-    if (old_node)
+    if (old_node) {
         quicklistCompress(quicklist, old_node);
+    }
 
     quicklistCompress(quicklist, new_node);
 }
@@ -456,8 +468,9 @@ void quicklistNodeLimit(int fill, size_t *size, unsigned int *count) {
     } else {
         size_t offset = (-fill) - 1;
         size_t max_level = sizeof(optimization_level) / sizeof(*optimization_level);
-        if (offset >= max_level)
+        if (offset >= max_level) {
             offset = max_level - 1;
+        }
         *size = optimization_level[offset];
     }
 }
@@ -476,8 +489,9 @@ int quicklistNodeExceedsLimit(int fill, size_t new_sz, unsigned int new_count) {
     } else if (count_limit != UINT_MAX) {
         /* when we reach here we know that the limit is a size limit (which is
          * safe, see comments next to optimization_level and SIZE_SAFETY_LIMIT) */
-        if (!sizeMeetsSafetyLimit(new_sz))
+        if (!sizeMeetsSafetyLimit(new_sz)) {
             return 1;
+        }
         return new_count > count_limit;
     }
 
@@ -485,11 +499,13 @@ int quicklistNodeExceedsLimit(int fill, size_t new_sz, unsigned int new_count) {
 }
 
 REDIS_STATIC int _quicklistNodeAllowInsert(const quicklistNode *node, const int fill, const size_t sz) {
-    if (unlikely(!node))
+    if (unlikely(!node)) {
         return 0;
+    }
 
-    if (unlikely(QL_NODE_IS_PLAIN(node) || isLargeElement(sz)))
+    if (unlikely(QL_NODE_IS_PLAIN(node) || isLargeElement(sz))) {
         return 0;
+    }
 
     /* Estimate how many bytes will be added to the listpack by this one entry.
      * We prefer an overestimation, which would at worse lead to a few bytes
@@ -497,23 +513,27 @@ REDIS_STATIC int _quicklistNodeAllowInsert(const quicklistNode *node, const int 
      * Note: No need to check for overflow below since both `node->sz` and
      * `sz` are to be less than 1GB after the plain/large element check above. */
     size_t new_sz = node->sz + sz + SIZE_ESTIMATE_OVERHEAD;
-    if (unlikely(quicklistNodeExceedsLimit(fill, new_sz, node->count + 1)))
+    if (unlikely(quicklistNodeExceedsLimit(fill, new_sz, node->count + 1))) {
         return 0;
+    }
     return 1;
 }
 
 REDIS_STATIC int _quicklistNodeAllowMerge(const quicklistNode *a, const quicklistNode *b, const int fill) {
-    if (!a || !b)
+    if (!a || !b) {
         return 0;
+    }
 
-    if (unlikely(QL_NODE_IS_PLAIN(a) || QL_NODE_IS_PLAIN(b)))
+    if (unlikely(QL_NODE_IS_PLAIN(a) || QL_NODE_IS_PLAIN(b))) {
         return 0;
+    }
 
     /* approximate merged listpack size (- 7 to remove one listpack
      * header/trailer, see LP_HDR_SIZE and LP_EOF) */
     unsigned int merge_sz = a->sz + b->sz - 7;
-    if (unlikely(quicklistNodeExceedsLimit(fill, merge_sz, a->count + b->count)))
+    if (unlikely(quicklistNodeExceedsLimit(fill, merge_sz, a->count + b->count))) {
         return 0;
+    }
     return 1;
 }
 
@@ -634,14 +654,17 @@ REDIS_STATIC void __quicklistDelNode(quicklist *quicklist, quicklistNode *node) 
     if (bm) {
         bm->node = node->next;
         /* if the bookmark was to the last node, delete it. */
-        if (!bm->node)
+        if (!bm->node) {
             _quicklistBookmarkDelete(quicklist, bm);
+        }
     }
 
-    if (node->next)
+    if (node->next) {
         node->next->prev = node->prev;
-    if (node->prev)
+    }
+    if (node->prev) {
         node->prev->next = node->next;
+    }
 
     if (node == quicklist->tail) {
         quicklist->tail = node->prev;
@@ -834,14 +857,16 @@ REDIS_STATIC void _quicklistMergeNodes(quicklist *quicklist, quicklistNode *cent
 
     if (center->prev) {
         prev = center->prev;
-        if (center->prev->prev)
+        if (center->prev->prev) {
             prev_prev = center->prev->prev;
+        }
     }
 
     if (center->next) {
         next = center->next;
-        if (center->next->next)
+        if (center->next->next) {
             next_next = center->next->next;
+        }
     }
 
     /* Try to merge prev_prev and prev */
@@ -900,8 +925,9 @@ REDIS_STATIC quicklistNode *_quicklistSplitNode(quicklistNode *node, int offset,
     memcpy(new_node->entry, node->entry, zl_sz);
 
     /* Need positive offset for calculating extent below. */
-    if (offset < 0)
+    if (offset < 0) {
         offset = node->count + offset;
+    }
 
     /* Ranges to be trimmed: -1 here means "continue deleting until the list ends" */
     int orig_start = after ? offset + 1 : 0;
@@ -1039,10 +1065,11 @@ REDIS_STATIC void _quicklistInsert(quicklistIter *iter, quicklistEntry *entry, v
         D("\tsplitting node...");
         quicklistDecompressNodeForUse(node);
         new_node = _quicklistSplitNode(node, entry->offset, after);
-        if (after)
+        if (after) {
             new_node->entry = lpPrepend(new_node->entry, value, sz);
-        else
+        } else {
             new_node->entry = lpAppend(new_node->entry, value, sz);
+        }
         new_node->count++;
         quicklistNodeUpdateSz(new_node);
         __quicklistInsertNode(quicklist, node, new_node, after);
@@ -1071,8 +1098,9 @@ void quicklistInsertAfter(quicklistIter *iter, quicklistEntry *entry, void *valu
  *
  * Returns 1 if entries were deleted, 0 if nothing was deleted. */
 int quicklistDelRange(quicklist *quicklist, const long start, const long count) {
-    if (count <= 0)
+    if (count <= 0) {
         return 0;
+    }
 
     unsigned long extent = count; /* range is inclusive of start position */
 
@@ -1085,8 +1113,9 @@ int quicklistDelRange(quicklist *quicklist, const long start, const long count) 
     }
 
     quicklistIter *iter = quicklistGetIteratorAtIdx(quicklist, AL_START_TAIL, start);
-    if (!iter)
+    if (!iter) {
         return 0;
+    }
 
     D("Quicklist delete request for start %ld, count %ld, extent: %ld", start, count, extent);
     quicklistNode *node = iter->current;
@@ -1119,8 +1148,9 @@ int quicklistDelRange(quicklist *quicklist, const long start, const long count) 
             /* If the positive offset is greater than the remaining extent,
              * we only delete the remaining extent, not the entire offset.
              */
-            if (del > extent)
+            if (del > extent) {
                 del = extent;
+            }
         } else {
             /* else, we are deleting less than the extent of this node, so
              * use extent directly. */
@@ -1140,8 +1170,9 @@ int quicklistDelRange(quicklist *quicklist, const long start, const long count) 
             node->count -= del;
             quicklist->count -= del;
             quicklistDeleteIfEmpty(quicklist, node);
-            if (node)
+            if (node) {
                 quicklistRecompressOnly(node);
+            }
         }
 
         extent -= del;
@@ -1193,8 +1224,9 @@ quicklistIter *quicklistGetIteratorAtIdx(quicklist *quicklist, const int directi
     int forward = idx < 0 ? 0 : 1; /* < 0 -> reverse, 0+ -> forward */
 
     index = forward ? idx : (-idx) - 1;
-    if (index >= quicklist->count)
+    if (index >= quicklist->count) {
         return NULL;
+    }
 
     /* Seek in the other direction if that way is shorter. */
     int seek_forward = forward;
@@ -1215,12 +1247,14 @@ quicklistIter *quicklistGetIteratorAtIdx(quicklist *quicklist, const int directi
         }
     }
 
-    if (!n)
+    if (!n) {
         return NULL;
+    }
 
     /* Fix accum so it looks like we seeked in the other direction. */
-    if (seek_forward != forward)
+    if (seek_forward != forward) {
         accum = quicklist->count - n->count - accum;
+    }
 
     D("Found node: %p at accum %llu, idx %llu, sub+ %llu, sub- %llu", (void *)n, accum, index, index - accum, (-index) - 1 + accum);
 
@@ -1241,10 +1275,12 @@ quicklistIter *quicklistGetIteratorAtIdx(quicklist *quicklist, const int directi
 /* Release iterator.
  * If we still have a valid current node, then re-encode current node. */
 void quicklistReleaseIterator(quicklistIter *iter) {
-    if (!iter)
+    if (!iter) {
         return;
-    if (iter->current)
+    }
+    if (iter->current) {
         quicklistCompress(iter->quicklist, iter->current);
+    }
 
     zfree(iter);
 }
@@ -1293,10 +1329,11 @@ int quicklistNext(quicklistIter *iter, quicklistEntry *entry) {
     if (!iter->zi) {
         /* If !zi, use current index. */
         quicklistDecompressNodeForUse(iter->current);
-        if (unlikely(plain))
+        if (unlikely(plain)) {
             iter->zi = iter->current->entry;
-        else
+        } else {
             iter->zi = lpSeek(iter->current->entry, iter->offset);
+        }
     } else if (unlikely(plain)) {
         iter->zi = NULL;
     } else {
@@ -1398,8 +1435,9 @@ quicklist *quicklistDup(quicklist *orig) {
  * Returns NULL if element not found */
 quicklistIter *quicklistGetIteratorEntryAtIdx(quicklist *quicklist, const long long idx, quicklistEntry *entry) {
     quicklistIter *iter = quicklistGetIteratorAtIdx(quicklist, AL_START_TAIL, idx);
-    if (!iter)
+    if (!iter) {
         return NULL;
+    }
     assert(quicklistNext(iter, entry));
     return iter;
 }
@@ -1417,8 +1455,9 @@ static void quicklistRotatePlain(quicklist *quicklist) {
 
 /* Rotate quicklist by moving the tail element to the head. */
 void quicklistRotate(quicklist *quicklist) {
-    if (quicklist->count <= 1)
+    if (quicklist->count <= 1) {
         return;
+    }
 
     if (unlikely(QL_NODE_IS_PLAIN(quicklist->tail))) {
         quicklistRotatePlain(quicklist);
@@ -1459,8 +1498,9 @@ void quicklistRotate(quicklist *quicklist) {
 
     /* Remove tail entry. */
     quicklistDelIndex(quicklist, quicklist->tail, &p);
-    if (value != (unsigned char *)longstr && value != tmp)
+    if (value != (unsigned char *)longstr && value != tmp) {
         zfree(value);
+    }
 }
 
 /* pop from quicklist and return result in 'data' ptr.  Value of 'data'
@@ -1481,15 +1521,19 @@ int quicklistPopCustom(
     long long vlong;
     int pos = (where == QUICKLIST_HEAD) ? 0 : -1;
 
-    if (quicklist->count == 0)
+    if (quicklist->count == 0) {
         return 0;
+    }
 
-    if (data)
+    if (data) {
         *data = NULL;
-    if (sz)
+    }
+    if (sz) {
         *sz = 0;
-    if (sval)
+    }
+    if (sval) {
         *sval = -123456789;
+    }
 
     quicklistNode *node;
     if (where == QUICKLIST_HEAD && quicklist->head) {
@@ -1504,10 +1548,12 @@ int quicklistPopCustom(
     assert(node->encoding != QUICKLIST_NODE_ENCODING_LZF);
 
     if (unlikely(QL_NODE_IS_PLAIN(node))) {
-        if (data)
+        if (data) {
             *data = saver(node->entry, node->sz);
-        if (sz)
+        }
+        if (sz) {
             *sz = node->sz;
+        }
         quicklistDelIndex(quicklist, node, NULL);
         return 1;
     }
@@ -1515,15 +1561,19 @@ int quicklistPopCustom(
     p = lpSeek(node->entry, pos);
     vstr = lpGetValue(p, &vlen, &vlong);
     if (vstr) {
-        if (data)
+        if (data) {
             *data = saver(vstr, vlen);
-        if (sz)
+        }
+        if (sz) {
             *sz = vlen;
+        }
     } else {
-        if (data)
+        if (data) {
             *data = NULL;
-        if (sval)
+        }
+        if (sval) {
             *sval = vlong;
+        }
     }
     quicklistDelIndex(quicklist, node, &p);
     return 1;
@@ -1547,25 +1597,31 @@ int quicklistPop(quicklist *quicklist, int where, unsigned char **data, size_t *
     unsigned char *vstr = NULL;
     size_t vlen = 0;
     long long vlong = 0;
-    if (quicklist->count == 0)
+    if (quicklist->count == 0) {
         return 0;
+    }
     int ret = quicklistPopCustom(quicklist, where, &vstr, &vlen, &vlong, _quicklistSaver);
-    if (data)
+    if (data) {
         *data = vstr;
-    if (slong)
+    }
+    if (slong) {
         *slong = vlong;
-    if (sz)
+    }
+    if (sz) {
         *sz = vlen;
+    }
     return ret;
 }
 
 /* Wrapper to allow argument-based switching between HEAD/TAIL pop */
 void quicklistPush(quicklist *quicklist, void *value, const size_t sz, int where) {
     /* The head and tail should never be compressed (we don't attempt to decompress them) */
-    if (quicklist->head)
+    if (quicklist->head) {
         assert(quicklist->head->encoding != QUICKLIST_NODE_ENCODING_LZF);
-    if (quicklist->tail)
+    }
+    if (quicklist->tail) {
         assert(quicklist->tail->encoding != QUICKLIST_NODE_ENCODING_LZF);
+    }
 
     if (where == QUICKLIST_HEAD) {
         quicklistPushHead(quicklist, value, sz);
@@ -1620,8 +1676,9 @@ void quicklistRepr(unsigned char *ql, int full) {
  */
 int quicklistBookmarkCreate(quicklist **ql_ref, const char *name, quicklistNode *node) {
     quicklist *ql = *ql_ref;
-    if (ql->bookmark_count >= QL_MAX_BM)
+    if (ql->bookmark_count >= QL_MAX_BM) {
         return 0;
+    }
     quicklistBookmark *bm = _quicklistBookmarkFindByName(ql, name);
     if (bm) {
         bm->node = node;
@@ -1640,8 +1697,9 @@ int quicklistBookmarkCreate(quicklist **ql_ref, const char *name, quicklistNode 
  * and if that's the last node, the bookmark is deleted (so find returns NULL). */
 quicklistNode *quicklistBookmarkFind(quicklist *ql, const char *name) {
     quicklistBookmark *bm = _quicklistBookmarkFindByName(ql, name);
-    if (!bm)
+    if (!bm) {
         return NULL;
+    }
     return bm->node;
 }
 
@@ -1650,8 +1708,9 @@ quicklistNode *quicklistBookmarkFind(quicklist *ql, const char *name) {
  * Note that the bookmark memory is not freed yet, and is kept for future use. */
 int quicklistBookmarkDelete(quicklist *ql, const char *name) {
     quicklistBookmark *bm = _quicklistBookmarkFindByName(ql, name);
-    if (!bm)
+    if (!bm) {
         return 0;
+    }
     _quicklistBookmarkDelete(ql, bm);
     return 1;
 }
@@ -1686,8 +1745,9 @@ void _quicklistBookmarkDelete(quicklist *ql, quicklistBookmark *bm) {
 }
 
 void quicklistBookmarksClear(quicklist *ql) {
-    while (ql->bookmark_count)
+    while (ql->bookmark_count) {
         zfree(ql->bookmarks[--ql->bookmark_count].name);
+    }
     /* NOTE: We do not shrink (realloc) the quick list. main use case for this
      * function is just before releasing the allocation. */
 }
@@ -1724,10 +1784,12 @@ static void ql_info(quicklist *ql) {
 #if QL_TEST_VERBOSE
     printf("Container length: %lu\n", ql->len);
     printf("Container size: %lu\n", ql->count);
-    if (ql->head)
+    if (ql->head) {
         printf("\t(zsize head: %lu)\n", lpLength(ql->head->entry));
-    if (ql->tail)
+    }
+    if (ql->tail) {
         printf("\t(zsize tail: %lu)\n", lpLength(ql->tail->entry));
+    }
     printf("\n");
 #else
     UNUSED(ql);
@@ -1886,11 +1948,13 @@ static int _ql_verify(quicklist *ql, uint32_t len, uint32_t count, uint32_t head
 /* Release iterator and verify compress correctly. */
 static void ql_release_iterator(quicklistIter *iter) {
     quicklist *ql = NULL;
-    if (iter)
+    if (iter) {
         ql = iter->quicklist;
+    }
     quicklistReleaseIterator(iter);
-    if (ql)
+    if (ql) {
         assert(!_ql_verify_compress(ql));
+    }
 }
 
 /* Generate new string concatenating integer i against string 'prefix' */
@@ -1920,8 +1984,9 @@ static void randstring(unsigned char *target, size_t sz) {
             assert(NULL);
     }
 
-    while (p < sz)
+    while (p < sz) {
         target[p++] = minval + rand() % (maxval - minval + 1);
+    }
 }
 
 /* main test, but callable from other files */
@@ -1971,12 +2036,15 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST_DESC("add to tail 5x at compress %d", options[_i]) {
             for (int f = 0; f < fill_count; f++) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 5; i++) {
                     quicklistPushTail(ql, genstr("hello", i), 32);
-                if (ql->count != 5)
+                }
+                if (ql->count != 5) {
                     ERROR;
-                if (fills[f] == 32)
+                }
+                if (fills[f] == 32) {
                     ql_verify(ql, 1, 5, 5, 5);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -1984,12 +2052,15 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST_DESC("add to head 5x at compress %d", options[_i]) {
             for (int f = 0; f < fill_count; f++) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 5; i++) {
                     quicklistPushHead(ql, genstr("hello", i), 32);
-                if (ql->count != 5)
+                }
+                if (ql->count != 5) {
                     ERROR;
-                if (fills[f] == 32)
+                }
+                if (fills[f] == 32) {
                     ql_verify(ql, 1, 5, 5, 5);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -1997,12 +2068,15 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST_DESC("add to tail 500x at compress %d", options[_i]) {
             for (int f = 0; f < fill_count; f++) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushTail(ql, genstr("hello", i), 64);
-                if (ql->count != 500)
+                }
+                if (ql->count != 500) {
                     ERROR;
-                if (fills[f] == 32)
+                }
+                if (fills[f] == 32) {
                     ql_verify(ql, 16, 500, 32, 20);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -2010,12 +2084,15 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST_DESC("add to head 500x at compress %d", options[_i]) {
             for (int f = 0; f < fill_count; f++) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushHead(ql, genstr("hello", i), 32);
-                if (ql->count != 500)
+                }
+                if (ql->count != 500) {
                     ERROR;
-                if (fills[f] == 32)
+                }
+                if (fills[f] == 32) {
                     ql_verify(ql, 16, 500, 20, 32);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -2043,8 +2120,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
             int i = 0;
             while (quicklistNext(iter, &entry)) {
                 snprintf(buf, sizeof(buf), "hello%d", i);
-                if (strcmp((char *)entry.value, buf))
+                if (strcmp((char *)entry.value, buf)) {
                     ERR("value [%s] didn't match [%s] at position %d", entry.value, buf, i);
+                }
                 i++;
             }
             ql_release_iterator(iter);
@@ -2056,8 +2134,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
             quicklist *ql = quicklistNew(-2, options[_i]);
             char *strings[] = {"hello1", "hello2", "h3", "h4", "hello5"};
 
-            for (int i = 0; i < 5; ++i)
+            for (int i = 0; i < 5; ++i) {
                 quicklistPushHead(ql, strings[i], strlen(strings[i]));
+            }
 
             quicklistEntry entry;
             quicklistIter *iter = quicklistGetIterator(ql, AL_START_TAIL);
@@ -2115,19 +2194,21 @@ int quicklistTest(int argc, char *argv[], int flags) {
                 quicklistPushHead(ql, "7000", 4);
                 quicklistPushHead(ql, "-1200", 5);
                 quicklistPushHead(ql, "42", 2);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushHead(ql, genstr("hello", i), 64);
+                }
                 ql_info(ql);
                 for (int i = 0; i < 5000; i++) {
                     ql_info(ql);
                     quicklistRotate(ql);
                 }
-                if (fills[f] == 1)
+                if (fills[f] == 1) {
                     ql_verify(ql, 504, 504, 1, 1);
-                else if (fills[f] == 2)
+                } else if (fills[f] == 2) {
                     ql_verify(ql, 252, 504, 2, 2);
-                else if (fills[f] == 32)
+                } else if (fills[f] == 32) {
                     ql_verify(ql, 16, 504, 32, 24);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -2175,8 +2256,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
 
         TEST("pop head 500 from 500") {
             quicklist *ql = quicklistNew(-2, options[_i]);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             ql_info(ql);
             for (int i = 0; i < 500; i++) {
                 unsigned char *data;
@@ -2198,8 +2280,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
 
         TEST("pop head 5000 from 500") {
             quicklist *ql = quicklistNew(-2, options[_i]);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             for (int i = 0; i < 5000; i++) {
                 unsigned char *data;
                 size_t sz;
@@ -2227,20 +2310,23 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("iterate forward over 500 list") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             quicklistIter *iter = quicklistGetIterator(ql, AL_START_HEAD);
             quicklistEntry entry;
             int i = 499, count = 0;
             while (quicklistNext(iter, &entry)) {
                 char *h = genstr("hello", i);
-                if (strcmp((char *)entry.value, h))
+                if (strcmp((char *)entry.value, h)) {
                     ERR("value [%s] didn't match [%s] at position %d", entry.value, h, i);
+                }
                 i--;
                 count++;
             }
-            if (count != 500)
+            if (count != 500) {
                 ERR("Didn't iterate over exactly 500 elements (%d)", i);
+            }
             ql_verify(ql, 16, 500, 20, 32);
             ql_release_iterator(iter);
             quicklistRelease(ql);
@@ -2249,19 +2335,22 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("iterate reverse over 500 list") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             quicklistIter *iter = quicklistGetIterator(ql, AL_START_TAIL);
             quicklistEntry entry;
             int i = 0;
             while (quicklistNext(iter, &entry)) {
                 char *h = genstr("hello", i);
-                if (strcmp((char *)entry.value, h))
+                if (strcmp((char *)entry.value, h)) {
                     ERR("value [%s] didn't match [%s] at position %d", entry.value, h, i);
+                }
                 i++;
             }
-            if (i != 500)
+            if (i != 500) {
                 ERR("Didn't iterate over exactly 500 elements (%d)", i);
+            }
             ql_verify(ql, 16, 500, 20, 32);
             ql_release_iterator(iter);
             quicklistRelease(ql);
@@ -2321,8 +2410,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
 
         TEST("insert head while head node is full") {
             quicklist *ql = quicklistNew(4, options[_i]);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10; i++) {
                 quicklistPushTail(ql, genstr("hello", i), 6);
+            }
             quicklistSetFill(ql, -1);
             quicklistEntry entry;
             iter = quicklistGetIteratorEntryAtIdx(ql, -10, &entry);
@@ -2335,8 +2425,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
 
         TEST("insert tail while tail node is full") {
             quicklist *ql = quicklistNew(4, options[_i]);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 6);
+            }
             quicklistSetFill(ql, -1);
             quicklistEntry entry;
             iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
@@ -2376,33 +2467,39 @@ int quicklistTest(int argc, char *argv[], int flags) {
                 iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
                 int sz = entry.sz;
 
-                if (strncmp((char *)entry.value, "abc", 3))
+                if (strncmp((char *)entry.value, "abc", 3)) {
                     ERR("Value 0 didn't match, instead got: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-                if (strncmp((char *)entry.value, "def", 3))
+                if (strncmp((char *)entry.value, "def", 3)) {
                     ERR("Value 1 didn't match, instead got: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 2, &entry);
-                if (strncmp((char *)entry.value, "bar", 3))
+                if (strncmp((char *)entry.value, "bar", 3)) {
                     ERR("Value 2 didn't match, instead got: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 3, &entry);
-                if (strncmp((char *)entry.value, "bob", 3))
+                if (strncmp((char *)entry.value, "bob", 3)) {
                     ERR("Value 3 didn't match, instead got: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 4, &entry);
-                if (strncmp((char *)entry.value, "foo", 3))
+                if (strncmp((char *)entry.value, "foo", 3)) {
                     ERR("Value 4 didn't match, instead got: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 5, &entry);
-                if (strncmp((char *)entry.value, "zoo", 3))
+                if (strncmp((char *)entry.value, "zoo", 3)) {
                     ERR("Value 5 didn't match, instead got: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
                 quicklistRelease(ql);
             }
@@ -2411,16 +2508,18 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST_DESC("insert [before] 250 new in middle of 500 elements at compress %d", options[_i]) {
             for (int f = 0; f < fill_count; f++) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushTail(ql, genstr("hello", i), 32);
+                }
                 for (int i = 0; i < 250; i++) {
                     quicklistEntry entry;
                     iter = quicklistGetIteratorEntryAtIdx(ql, 250, &entry);
                     quicklistInsertBefore(iter, &entry, genstr("abc", i), 32);
                     ql_release_iterator(iter);
                 }
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 25, 750, 32, 20);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -2428,8 +2527,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST_DESC("insert [after] 250 new in middle of 500 elements at compress %d", options[_i]) {
             for (int f = 0; f < fill_count; f++) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushHead(ql, genstr("hello", i), 32);
+                }
                 for (int i = 0; i < 250; i++) {
                     quicklistEntry entry;
                     iter = quicklistGetIteratorEntryAtIdx(ql, 250, &entry);
@@ -2437,11 +2537,13 @@ int quicklistTest(int argc, char *argv[], int flags) {
                     ql_release_iterator(iter);
                 }
 
-                if (ql->count != 750)
+                if (ql->count != 750) {
                     ERR("List size not 750, but rather %ld", ql->count);
+                }
 
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 26, 750, 20, 32);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -2468,8 +2570,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("duplicate list of 500") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             ql_verify(ql, 16, 500, 20, 32);
 
             quicklist *copy = quicklistDup(ql);
@@ -2481,59 +2584,69 @@ int quicklistTest(int argc, char *argv[], int flags) {
         for (int f = 0; f < fill_count; f++) {
             TEST_DESC("index 1,200 from 500 list at fill %d at compress %d", f, options[_i]) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushTail(ql, genstr("hello", i + 1), 32);
+                }
                 quicklistEntry entry;
                 iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-                if (strcmp((char *)entry.value, "hello2") != 0)
+                if (strcmp((char *)entry.value, "hello2") != 0) {
                     ERR("Value: %s", entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 200, &entry);
-                if (strcmp((char *)entry.value, "hello201") != 0)
+                if (strcmp((char *)entry.value, "hello201") != 0) {
                     ERR("Value: %s", entry.value);
+                }
                 ql_release_iterator(iter);
                 quicklistRelease(ql);
             }
 
             TEST_DESC("index -1,-2 from 500 list at fill %d at compress %d", fills[f], options[_i]) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushTail(ql, genstr("hello", i + 1), 32);
+                }
                 quicklistEntry entry;
                 iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-                if (strcmp((char *)entry.value, "hello500") != 0)
+                if (strcmp((char *)entry.value, "hello500") != 0) {
                     ERR("Value: %s", entry.value);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, -2, &entry);
-                if (strcmp((char *)entry.value, "hello499") != 0)
+                if (strcmp((char *)entry.value, "hello499") != 0) {
                     ERR("Value: %s", entry.value);
+                }
                 ql_release_iterator(iter);
                 quicklistRelease(ql);
             }
 
             TEST_DESC("index -100 from 500 list at fill %d at compress %d", fills[f], options[_i]) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 500; i++)
+                for (int i = 0; i < 500; i++) {
                     quicklistPushTail(ql, genstr("hello", i + 1), 32);
+                }
                 quicklistEntry entry;
                 iter = quicklistGetIteratorEntryAtIdx(ql, -100, &entry);
-                if (strcmp((char *)entry.value, "hello401") != 0)
+                if (strcmp((char *)entry.value, "hello401") != 0) {
                     ERR("Value: %s", entry.value);
+                }
                 ql_release_iterator(iter);
                 quicklistRelease(ql);
             }
 
             TEST_DESC("index too big +1 from 50 list at fill %d at compress %d", fills[f], options[_i]) {
                 quicklist *ql = quicklistNew(fills[f], options[_i]);
-                for (int i = 0; i < 50; i++)
+                for (int i = 0; i < 50; i++) {
                     quicklistPushTail(ql, genstr("hello", i + 1), 32);
+                }
                 quicklistEntry entry;
                 int sz = entry.sz;
                 iter = quicklistGetIteratorEntryAtIdx(ql, 50, &entry);
-                if (iter)
+                if (iter) {
                     ERR("Index found at 50 with 50 list: %.*s", sz, entry.value);
+                }
                 ql_release_iterator(iter);
                 quicklistRelease(ql);
             }
@@ -2548,8 +2661,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
 
         TEST("delete range of entire node in list of one node") {
             quicklist *ql = quicklistNew(-2, options[_i]);
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < 32; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             ql_verify(ql, 1, 32, 32, 32);
             quicklistDelRange(ql, 0, 32);
             ql_verify(ql, 0, 0, 0, 0);
@@ -2558,8 +2672,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
 
         TEST("delete range of entire node with overflow counts") {
             quicklist *ql = quicklistNew(-2, options[_i]);
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < 32; i++) {
                 quicklistPushHead(ql, genstr("hello", i), 32);
+            }
             ql_verify(ql, 1, 32, 32, 32);
             quicklistDelRange(ql, 0, 128);
             ql_verify(ql, 0, 0, 0, 0);
@@ -2569,8 +2684,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("delete middle 100 of 500 list") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
+            }
             ql_verify(ql, 16, 500, 32, 20);
             quicklistDelRange(ql, 200, 100);
             ql_verify(ql, 14, 400, 32, 20);
@@ -2580,8 +2696,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("delete less than fill but across nodes") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
+            }
             ql_verify(ql, 16, 500, 32, 20);
             quicklistDelRange(ql, 60, 10);
             ql_verify(ql, 16, 490, 32, 20);
@@ -2591,8 +2708,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("delete negative 1 from 500 list") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
+            }
             ql_verify(ql, 16, 500, 32, 20);
             quicklistDelRange(ql, -1, 1);
             ql_verify(ql, 16, 499, 32, 19);
@@ -2602,8 +2720,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("delete negative 1 from 500 list with overflow counts") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
+            }
             ql_verify(ql, 16, 500, 32, 20);
             quicklistDelRange(ql, -1, 128);
             ql_verify(ql, 16, 499, 32, 19);
@@ -2613,8 +2732,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("delete negative 100 from 500 list") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 500; i++) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
+            }
             quicklistDelRange(ql, -100, 100);
             ql_verify(ql, 13, 400, 32, 16);
             quicklistRelease(ql);
@@ -2623,8 +2743,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         TEST("delete -10 count 5 from 50 list") {
             quicklist *ql = quicklistNew(-2, options[_i]);
             quicklistSetFill(ql, 32);
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 50; i++) {
                 quicklistPushTail(ql, genstr("hello", i + 1), 32);
+            }
             ql_verify(ql, 2, 50, 32, 18);
             quicklistDelRange(ql, -10, 5);
             ql_verify(ql, 2, 45, 32, 13);
@@ -2640,53 +2761,63 @@ int quicklistTest(int argc, char *argv[], int flags) {
             ql_verify(ql, 1, 4, 4, 4);
             quicklistEntry entry;
             iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-            if (entry.longval != 1111)
+            if (entry.longval != 1111) {
                 ERR("Not 1111, %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 1, &entry);
-            if (entry.longval != 2222)
+            if (entry.longval != 2222) {
                 ERR("Not 2222, %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 2, &entry);
-            if (entry.longval != 3333)
+            if (entry.longval != 3333) {
                 ERR("Not 3333, %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 3, &entry);
-            if (entry.longval != 4444)
+            if (entry.longval != 4444) {
                 ERR("Not 4444, %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, 4, &entry);
-            if (iter)
+            if (iter) {
                 ERR("Index past elements: %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-            if (entry.longval != 4444)
+            if (entry.longval != 4444) {
                 ERR("Not 4444 (reverse), %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -2, &entry);
-            if (entry.longval != 3333)
+            if (entry.longval != 3333) {
                 ERR("Not 3333 (reverse), %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -3, &entry);
-            if (entry.longval != 2222)
+            if (entry.longval != 2222) {
                 ERR("Not 2222 (reverse), %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -4, &entry);
-            if (entry.longval != 1111)
+            if (entry.longval != 1111) {
                 ERR("Not 1111 (reverse), %lld", entry.longval);
+            }
             ql_release_iterator(iter);
 
             iter = quicklistGetIteratorEntryAtIdx(ql, -5, &entry);
-            if (iter)
+            if (iter) {
                 ERR("Index past elements (reverse), %lld", entry.longval);
+            }
             ql_release_iterator(iter);
             quicklistRelease(ql);
         }
@@ -2705,14 +2836,16 @@ int quicklistTest(int argc, char *argv[], int flags) {
             quicklistEntry entry;
             for (int i = 0; i < 5000; i++) {
                 iter = quicklistGetIteratorEntryAtIdx(ql, i, &entry);
-                if (entry.longval != nums[i])
+                if (entry.longval != nums[i]) {
                     ERR("[%d] Not longval %lld but rather %lld", i, nums[i], entry.longval);
+                }
                 entry.longval = 0xdeadbeef;
                 ql_release_iterator(iter);
             }
             iter = quicklistGetIteratorEntryAtIdx(ql, 5000, &entry);
-            if (strncmp((char *)entry.value, "xxxxxxxxxxxxxxxxxxxx", 20))
+            if (strncmp((char *)entry.value, "xxxxxxxxxxxxxxxxxxxx", 20)) {
                 ERR("String val not match: %s", entry.value);
+            }
             ql_verify(ql, 157, 5001, 32, 9);
             ql_release_iterator(iter);
             quicklistRelease(ql);
@@ -2736,8 +2869,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
                 char *words[] = {"abc", "foo", "bar", "foobar", "foobared", "zap", "bar", "test", "foo"};
                 char *result[] = {"abc", "foo", "foobar", "foobared", "zap", "test", "foo"};
                 char *resultB[] = {"abc", "foo", "foobar", "foobared", "zap", "test"};
-                for (int i = 0; i < 9; i++)
+                for (int i = 0; i < 9; i++) {
                     quicklistPushTail(ql, words[i], strlen(words[i]));
+                }
 
                 /* lrem 0 bar */
                 quicklistIter *iter = quicklistGetIterator(ql, AL_START_HEAD);
@@ -2776,8 +2910,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
                         quicklistDelEntry(iter, &entry);
                         del--;
                     }
-                    if (!del)
+                    if (!del) {
                         break;
+                    }
                     i++;
                 }
                 ql_release_iterator(iter);
@@ -2824,8 +2959,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
                 }
                 ql_release_iterator(iter);
 
-                if (i != 5)
+                if (i != 5) {
                     ERR("Didn't iterate 5 times, iterated %d times.", i);
+                }
 
                 /* Check results after deletion of "hij" */
                 iter = quicklistGetIterator(ql, AL_START_HEAD);
@@ -2857,8 +2993,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
                 quicklistIter *iter = quicklistGetIteratorAtIdx(ql, AL_START_HEAD, 437);
                 int i = 437;
                 while (quicklistNext(iter, &entry)) {
-                    if (entry.longval != nums[i])
+                    if (entry.longval != nums[i]) {
                         ERR("Expected %lld, but got %lld", entry.longval, nums[i]);
+                    }
                     i++;
                 }
                 ql_release_iterator(iter);
@@ -2876,22 +3013,25 @@ int quicklistTest(int argc, char *argv[], int flags) {
                     int sz = ll2string(num, sizeof(num), nums[i]);
                     quicklistPushTail(ql, num, sz);
                 }
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 1, 32, 32, 32);
+                }
                 /* ltrim 25 53 (keep [25,32] inclusive = 7 remaining) */
                 quicklistDelRange(ql, 0, 25);
                 quicklistDelRange(ql, 0, 0);
                 quicklistEntry entry;
                 for (int i = 0; i < 7; i++) {
                     iter = quicklistGetIteratorEntryAtIdx(ql, i, &entry);
-                    if (entry.longval != nums[25 + i])
+                    if (entry.longval != nums[25 + i]) {
                         ERR("Deleted invalid range!  Expected %lld but got "
                             "%lld",
                             entry.longval, nums[25 + i]);
+                    }
                     ql_release_iterator(iter);
                 }
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 1, 7, 7, 7);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -2908,38 +3048,44 @@ int quicklistTest(int argc, char *argv[], int flags) {
                     int sz = ll2string(num, sizeof(num), nums[i]);
                     quicklistPushTail(ql, num, sz);
                 }
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 2, 33, 32, 1);
+                }
                 /* ltrim 5 16 (keep [5,16] inclusive = 12 remaining) */
                 quicklistDelRange(ql, 0, 5);
                 quicklistDelRange(ql, -16, 16);
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 1, 12, 12, 12);
+                }
                 quicklistEntry entry;
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-                if (entry.longval != 5)
+                if (entry.longval != 5) {
                     ERR("A: longval not 5, but %lld", entry.longval);
+                }
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
-                if (entry.longval != 16)
+                if (entry.longval != 16) {
                     ERR("B! got instead: %lld", entry.longval);
+                }
                 quicklistPushTail(ql, "bobobob", 7);
                 ql_release_iterator(iter);
 
                 iter = quicklistGetIteratorEntryAtIdx(ql, -1, &entry);
                 int sz = entry.sz;
-                if (strncmp((char *)entry.value, "bobobob", 7))
+                if (strncmp((char *)entry.value, "bobobob", 7)) {
                     ERR("Tail doesn't match bobobob, it's %.*s instead", sz, entry.value);
+                }
                 ql_release_iterator(iter);
 
                 for (int i = 0; i < 12; i++) {
                     iter = quicklistGetIteratorEntryAtIdx(ql, i, &entry);
-                    if (entry.longval != nums[5 + i])
+                    if (entry.longval != nums[5 + i]) {
                         ERR("Deleted invalid range!  Expected %lld but got "
                             "%lld",
                             entry.longval, nums[5 + i]);
+                    }
                     ql_release_iterator(iter);
                 }
                 quicklistRelease(ql);
@@ -2956,17 +3102,20 @@ int quicklistTest(int argc, char *argv[], int flags) {
                     int sz = ll2string(num, sizeof(num), nums[i]);
                     quicklistPushTail(ql, num, sz);
                 }
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 2, 33, 32, 1);
+                }
                 /* ltrim 3 3 (keep [3,3] inclusive = 1 remaining) */
                 quicklistDelRange(ql, 0, 3);
                 quicklistDelRange(ql, -29, 4000); /* make sure not loop forever */
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 1, 1, 1, 1);
+                }
                 quicklistEntry entry;
                 iter = quicklistGetIteratorEntryAtIdx(ql, 0, &entry);
-                if (entry.longval != -5157318210846258173)
+                if (entry.longval != -5157318210846258173) {
                     ERROR;
+                }
                 ql_release_iterator(iter);
                 quicklistRelease(ql);
             }
@@ -2982,11 +3131,13 @@ int quicklistTest(int argc, char *argv[], int flags) {
                     int sz = ll2string(num, sizeof(num), nums[i]);
                     quicklistPushTail(ql, num, sz);
                 }
-                if (fills[f] == 32)
+                if (fills[f] == 32) {
                     ql_verify(ql, 2, 33, 32, 1);
+                }
                 quicklistDelRange(ql, -12, 3);
-                if (ql->count != 30)
+                if (ql->count != 30) {
                     ERR("Didn't delete exactly three elements!  Count is: %lu", ql->count);
+                }
                 quicklistRelease(ql);
             }
         }
@@ -3052,8 +3203,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
     long long stop = mstime();
 
     printf("\n");
-    for (size_t i = 0; i < option_count; i++)
+    for (size_t i = 0; i < option_count; i++) {
         printf("Test Loop %02d: %0.2f seconds.\n", options[i], (float)runtime[i] / 1000);
+    }
     printf("Compressions: %0.2f seconds.\n", (float)(stop - start) / 1000);
     printf("\n");
 
@@ -3088,8 +3240,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         int i;
         quicklist *ql = quicklistNew(1, 0);
         quicklistPushHead(ql, "1", 1);
-        for (i = 0; i < QL_MAX_BM; i++)
+        for (i = 0; i < QL_MAX_BM; i++) {
             assert(quicklistBookmarkCreate(&ql, genstr("", i), ql->head));
+        }
         /* when all bookmarks are used, creation fails */
         assert(!quicklistBookmarkCreate(&ql, "_test", ql->head));
         /* delete one and see that we can now create another */
@@ -3097,8 +3250,9 @@ int quicklistTest(int argc, char *argv[], int flags) {
         assert(quicklistBookmarkCreate(&ql, "_test", ql->head));
         /* delete one and see that the rest survive */
         assert(quicklistBookmarkDelete(ql, "_test"));
-        for (i = 1; i < QL_MAX_BM; i++)
+        for (i = 1; i < QL_MAX_BM; i++) {
             assert(quicklistBookmarkFind(ql, genstr("", i)) == ql->head);
+        }
         /* make sure the deleted ones are indeed gone */
         assert(!quicklistBookmarkFind(ql, "0"));
         assert(!quicklistBookmarkFind(ql, "_test"));
@@ -3168,10 +3322,11 @@ int quicklistTest(int argc, char *argv[], int flags) {
 #endif
     }
 
-    if (!err)
+    if (!err) {
         printf("ALL TESTS PASSED!\n");
-    else
+    } else {
         ERR("Sorry, not all tests passed!  In fact, %d tests failed.", err);
+    }
 
     return err;
 }

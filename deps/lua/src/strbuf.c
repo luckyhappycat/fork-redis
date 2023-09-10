@@ -44,12 +44,14 @@ static void die(const char *fmt, ...) {
 void strbuf_init(strbuf_t *s, size_t len) {
     size_t size;
 
-    if (!len)
+    if (!len) {
         size = STRBUF_DEFAULT_SIZE;
-    else
+    } else {
         size = len + 1;
-    if (size < len)
+    }
+    if (size < len) {
         die("Overflow, len: %zu", len);
+    }
     s->buf = NULL;
     s->size = size;
     s->length = 0;
@@ -58,8 +60,9 @@ void strbuf_init(strbuf_t *s, size_t len) {
     s->debug = 0;
 
     s->buf = malloc(size);
-    if (!s->buf)
+    if (!s->buf) {
         die("Out of memory");
+    }
 
     strbuf_ensure_null(s);
 }
@@ -68,8 +71,9 @@ strbuf_t *strbuf_new(size_t len) {
     strbuf_t *s;
 
     s = malloc(sizeof(strbuf_t));
-    if (!s)
+    if (!s) {
         die("Out of memory");
+    }
 
     strbuf_init(s, len);
 
@@ -94,8 +98,9 @@ void strbuf_free(strbuf_t *s) {
         free(s->buf);
         s->buf = NULL;
     }
-    if (s->dynamic)
+    if (s->dynamic) {
         free(s);
+    }
 }
 
 char *strbuf_free_to_string(strbuf_t *s, size_t *len) {
@@ -106,11 +111,13 @@ char *strbuf_free_to_string(strbuf_t *s, size_t *len) {
     strbuf_ensure_null(s);
 
     buf = s->buf;
-    if (len)
+    if (len) {
         *len = s->length;
+    }
 
-    if (s->dynamic)
+    if (s->dynamic) {
         free(s);
+    }
 
     return buf;
 }
@@ -118,29 +125,34 @@ char *strbuf_free_to_string(strbuf_t *s, size_t *len) {
 static size_t calculate_new_size(strbuf_t *s, size_t len) {
     size_t reqsize, newsize;
 
-    if (len <= 0)
+    if (len <= 0) {
         die("BUG: Invalid strbuf length requested");
+    }
 
     /* Ensure there is room for optional NULL termination */
     reqsize = len + 1;
-    if (reqsize < len)
+    if (reqsize < len) {
         die("Overflow, len: %zu", len);
+    }
 
     /* If the user has requested to shrink the buffer, do it exactly */
-    if (s->size > reqsize)
+    if (s->size > reqsize) {
         return reqsize;
+    }
 
     newsize = s->size;
     if (reqsize >= SIZE_MAX / 2) {
         newsize = reqsize;
     } else {
         /* Exponential sizing */
-        while (newsize < reqsize)
+        while (newsize < reqsize) {
             newsize *= 2;
+        }
     }
 
-    if (newsize < reqsize)
+    if (newsize < reqsize) {
         die("BUG: strbuf length would overflow, len: %zu", len);
+    }
 
     return newsize;
 }
@@ -158,8 +170,9 @@ void strbuf_resize(strbuf_t *s, size_t len) {
 
     s->size = newsize;
     s->buf = realloc(s->buf, s->size);
-    if (!s->buf)
+    if (!s->buf) {
         die("Out of memory, len: %zu", len);
+    }
     s->reallocs++;
 }
 

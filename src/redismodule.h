@@ -1684,8 +1684,9 @@ static int RedisModule_Init(RedisModuleCtx *ctx, const char *name, int ver, int 
     REDISMODULE_GET_API(RdbLoad);
     REDISMODULE_GET_API(RdbSave);
 
-    if (RedisModule_IsModuleNameBusy && RedisModule_IsModuleNameBusy(name))
+    if (RedisModule_IsModuleNameBusy && RedisModule_IsModuleNameBusy(name)) {
         return REDISMODULE_ERR;
+    }
     RedisModule_SetModuleAttribs(ctx, name, ver, apiver);
     return REDISMODULE_OK;
 }

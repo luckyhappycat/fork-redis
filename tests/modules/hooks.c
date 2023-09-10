@@ -59,8 +59,9 @@ void LogStringEvent(RedisModuleCtx *ctx, const char *keyname, const char *data) 
         memset(event, 0, sizeof(EventElement));
         RedisModule_DictSetC(event_log, (void *)keyname, strlen(keyname), event);
     }
-    if (event->last_val_string)
+    if (event->last_val_string) {
         RedisModule_FreeString(ctx, event->last_val_string);
+    }
     event->last_val_string = RedisModule_CreateString(ctx, data, strlen(data));
     event->count++;
 }
@@ -78,8 +79,9 @@ void LogNumericEvent(RedisModuleCtx *ctx, const char *keyname, long data) {
 }
 
 void FreeEvent(RedisModuleCtx *ctx, EventElement *event) {
-    if (event->last_val_string)
+    if (event->last_val_string) {
         RedisModule_FreeString(ctx, event->last_val_string);
+    }
     RedisModule_Free(event);
 }
 
@@ -101,12 +103,13 @@ int cmdEventLast(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     }
 
     EventElement *event = RedisModule_DictGet(event_log, argv[1], NULL);
-    if (event && event->last_val_string)
+    if (event && event->last_val_string) {
         RedisModule_ReplyWithString(ctx, event->last_val_string);
-    else if (event)
+    } else if (event) {
         RedisModule_ReplyWithLongLong(ctx, event->last_val_int);
-    else
+    } else {
         RedisModule_ReplyWithNull(ctx);
+    }
     return REDISMODULE_OK;
 }
 
@@ -117,8 +120,9 @@ void clearEvents(RedisModuleCtx *ctx) {
     while ((key = RedisModule_DictNext(ctx, iter, (void **)&event)) != NULL) {
         event->count = 0;
         event->last_val_int = 0;
-        if (event->last_val_string)
+        if (event->last_val_string) {
             RedisModule_FreeString(ctx, event->last_val_string);
+        }
         event->last_val_string = NULL;
         RedisModule_DictDel(event_log, key, NULL);
         RedisModule_Free(event);
@@ -407,8 +411,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "testhook", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "testhook", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* Example on how to check if a server sub event is supported */
     if (!RedisModule_IsSubEventSupported(RedisModuleEvent_ReplicationRoleChanged, REDISMODULE_EVENT_REPLROLECHANGED_NOW_MASTER)) {
@@ -443,16 +448,21 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     removed_subevent_type = RedisModule_CreateDict(ctx);
     removed_expiry_log = RedisModule_CreateDict(ctx);
 
-    if (RedisModule_CreateCommand(ctx, "hooks.event_count", cmdEventCount, "", 0, 0, 0) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "hooks.event_count", cmdEventCount, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "hooks.event_last", cmdEventLast, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "hooks.event_last", cmdEventLast, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "hooks.clear", cmdEventsClear, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "hooks.clear", cmdEventsClear, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "hooks.is_key_removed", cmdIsKeyRemoved, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "hooks.is_key_removed", cmdIsKeyRemoved, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
-    if (RedisModule_CreateCommand(ctx, "hooks.pexpireat", cmdKeyExpiry, "", 0, 0, 0) == REDISMODULE_ERR)
+    }
+    if (RedisModule_CreateCommand(ctx, "hooks.pexpireat", cmdKeyExpiry, "", 0, 0, 0) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

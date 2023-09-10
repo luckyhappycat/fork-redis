@@ -389,8 +389,9 @@ static int libraryJoin(functionsLibCtx *functions_lib_ctx_dst, functionsLibCtx *
     ret = C_OK;
 
 done:
-    if (iter)
+    if (iter) {
         dictReleaseIterator(iter);
+    }
     if (old_libraries_list) {
         /* Link back all libraries on tmp_l_ctx */
         while (listLength(old_libraries_list) > 0) {
@@ -615,8 +616,9 @@ void functionKillCommand(client *c) {
 uint64_t fcallGetCommandFlags(client *c, uint64_t cmd_flags) {
     robj *function_name = c->argv[1];
     c->cur_script = dictFind(curr_functions_lib_ctx->functions, function_name->ptr);
-    if (!c->cur_script)
+    if (!c->cur_script) {
         return cmd_flags;
+    }
     functionInfo *fi = dictGetVal(c->cur_script);
     uint64_t script_flags = fi->f_flags;
     return scriptFlagsToCmdFlags(cmd_flags, script_flags);
@@ -628,8 +630,9 @@ static void fcallCommandGeneric(client *c, int ro) {
 
     robj *function_name = c->argv[1];
     dictEntry *de = c->cur_script;
-    if (!de)
+    if (!de) {
         de = dictFind(curr_functions_lib_ctx->functions, function_name->ptr);
+    }
     if (!de) {
         addReplyError(c, "Function not found");
         return;
@@ -653,8 +656,9 @@ static void fcallCommandGeneric(client *c, int ro) {
 
     scriptRunCtx run_ctx;
 
-    if (scriptPrepareForRun(&run_ctx, fi->li->ei->c, c, fi->name, fi->f_flags, ro) != C_OK)
+    if (scriptPrepareForRun(&run_ctx, fi->li->ei->c, c, fi->name, fi->f_flags, ro) != C_OK) {
         return;
+    }
 
     engine->call(&run_ctx, engine->engine_ctx, fi->function, c->argv + 3, numkeys, c->argv + 3 + numkeys, c->argc - 3 - numkeys);
     scriptResetRun(&run_ctx);
@@ -946,25 +950,32 @@ int functionExtractLibMetaData(sds payload, functionsLibMataData *md, sds *err) 
     return C_OK;
 
 error:
-    if (name)
+    if (name) {
         sdsfree(name);
-    if (desc)
+    }
+    if (desc) {
         sdsfree(desc);
-    if (engine)
+    }
+    if (engine) {
         sdsfree(engine);
-    if (code)
+    }
+    if (code) {
         sdsfree(code);
+    }
     sdsfreesplitres(parts, numparts);
     return C_ERR;
 }
 
 void functionFreeLibMetaData(functionsLibMataData *md) {
-    if (md->code)
+    if (md->code) {
         sdsfree(md->code);
-    if (md->name)
+    }
+    if (md->name) {
         sdsfree(md->name);
-    if (md->engine)
+    }
+    if (md->engine) {
         sdsfree(md->engine);
+    }
 }
 
 /* Compile and save the given library, return the loaded library name on success
@@ -1038,12 +1049,15 @@ sds functionsCreateWithLibraryCtx(sds code, int replace, sds *err, functionsLibC
     return loaded_lib_name;
 
 error:
-    if (iter)
+    if (iter) {
         dictReleaseIterator(iter);
-    if (new_li)
+    }
+    if (new_li) {
         engineLibraryFree(new_li);
-    if (old_li)
+    }
+    if (old_li) {
         libraryLink(lib_ctx, old_li);
+    }
     functionFreeLibMetaData(&md);
     return NULL;
 }

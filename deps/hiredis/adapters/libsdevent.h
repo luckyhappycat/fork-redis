@@ -150,13 +150,15 @@ static int redisLibsdeventAttach(redisAsyncContext *ac, struct sd_event *event) 
     redisLibsdeventEvents *e;
 
     /* Nothing should be attached when something is already attached */
-    if (ac->ev.data != NULL)
+    if (ac->ev.data != NULL) {
         return REDIS_ERR;
+    }
 
     /* Create container for context and r/w events */
     e = (redisLibsdeventEvents *)hi_calloc(1, sizeof(*e));
-    if (e == NULL)
+    if (e == NULL) {
         return REDIS_ERR;
+    }
 
     /* Initialize and increase event refcount */
     e->context = ac;

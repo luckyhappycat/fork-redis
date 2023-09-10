@@ -241,8 +241,9 @@ void freeCallReply(CallReply *rep) {
         freeCallReplyInternal(rep);
     }
     sdsfree(rep->original_proto);
-    if (rep->deferred_error_list)
+    if (rep->deferred_error_list) {
         listRelease(rep->deferred_error_list);
+    }
     zfree(rep);
 }
 
@@ -291,8 +292,9 @@ static void callReplyParse(CallReply *rep) {
 
 /* Return the call reply type (REDISMODULE_REPLY_...). */
 int callReplyType(CallReply *rep) {
-    if (!rep)
+    if (!rep) {
         return REDISMODULE_REPLY_UNKNOWN;
+    }
     callReplyParse(rep);
     return rep->type;
 }
@@ -309,10 +311,12 @@ int callReplyType(CallReply *rep) {
  */
 const char *callReplyGetString(CallReply *rep, size_t *len) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_STRING && rep->type != REDISMODULE_REPLY_ERROR)
+    if (rep->type != REDISMODULE_REPLY_STRING && rep->type != REDISMODULE_REPLY_ERROR) {
         return NULL;
-    if (len)
+    }
+    if (len) {
         *len = rep->len;
+    }
     return rep->val.str;
 }
 
@@ -321,8 +325,9 @@ const char *callReplyGetString(CallReply *rep, size_t *len) {
  */
 long long callReplyGetLongLong(CallReply *rep) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_INTEGER)
+    if (rep->type != REDISMODULE_REPLY_INTEGER) {
         return LLONG_MIN;
+    }
     return rep->val.ll;
 }
 
@@ -331,8 +336,9 @@ long long callReplyGetLongLong(CallReply *rep) {
  */
 double callReplyGetDouble(CallReply *rep) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_DOUBLE)
+    if (rep->type != REDISMODULE_REPLY_DOUBLE) {
         return LLONG_MIN;
+    }
     return rep->val.d;
 }
 
@@ -341,8 +347,9 @@ double callReplyGetDouble(CallReply *rep) {
  */
 int callReplyGetBool(CallReply *rep) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_BOOL)
+    if (rep->type != REDISMODULE_REPLY_BOOL) {
         return INT_MIN;
+    }
     return rep->val.ll;
 }
 
@@ -370,8 +377,9 @@ size_t callReplyGetLen(CallReply *rep) {
 }
 
 static CallReply *callReplyGetCollectionElement(CallReply *rep, size_t idx, int elements_per_entry) {
-    if (idx >= rep->len * elements_per_entry)
+    if (idx >= rep->len * elements_per_entry) {
         return NULL;  // real len is rep->len * elements_per_entry
+    }
     return rep->val.array + idx;
 }
 
@@ -383,8 +391,9 @@ static CallReply *callReplyGetCollectionElement(CallReply *rep, size_t idx, int 
  */
 CallReply *callReplyGetArrayElement(CallReply *rep, size_t idx) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_ARRAY)
+    if (rep->type != REDISMODULE_REPLY_ARRAY) {
         return NULL;
+    }
     return callReplyGetCollectionElement(rep, idx, 1);
 }
 
@@ -396,21 +405,26 @@ CallReply *callReplyGetArrayElement(CallReply *rep, size_t idx) {
  */
 CallReply *callReplyGetSetElement(CallReply *rep, size_t idx) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_SET)
+    if (rep->type != REDISMODULE_REPLY_SET) {
         return NULL;
+    }
     return callReplyGetCollectionElement(rep, idx, 1);
 }
 
 static int callReplyGetMapElementInternal(CallReply *rep, size_t idx, CallReply **key, CallReply **val, int type) {
     callReplyParse(rep);
-    if (rep->type != type)
+    if (rep->type != type) {
         return C_ERR;
-    if (idx >= rep->len)
+    }
+    if (idx >= rep->len) {
         return C_ERR;
-    if (key)
+    }
+    if (key) {
         *key = callReplyGetCollectionElement(rep, idx * 2, 2);
-    if (val)
+    }
+    if (val) {
         *val = callReplyGetCollectionElement(rep, idx * 2 + 1, 2);
+    }
     return C_OK;
 }
 
@@ -469,8 +483,9 @@ int callReplyGetAttributeElement(CallReply *rep, size_t idx, CallReply **key, Ca
  */
 const char *callReplyGetBigNumber(CallReply *rep, size_t *len) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_BIG_NUMBER)
+    if (rep->type != REDISMODULE_REPLY_BIG_NUMBER) {
         return NULL;
+    }
     *len = rep->len;
     return rep->val.str;
 }
@@ -491,11 +506,13 @@ const char *callReplyGetBigNumber(CallReply *rep, size_t *len) {
  */
 const char *callReplyGetVerbatim(CallReply *rep, size_t *len, const char **format) {
     callReplyParse(rep);
-    if (rep->type != REDISMODULE_REPLY_VERBATIM_STRING)
+    if (rep->type != REDISMODULE_REPLY_VERBATIM_STRING) {
         return NULL;
+    }
     *len = rep->len;
-    if (format)
+    if (format) {
         *format = rep->val.verbatim_str.format;
+    }
     return rep->val.verbatim_str.str;
 }
 

@@ -5,8 +5,9 @@
 
 /* LIST.GETALL key [REVERSE] */
 int list_getall(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 2 || argc > 3)
+    if (argc < 2 || argc > 3) {
         return RedisModule_WrongArity(ctx);
+    }
     int reverse = (argc == 3 && !strcasecmp(RedisModule_StringPtrLen(argv[2], NULL), "REVERSE"));
     RedisModule_AutoMemory(ctx);
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ);
@@ -53,8 +54,9 @@ int list_getall(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
  * performed, as well as the last index and the entry it points to.
  */
 int list_edit(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 3)
+    if (argc < 3) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModule_AutoMemory(ctx);
     int argpos = 1; /* the next arg */
 
@@ -81,10 +83,12 @@ int list_edit(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     long min_list_length = 0;
     for (size_t cmdpos = 0; cmdpos < cmdstr_len; cmdpos++) {
         char c = cmdstr[cmdpos];
-        if (c == 'i' || c == 'r')
+        if (c == 'i' || c == 'r') {
             num_req_args++;
-        if (c == 'd' || c == 'r' || c == 'k')
+        }
+        if (c == 'd' || c == 'r' || c == 'k') {
             min_list_length++;
+        }
     }
     if (argc < argpos + num_req_args) {
         return RedisModule_ReplyWithError(ctx, "ERR too few args");
@@ -156,8 +160,9 @@ static int replyByErrno(RedisModuleCtx *ctx) {
 
 /* LIST.GET key index */
 int list_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
     long long index;
     if (RedisModule_StringToLongLong(argv[2], &index) != REDISMODULE_OK) {
         return RedisModule_ReplyWithError(ctx, "ERR index must be a number");
@@ -176,8 +181,9 @@ int list_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 /* LIST.SET key index value */
 int list_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
     long long index;
     if (RedisModule_StringToLongLong(argv[2], &index) != REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, "ERR index must be a number");
@@ -199,8 +205,9 @@ int list_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
  * at index.
  */
 int list_insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
     long long index;
     if (RedisModule_StringToLongLong(argv[2], &index) != REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, "ERR index must be a number");
@@ -218,8 +225,9 @@ int list_insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 /* LIST.DELETE key index */
 int list_delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
     long long index;
     if (RedisModule_StringToLongLong(argv[2], &index) != REDISMODULE_OK) {
         RedisModule_ReplyWithError(ctx, "ERR index must be a number");

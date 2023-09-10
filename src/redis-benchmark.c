@@ -208,8 +208,9 @@ static sds benchmarkVersion(void) {
     /* Add git commit and working tree status when available */
     if (strtoll(redisGitSHA1(), NULL, 16)) {
         version = sdscatprintf(version, " (git:%s", redisGitSHA1());
-        if (strtoll(redisGitDirty(), NULL, 10))
+        if (strtoll(redisGitDirty(), NULL, 10)) {
             version = sdscatprintf(version, "-dirty");
+        }
         version = sdscat(version, ")");
     }
     return version;
@@ -244,25 +245,28 @@ static int dictSdsKeyCompare(dict *d, const void *key1, const void *key2) {
 
     l1 = sdslen((sds)key1);
     l2 = sdslen((sds)key2);
-    if (l1 != l2)
+    if (l1 != l2) {
         return 0;
+    }
     return memcmp(key1, key2, l1) == 0;
 }
 
 static redisContext *getRedisContext(const char *ip, int port, const char *hostsocket) {
     redisContext *ctx = NULL;
     redisReply *reply = NULL;
-    if (hostsocket == NULL)
+    if (hostsocket == NULL) {
         ctx = redisConnect(ip, port);
-    else
+    } else {
         ctx = redisConnectUnix(hostsocket);
+    }
     if (ctx == NULL || ctx->err) {
         fprintf(stderr, "Could not connect to Redis at ");
         char *err = (ctx != NULL ? ctx->errstr : "");
-        if (hostsocket == NULL)
+        if (hostsocket == NULL) {
             fprintf(stderr, "%s:%d: %s\n", ip, port, err);
-        else
+        } else {
             fprintf(stderr, "%s: %s\n", hostsocket, err);
+        }
         goto cleanup;
     }
     if (config.tls == 1) {
@@ -272,18 +276,21 @@ static redisContext *getRedisContext(const char *ip, int port, const char *hosts
             goto cleanup;
         }
     }
-    if (config.conn_info.auth == NULL)
+    if (config.conn_info.auth == NULL) {
         return ctx;
-    if (config.conn_info.user == NULL)
+    }
+    if (config.conn_info.user == NULL) {
         reply = redisCommand(ctx, "AUTH %s", config.conn_info.auth);
-    else
+    } else {
         reply = redisCommand(ctx, "AUTH %s %s", config.conn_info.user, config.conn_info.auth);
+    }
     if (reply != NULL) {
         if (reply->type == REDIS_REPLY_ERROR) {
-            if (hostsocket == NULL)
+            if (hostsocket == NULL) {
                 fprintf(stderr, "Node %s:%d replied with error:\n%s\n", ip, port, reply->str);
-            else
+            } else {
                 fprintf(stderr, "Node %s replied with error:\n%s\n", hostsocket, reply->str);
+            }
             freeReplyObject(reply);
             redisFree(ctx);
             exit(1);
@@ -292,10 +299,11 @@ static redisContext *getRedisContext(const char *ip, int port, const char *hosts
         return ctx;
     }
     fprintf(stderr, "ERROR: failed to fetch reply from ");
-    if (hostsocket == NULL)
+    if (hostsocket == NULL) {
         fprintf(stderr, "%s:%d\n", ip, port);
-    else
+    } else {
         fprintf(stderr, "%s\n", hostsocket);
+    }
 cleanup:
     freeReplyObject(reply);
     redisFree(ctx);
@@ -304,8 +312,9 @@ cleanup:
 
 static redisConfig *getRedisConfig(const char *ip, int port, const char *hostsocket) {
     redisConfig *cfg = zcalloc(sizeof(*cfg));
-    if (!cfg)
+    if (!cfg) {
         return NULL;
+    }
     redisContext *c = NULL;
     redisReply *reply = NULL, *sub_reply = NULL;
     c = getRedisContext(ip, port, hostsocket);
@@ -320,20 +329,24 @@ static redisConfig *getRedisConfig(const char *ip, int port, const char *hostsoc
     void *r = NULL;
     for (; i < 2; i++) {
         int res = redisGetReply(c, &r);
-        if (reply)
+        if (reply) {
             freeReplyObject(reply);
+        }
         reply = res == REDIS_OK ? ((redisReply *)r) : NULL;
-        if (res != REDIS_OK || !r)
+        if (res != REDIS_OK || !r) {
             goto fail;
+        }
         if (reply->type == REDIS_REPLY_ERROR) {
             goto fail;
         }
-        if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2)
+        if (reply->type != REDIS_REPLY_ARRAY || reply->elements < 2) {
             goto fail;
+        }
         sub_reply = reply->element[1];
         char *value = sub_reply->str;
-        if (!value)
+        if (!value) {
             value = "";
+        }
         switch (i) {
             case 0:
                 cfg->save = sdsnew(value);
@@ -348,24 +361,28 @@ static redisConfig *getRedisConfig(const char *ip, int port, const char *hostsoc
     return cfg;
 fail:
     if (reply && reply->type == REDIS_REPLY_ERROR && !strncmp(reply->str, "NOAUTH", 6)) {
-        if (hostsocket == NULL)
+        if (hostsocket == NULL) {
             fprintf(stderr, "Node %s:%d replied with error:\n%s\n", ip, port, reply->str);
-        else
+        } else {
             fprintf(stderr, "Node %s replied with error:\n%s\n", hostsocket, reply->str);
+        }
         abort_test = 1;
     }
     freeReplyObject(reply);
     redisFree(c);
     freeRedisConfig(cfg);
-    if (abort_test)
+    if (abort_test) {
         exit(1);
+    }
     return NULL;
 }
 static void freeRedisConfig(redisConfig *cfg) {
-    if (cfg->save)
+    if (cfg->save) {
         sdsfree(cfg->save);
-    if (cfg->appendonly)
+    }
+    if (cfg->appendonly) {
         sdsfree(cfg->appendonly);
+    }
     zfree(cfg);
 }
 
@@ -386,14 +403,16 @@ static void freeClient(client c) {
     zfree(c->randptr);
     zfree(c->stagptr);
     zfree(c);
-    if (config.num_threads)
+    if (config.num_threads) {
         pthread_mutex_lock(&(config.liveclients_mutex));
+    }
     config.liveclients--;
     ln = listSearchKey(config.clients, c);
     assert(ln != NULL);
     listDelNode(config.clients, ln);
-    if (config.num_threads)
+    if (config.num_threads) {
         pthread_mutex_unlock(&(config.liveclients_mutex));
+    }
 }
 
 static void freeAllClients(void) {
@@ -421,8 +440,9 @@ static void randomizeClientKey(client c) {
     for (i = 0; i < c->randlen; i++) {
         char *p = c->randptr[i] + 11;
         size_t r = 0;
-        if (config.randomkeys_keyspacelen != 0)
+        if (config.randomkeys_keyspacelen != 0) {
             r = random() % config.randomkeys_keyspacelen;
+        }
         size_t j;
 
         for (j = 0; j < 12; j++) {
@@ -446,8 +466,9 @@ static void setClusterKeyHashTag(client c) {
      * thread that's actually performing the update, the execution of
      * updateClusterSlotsConfiguration won't actually do anything, since
      * the updated_slots_count array will be already NULL. */
-    if (is_updating_slots)
+    if (is_updating_slots) {
         updateClusterSlotsConfiguration();
+    }
     int slot = node->slots[node->current_slot_index];
     const char *tag = crc16_slot_table[slot];
     int taglen = strlen(tag);
@@ -465,20 +486,23 @@ static void clientDone(client c) {
     atomicGet(config.requests_finished, requests_finished);
     if (requests_finished >= config.requests) {
         freeClient(c);
-        if (!config.num_threads && config.el)
+        if (!config.num_threads && config.el) {
             aeStop(config.el);
+        }
         return;
     }
     if (config.keepalive) {
         resetClient(c);
     } else {
-        if (config.num_threads)
+        if (config.num_threads) {
             pthread_mutex_lock(&(config.liveclients_mutex));
+        }
         config.liveclients--;
         createMissingClients(c);
         config.liveclients++;
-        if (config.num_threads)
+        if (config.num_threads) {
             pthread_mutex_unlock(&(config.liveclients_mutex));
+        }
         freeClient(c);
     }
 }
@@ -493,8 +517,9 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
     /* Calculate latency only for the first read event. This means that the
      * server already sent the reply and we need to parse it. Parsing overhead
      * is not part of the latency, so calculate it only once, here. */
-    if (c->latency < 0)
+    if (c->latency < 0) {
         c->latency = ustime() - (c->start);
+    }
 
     if (redisBufferRead(c->context) != REDIS_OK) {
         fprintf(stderr, "Error: %s\n", c->context->errstr);
@@ -519,9 +544,9 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                      * immediately exit to avoid false results. */
                     if (c->cluster_node && c->staglen) {
                         int fetch_slots = 0, do_wait = 0;
-                        if (!strncmp(r->str, "MOVED", 5) || !strncmp(r->str, "ASK", 3))
+                        if (!strncmp(r->str, "MOVED", 5) || !strncmp(r->str, "ASK", 3)) {
                             fetch_slots = 1;
-                        else if (!strncmp(r->str, "CLUSTERDOWN", 11)) {
+                        } else if (!strncmp(r->str, "CLUSTERDOWN", 11)) {
                             /* Usually the cluster is able to recover itself after
                              * a CLUSTERDOWN error, so try to sleep one second
                              * before requesting the new configuration. */
@@ -529,15 +554,18 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                             do_wait = 1;
                             fprintf(stderr, "Error from server %s:%d: %s.\n", c->cluster_node->ip, c->cluster_node->port, r->str);
                         }
-                        if (do_wait)
+                        if (do_wait) {
                             sleep(1);
-                        if (fetch_slots && !fetchClusterSlotsConfiguration(c))
+                        }
+                        if (fetch_slots && !fetchClusterSlotsConfiguration(c)) {
                             exit(1);
+                        }
                     } else {
                         if (c->cluster_node) {
                             fprintf(stderr, "Error from server %s:%d: %s\n", c->cluster_node->ip, c->cluster_node->port, r->str);
-                        } else
+                        } else {
                             fprintf(stderr, "Error from server: %s\n", r->str);
+                        }
                         exit(1);
                     }
                 }
@@ -553,11 +581,13 @@ static void readHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
                         sdsrange(c->obuf, c->prefixlen, -1);
                         /* We also need to fix the pointers to the strings
                          * we need to randomize. */
-                        for (j = 0; j < c->randlen; j++)
+                        for (j = 0; j < c->randlen; j++) {
                             c->randptr[j] -= c->prefixlen;
+                        }
                         /* Fix the pointers to the slot hash tags */
-                        for (j = 0; j < c->staglen; j++)
+                        for (j = 0; j < c->staglen; j++) {
                             c->stagptr[j] -= c->prefixlen;
+                        }
                         c->prefixlen = 0;
                     }
                     continue;
@@ -615,10 +645,12 @@ static void writeHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
         }
 
         /* Really initialize: randomize keys and set start time. */
-        if (config.randomkeys)
+        if (config.randomkeys) {
             randomizeClientKey(c);
-        if (config.cluster_mode && c->staglen > 0)
+        }
+        if (config.cluster_mode && c->staglen > 0) {
             setClusterKeyHashTag(c);
+        }
         atomicGet(config.slots_last_update, c->slots_last_update);
         c->start = ustime();
         c->latency = -1;
@@ -633,8 +665,9 @@ static void writeHandler(aeEventLoop *el, int fd, void *privdata, int mask) {
             const ssize_t nwritten = cliWriteConn(c->context, ptr, writeLen);
             if (nwritten != writeLen) {
                 if (nwritten == -1 && errno != EAGAIN) {
-                    if (errno != EPIPE)
+                    if (errno != EPIPE) {
                         fprintf(stderr, "Error writing to the server: %s\n", strerror(errno));
+                    }
                     freeClient(c);
                     return;
                 } else if (nwritten > 0) {
@@ -685,10 +718,11 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
             port = config.conn_info.hostport;
         } else {
             int node_idx = 0;
-            if (config.num_threads < config.cluster_node_count)
+            if (config.num_threads < config.cluster_node_count) {
                 node_idx = config.liveclients % config.cluster_node_count;
-            else
+            } else {
                 node_idx = thread_id % config.cluster_node_count;
+            }
             clusterNode *node = config.cluster_nodes[node_idx];
             assert(node != NULL);
             ip = (const char *)node->ip;
@@ -701,10 +735,11 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
     }
     if (c->context->err) {
         fprintf(stderr, "Could not connect to Redis at ");
-        if (config.hostsocket == NULL || is_cluster_client)
+        if (config.hostsocket == NULL || is_cluster_client) {
             fprintf(stderr, "%s:%d: %s\n", ip, port, c->context->errstr);
-        else
+        } else {
             fprintf(stderr, "%s: %s\n", config.hostsocket, c->context->errstr);
+        }
         exit(1);
     }
     if (config.tls == 1) {
@@ -729,10 +764,11 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
     if (config.conn_info.auth) {
         char *buf = NULL;
         int len;
-        if (config.conn_info.user == NULL)
+        if (config.conn_info.user == NULL) {
             len = redisFormatCommand(&buf, "AUTH %s", config.conn_info.auth);
-        else
+        } else {
             len = redisFormatCommand(&buf, "AUTH %s %s", config.conn_info.user, config.conn_info.auth);
+        }
         c->obuf = sdscatlen(c->obuf, buf, len);
         free(buf);
         c->prefix_pending++;
@@ -768,8 +804,9 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
     if (from) {
         c->obuf = sdscatlen(c->obuf, from->obuf + from->prefixlen, sdslen(from->obuf) - from->prefixlen);
     } else {
-        for (j = 0; j < config.pipeline; j++)
+        for (j = 0; j < config.pipeline; j++) {
             c->obuf = sdscatlen(c->obuf, cmd, len);
+        }
     }
 
     c->written = 0;
@@ -838,17 +875,18 @@ static client createClient(char *cmd, size_t len, client from, int thread_id) {
         }
     }
     aeEventLoop *el = NULL;
-    if (thread_id < 0)
+    if (thread_id < 0) {
         el = config.el;
-    else {
+    } else {
         benchmarkThread *thread = config.threads[thread_id];
         el = thread->el;
     }
-    if (config.idlemode == 0)
+    if (config.idlemode == 0) {
         aeCreateFileEvent(el, c->context->fd, AE_WRITABLE, writeHandler, c);
-    else
+    } else {
         /* In idle mode, clients still need to register readHandler for catching errors */
         aeCreateFileEvent(el, c->context->fd, AE_READABLE, readHandler, c);
+    }
 
     listAddNodeTail(config.clients, c);
     atomicIncr(config.liveclients, 1);
@@ -860,8 +898,9 @@ static void createMissingClients(client c) {
     int n = 0;
     while (config.liveclients < config.numclients) {
         int thread_id = -1;
-        if (config.num_threads)
+        if (config.num_threads) {
             thread_id = config.liveclients % config.num_threads;
+        }
         createClient(NULL, 0, c, thread_id);
 
         /* Listen backlog is quite limited on most systems */
@@ -894,8 +933,9 @@ static void showLatencyReport(void) {
             for (m = 0; m < config.cluster_node_count; m++) {
                 clusterNode *node = config.cluster_nodes[m];
                 redisConfig *cfg = node->redis_config;
-                if (cfg == NULL)
+                if (cfg == NULL) {
                     continue;
+                }
                 printf("  node [%d] configuration:\n", m);
                 printf("    save: %s\n", sdslen(cfg->save) ? cfg->save : "NONE");
                 printf("    appendonly: %s\n", cfg->appendonly);
@@ -907,8 +947,9 @@ static void showLatencyReport(void) {
             }
         }
         printf("  multi-thread: %s\n", (config.num_threads ? "yes" : "no"));
-        if (config.num_threads)
+        if (config.num_threads) {
             printf("  threads: %d\n", config.num_threads);
+        }
 
         printf("\n");
         printf("Latency by percentile distribution:\n");
@@ -960,8 +1001,9 @@ static void showLatencyReport(void) {
 
 static void initBenchmarkThreads(void) {
     int i;
-    if (config.threads)
+    if (config.threads) {
         freeBenchmarkThreads();
+    }
     config.threads = zmalloc(config.num_threads * sizeof(benchmarkThread *));
     for (i = 0; i < config.num_threads; i++) {
         benchmarkThread *thread = createBenchmarkThread(i);
@@ -978,8 +1020,9 @@ static void startBenchmarkThreads(void) {
             exit(1);
         }
     }
-    for (i = 0; i < config.num_threads; i++)
+    for (i = 0; i < config.num_threads; i++) {
         pthread_join(config.threads[i]->thread, NULL);
+    }
 }
 
 static void benchmark(const char *title, char *cmd, int len) {
@@ -1003,36 +1046,42 @@ static void benchmark(const char *title, char *cmd, int len) {
         &config.current_sec_latency_histogram
     );  // Pointer to initialise
 
-    if (config.num_threads)
+    if (config.num_threads) {
         initBenchmarkThreads();
+    }
 
     int thread_id = config.num_threads > 0 ? 0 : -1;
     c = createClient(cmd, len, NULL, thread_id);
     createMissingClients(c);
 
     config.start = mstime();
-    if (!config.num_threads)
+    if (!config.num_threads) {
         aeMain(config.el);
-    else
+    } else {
         startBenchmarkThreads();
+    }
     config.totlatency = mstime() - config.start;
 
     showLatencyReport();
     freeAllClients();
-    if (config.threads)
+    if (config.threads) {
         freeBenchmarkThreads();
-    if (config.current_sec_latency_histogram)
+    }
+    if (config.current_sec_latency_histogram) {
         hdr_close(config.current_sec_latency_histogram);
-    if (config.latency_histogram)
+    }
+    if (config.latency_histogram) {
         hdr_close(config.latency_histogram);
+    }
 }
 
 /* Thread functions. */
 
 static benchmarkThread *createBenchmarkThread(int index) {
     benchmarkThread *thread = zmalloc(sizeof(*thread));
-    if (thread == NULL)
+    if (thread == NULL) {
         return NULL;
+    }
     thread->index = index;
     thread->el = aeCreateEventLoop(1024 * 10);
     aeCreateTimeEvent(thread->el, 1, showThroughput, (void *)thread, NULL);
@@ -1040,8 +1089,9 @@ static benchmarkThread *createBenchmarkThread(int index) {
 }
 
 static void freeBenchmarkThread(benchmarkThread *thread) {
-    if (thread->el)
+    if (thread->el) {
         aeDeleteEventLoop(thread->el);
+    }
     zfree(thread);
 }
 
@@ -1049,8 +1099,9 @@ static void freeBenchmarkThreads(void) {
     int i = 0;
     for (; i < config.num_threads; i++) {
         benchmarkThread *thread = config.threads[i];
-        if (thread)
+        if (thread) {
             freeBenchmarkThread(thread);
+        }
     }
     zfree(config.threads);
     config.threads = NULL;
@@ -1066,8 +1117,9 @@ static void *execBenchmarkThread(void *ptr) {
 
 static clusterNode *createClusterNode(char *ip, int port) {
     clusterNode *node = zmalloc(sizeof(*node));
-    if (!node)
+    if (!node) {
         return NULL;
+    }
     node->ip = ip;
     node->port = port;
     node->name = NULL;
@@ -1089,27 +1141,33 @@ static clusterNode *createClusterNode(char *ip, int port) {
 
 static void freeClusterNode(clusterNode *node) {
     int i;
-    if (node->name)
+    if (node->name) {
         sdsfree(node->name);
-    if (node->replicate)
+    }
+    if (node->replicate) {
         sdsfree(node->replicate);
+    }
     if (node->migrating != NULL) {
-        for (i = 0; i < node->migrating_count; i++)
+        for (i = 0; i < node->migrating_count; i++) {
             sdsfree(node->migrating[i]);
+        }
         zfree(node->migrating);
     }
     if (node->importing != NULL) {
-        for (i = 0; i < node->importing_count; i++)
+        for (i = 0; i < node->importing_count; i++) {
             sdsfree(node->importing[i]);
+        }
         zfree(node->importing);
     }
     /* If the node is not the reference node, that uses the address from
      * config.conn_info.hostip and config.conn_info.hostport, then the node ip has been
      * allocated by fetchClusterConfiguration, so it must be freed. */
-    if (node->ip && strcmp(node->ip, config.conn_info.hostip) != 0)
+    if (node->ip && strcmp(node->ip, config.conn_info.hostip) != 0) {
         sdsfree(node->ip);
-    if (node->redis_config != NULL)
+    }
+    if (node->redis_config != NULL) {
         freeRedisConfig(node->redis_config);
+    }
     zfree(node->slots);
     zfree(node);
 }
@@ -1118,8 +1176,9 @@ static void freeClusterNodes(void) {
     int i = 0;
     for (; i < config.cluster_node_count; i++) {
         clusterNode *n = config.cluster_nodes[i];
-        if (n)
+        if (n) {
             freeClusterNode(n);
+        }
     }
     zfree(config.cluster_nodes);
     config.cluster_nodes = NULL;
@@ -1128,8 +1187,9 @@ static void freeClusterNodes(void) {
 static clusterNode **addClusterNode(clusterNode *node) {
     int count = config.cluster_node_count + 1;
     config.cluster_nodes = zrealloc(config.cluster_nodes, count * sizeof(*node));
-    if (!config.cluster_nodes)
+    if (!config.cluster_nodes) {
         return NULL;
+    }
     config.cluster_nodes[config.cluster_node_count++] = node;
     return config.cluster_nodes;
 }
@@ -1152,8 +1212,9 @@ static int fetchClusterConfiguration(void) {
     }
     reply = redisCommand(ctx, "CLUSTER NODES");
     success = (reply != NULL);
-    if (!success)
+    if (!success) {
         goto cleanup;
+    }
     success = (reply->type != REDIS_REPLY_ERROR);
     if (!success) {
         if (config.hostsocket == NULL) {
@@ -1188,8 +1249,9 @@ static int fetchClusterConfiguration(void) {
                     master_id = token;
                     break;
             }
-            if (i == 8)
+            if (i == 8) {
                 break;  // Slots
+            }
         }
         if (!flags) {
             fprintf(stderr, "Invalid CLUSTER NODES reply: missing flags.\n");
@@ -1198,8 +1260,9 @@ static int fetchClusterConfiguration(void) {
         }
         int myself = (strstr(flags, "myself") != NULL);
         int is_replica = (strstr(flags, "slave") != NULL || (master_id != NULL && master_id[0] != '-'));
-        if (is_replica)
+        if (is_replica) {
             continue;
+        }
         if (addr == NULL) {
             fprintf(stderr, "Invalid CLUSTER NODES reply: missing addr.\n");
             success = 0;
@@ -1214,8 +1277,9 @@ static int fetchClusterConfiguration(void) {
             ip = addr;
             addr = paddr + 1;
             /* If internal bus is specified, then just drop it. */
-            if ((paddr = strchr(addr, '@')) != NULL)
+            if ((paddr = strchr(addr, '@')) != NULL) {
                 *paddr = '\0';
+            }
             port = atoi(addr);
         }
         if (myself) {
@@ -1231,14 +1295,16 @@ static int fetchClusterConfiguration(void) {
             success = 0;
             goto cleanup;
         }
-        if (name != NULL)
+        if (name != NULL) {
             node->name = sdsnew(name);
+        }
         if (i == 8) {
             int remaining = strlen(line);
             while (remaining > 0) {
                 p = strchr(line, ' ');
-                if (p == NULL)
+                if (p == NULL) {
                     p = line + remaining;
+                }
                 remaining -= (p - line);
 
                 char *slotsdef = line;
@@ -1246,8 +1312,9 @@ static int fetchClusterConfiguration(void) {
                 if (remaining) {
                     line = p + 1;
                     remaining--;
-                } else
+                } else {
                     line = p;
+                }
                 char *dash = NULL;
                 if (slotsdef[0] == '[') {
                     slotsdef++;
@@ -1255,8 +1322,9 @@ static int fetchClusterConfiguration(void) {
                         *p = '\0';
                         p += 3;
                         char *closing_bracket = strchr(p, ']');
-                        if (closing_bracket)
+                        if (closing_bracket) {
                             *closing_bracket = '\0';
+                        }
                         sds slot = sdsnew(slotsdef);
                         sds dst = sdsnew(p);
                         node->migrating_count += 2;
@@ -1267,8 +1335,9 @@ static int fetchClusterConfiguration(void) {
                         *p = '\0';
                         p += 3;
                         char *closing_bracket = strchr(p, ']');
-                        if (closing_bracket)
+                        if (closing_bracket) {
                             *closing_bracket = '\0';
+                        }
                         sds slot = sdsnew(slotsdef);
                         sds src = sdsnew(p);
                         node->importing_count += 2;
@@ -1302,14 +1371,17 @@ static int fetchClusterConfiguration(void) {
         }
     }
 cleanup:
-    if (ctx)
+    if (ctx) {
         redisFree(ctx);
-    if (!success) {
-        if (config.cluster_nodes)
-            freeClusterNodes();
     }
-    if (reply)
+    if (!success) {
+        if (config.cluster_nodes) {
+            freeClusterNodes();
+        }
+    }
+    if (reply) {
         freeReplyObject(reply);
+    }
     return success;
 }
 
@@ -1326,8 +1398,9 @@ static int fetchClusterSlotsConfiguration(client c) {
     }
     redisReply *reply = NULL;
     atomicGetIncr(config.is_fetching_slots, is_fetching_slots, 1);
-    if (is_fetching_slots)
+    if (is_fetching_slots) {
         return -1;  // TODO: use other codes || errno ?
+    }
     atomicSet(config.is_fetching_slots, 1);
     fprintf(stderr, "WARNING: Cluster slots configuration changed, fetching new one...\n");
     const char *errmsg = "Failed to update cluster slots configuration";
@@ -1356,8 +1429,9 @@ static int fetchClusterSlotsConfiguration(client c) {
                 goto cleanup;
             }
         }
-        if (node->updated_slots != NULL)
+        if (node->updated_slots != NULL) {
             zfree(node->updated_slots);
+        }
         node->updated_slots = NULL;
         node->updated_slots_count = 0;
         dictReplace(masters, node->name, node);
@@ -1365,8 +1439,9 @@ static int fetchClusterSlotsConfiguration(client c) {
     reply = redisCommand(ctx, "CLUSTER SLOTS");
     if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
         success = 0;
-        if (reply)
+        if (reply) {
             fprintf(stderr, "%s\nCLUSTER SLOTS ERROR: %s\n", errmsg, reply->str);
+        }
         goto cleanup;
     }
     assert(reply->type == REDIS_REPLY_ARRAY);
@@ -1390,16 +1465,19 @@ static int fetchClusterSlotsConfiguration(client c) {
                 "configuration.\n",
                 errmsg, name
             );
-            if (name)
+            if (name) {
                 sdsfree(name);
+            }
             goto cleanup;
         }
         sdsfree(name);
         clusterNode *node = dictGetVal(entry);
-        if (node->updated_slots == NULL)
+        if (node->updated_slots == NULL) {
             node->updated_slots = zcalloc(CLUSTER_SLOTS * sizeof(int));
-        for (slot = from; slot <= to; slot++)
+        }
+        for (slot = from; slot <= to; slot++) {
             node->updated_slots[node->updated_slots_count++] = slot;
+        }
     }
     updateClusterSlotsConfiguration();
 cleanup:
@@ -1454,8 +1532,9 @@ int parseOptions(int argc, char **argv) {
         lastarg = (i == (argc - 1));
 
         if (!strcmp(argv[i], "-c")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.numclients = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--version")) {
             sds version = benchmarkVersion();
@@ -1463,39 +1542,46 @@ int parseOptions(int argc, char **argv) {
             sdsfree(version);
             exit(0);
         } else if (!strcmp(argv[i], "-n")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.requests = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "-k")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.keepalive = atoi(argv[++i]);
         } else if (!strcmp(argv[i], "-h")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             sdsfree(config.conn_info.hostip);
             config.conn_info.hostip = sdsnew(argv[++i]);
         } else if (!strcmp(argv[i], "-p")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.conn_info.hostport = atoi(argv[++i]);
             if (config.conn_info.hostport < 0 || config.conn_info.hostport > 65535) {
                 fprintf(stderr, "Invalid server port.\n");
                 exit(1);
             }
         } else if (!strcmp(argv[i], "-s")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.hostsocket = strdup(argv[++i]);
         } else if (!strcmp(argv[i], "-x")) {
             config.stdinarg = 1;
         } else if (!strcmp(argv[i], "-a")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.conn_info.auth = sdsnew(argv[++i]);
         } else if (!strcmp(argv[i], "--user")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.conn_info.user = sdsnew(argv[++i]);
         } else if (!strcmp(argv[i], "-u") && !lastarg) {
             parseRedisUri(argv[++i], "redis-benchmark", &config.conn_info, &config.tls);
@@ -1507,32 +1593,40 @@ int parseOptions(int argc, char **argv) {
         } else if (!strcmp(argv[i], "-3")) {
             config.resp3 = 1;
         } else if (!strcmp(argv[i], "-d")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.datasize = atoi(argv[++i]);
-            if (config.datasize < 1)
+            if (config.datasize < 1) {
                 config.datasize = 1;
-            if (config.datasize > 1024 * 1024 * 1024)
+            }
+            if (config.datasize > 1024 * 1024 * 1024) {
                 config.datasize = 1024 * 1024 * 1024;
+            }
         } else if (!strcmp(argv[i], "-P")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.pipeline = atoi(argv[++i]);
-            if (config.pipeline <= 0)
+            if (config.pipeline <= 0) {
                 config.pipeline = 1;
+            }
         } else if (!strcmp(argv[i], "-r")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             const char *next = argv[++i], *p = next;
             if (*p == '-') {
                 p++;
-                if (*p < '0' || *p > '9')
+                if (*p < '0' || *p > '9') {
                     goto invalid;
+                }
             }
             config.randomkeys = 1;
             config.randomkeys_keyspacelen = atoi(next);
-            if (config.randomkeys_keyspacelen < 0)
+            if (config.randomkeys_keyspacelen < 0) {
                 config.randomkeys_keyspacelen = 0;
+            }
         } else if (!strcmp(argv[i], "-q")) {
             config.quiet = 1;
         } else if (!strcmp(argv[i], "--csv")) {
@@ -1548,14 +1642,16 @@ int parseOptions(int argc, char **argv) {
                 "We now immediately exit on error to avoid false results.\n"
             );
         } else if (!strcmp(argv[i], "--seed")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             int rand_seed = atoi(argv[++i]);
             srandom(rand_seed);
             init_genrand64(rand_seed);
         } else if (!strcmp(argv[i], "-t")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             /* We get the list of tests to run as a string in the form
              * get,set,lrange,...,test_N. Then we add a comma before and
              * after the string in order to make sure that searching
@@ -1566,27 +1662,33 @@ int parseOptions(int argc, char **argv) {
             config.tests = sdscat(config.tests, ",");
             sdstolower(config.tests);
         } else if (!strcmp(argv[i], "--dbnum")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.conn_info.input_dbnum = atoi(argv[++i]);
             config.input_dbnumstr = sdsfromlonglong(config.conn_info.input_dbnum);
         } else if (!strcmp(argv[i], "--precision")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.precision = atoi(argv[++i]);
-            if (config.precision < 0)
+            if (config.precision < 0) {
                 config.precision = DEFAULT_LATENCY_PRECISION;
-            if (config.precision > MAX_LATENCY_PRECISION)
+            }
+            if (config.precision > MAX_LATENCY_PRECISION) {
                 config.precision = MAX_LATENCY_PRECISION;
+            }
         } else if (!strcmp(argv[i], "--threads")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.num_threads = atoi(argv[++i]);
             if (config.num_threads > MAX_THREADS) {
                 fprintf(stderr, "WARNING: Too many threads, limiting threads to %d.\n", MAX_THREADS);
                 config.num_threads = MAX_THREADS;
-            } else if (config.num_threads < 0)
+            } else if (config.num_threads < 0) {
                 config.num_threads = 0;
+            }
         } else if (!strcmp(argv[i], "--cluster")) {
             config.cluster_mode = 1;
         } else if (!strcmp(argv[i], "--enable-tracking")) {
@@ -1598,35 +1700,42 @@ int parseOptions(int argc, char **argv) {
         } else if (!strcmp(argv[i], "--tls")) {
             config.tls = 1;
         } else if (!strcmp(argv[i], "--sni")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.sni = strdup(argv[++i]);
         } else if (!strcmp(argv[i], "--cacertdir")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.cacertdir = strdup(argv[++i]);
         } else if (!strcmp(argv[i], "--cacert")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.cacert = strdup(argv[++i]);
         } else if (!strcmp(argv[i], "--insecure")) {
             config.sslconfig.skip_cert_verify = 1;
         } else if (!strcmp(argv[i], "--cert")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.cert = strdup(argv[++i]);
         } else if (!strcmp(argv[i], "--key")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.key = strdup(argv[++i]);
         } else if (!strcmp(argv[i], "--tls-ciphers")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.ciphers = strdup(argv[++i]);
 #ifdef TLS1_3_VERSION
         } else if (!strcmp(argv[i], "--tls-ciphersuites")) {
-            if (lastarg)
+            if (lastarg) {
                 goto invalid;
+            }
             config.sslconfig.ciphersuites = strdup(argv[++i]);
 #endif
 #endif
@@ -1634,8 +1743,9 @@ int parseOptions(int argc, char **argv) {
             /* Assume the user meant to provide an option when the arg starts
              * with a dash. We're done otherwise and should use the remainder
              * as the command and arguments for running the benchmark. */
-            if (argv[i][0] == '-')
+            if (argv[i][0] == '-') {
                 goto invalid;
+            }
             return i;
         }
     }
@@ -1757,8 +1867,9 @@ int showThroughput(struct aeEventLoop *eventLoop, long long id, void *clientData
         aeStop(eventLoop);
         return AE_NOMORE;
     }
-    if (config.csv)
+    if (config.csv) {
         return SHOW_THROUGHPUT_INTERVAL;
+    }
     /* only first thread output throughput */
     if (thread != NULL && thread->index != 0) {
         return SHOW_THROUGHPUT_INTERVAL;
@@ -1791,8 +1902,9 @@ int test_is_selected(const char *name) {
     char buf[256];
     int l = strlen(name);
 
-    if (config.tests == NULL)
+    if (config.tests == NULL) {
         return 1;
+    }
     buf[0] = ',';
     memcpy(buf + 1, name, l);
     buf[l + 1] = ',';
@@ -1896,8 +2008,9 @@ int main(int argc, char **argv) {
                 exit(1);
             }
             printf("Master %d: ", i);
-            if (node->name)
+            if (node->name) {
                 printf("%s ", node->name);
+            }
             printf("%s:%d\n", node->ip, node->port);
             node->redis_config = getRedisConfig(node->ip, node->port, NULL);
             if (node->redis_config == NULL) {
@@ -1907,8 +2020,9 @@ int main(int argc, char **argv) {
         printf("\n");
         /* Automatically set thread number to node count if not specified
          * by the user. */
-        if (config.num_threads == 0)
+        if (config.num_threads == 0) {
             config.num_threads = config.cluster_node_count;
+        }
     } else {
         config.redis_config = getRedisConfig(config.conn_info.hostip, config.conn_info.hostport, config.hostsocket);
         if (config.redis_config == NULL) {
@@ -1942,10 +2056,11 @@ int main(int argc, char **argv) {
         }
         c = createClient("", 0, NULL, thread_id); /* will never receive a reply */
         createMissingClients(c);
-        if (use_threads)
+        if (use_threads) {
             startBenchmarkThreads();
-        else
+        } else {
             aeMain(config.el);
+        }
         /* and will wait for every */
     }
     if (config.csv) {
@@ -1971,8 +2086,9 @@ int main(int argc, char **argv) {
         }
         /* Setup argument length */
         size_t *argvlen = zmalloc(argc * sizeof(size_t));
-        for (i = 0; i < argc; i++)
+        for (i = 0; i < argc; i++) {
             argvlen[i] = sdslen(sds_args[i]);
+        }
         do {
             len = redisFormatCommandArgv(&cmd, argc, (const char **)sds_args, argvlen);
             // adjust the datasize to the parsed command
@@ -1983,8 +2099,9 @@ int main(int argc, char **argv) {
         sdsfreesplitres(sds_args, argc);
 
         sdsfree(title);
-        if (config.redis_config != NULL)
+        if (config.redis_config != NULL) {
             freeRedisConfig(config.redis_config);
+        }
         zfree(argvlen);
         return 0;
     }
@@ -1995,8 +2112,9 @@ int main(int argc, char **argv) {
         genBenchmarkRandomData(data, config.datasize);
         data[config.datasize] = '\0';
 
-        if (test_is_selected("ping_inline") || test_is_selected("ping"))
+        if (test_is_selected("ping_inline") || test_is_selected("ping")) {
             benchmark("PING_INLINE", "PING\r\n", 6);
+        }
 
         if (test_is_selected("ping_mbulk") || test_is_selected("ping")) {
             len = redisFormatCommand(&cmd, "PING");
@@ -2066,8 +2184,9 @@ int main(int argc, char **argv) {
 
         if (test_is_selected("zadd")) {
             char *score = "0";
-            if (config.randomkeys)
+            if (config.randomkeys) {
                 score = "__rand_int__";
+            }
             len = redisFormatCommand(&cmd, "ZADD myzset%s %s element:__rand_int__", tag, score);
             benchmark("ZADD", cmd, len);
             free(cmd);
@@ -2130,14 +2249,16 @@ int main(int argc, char **argv) {
             free(cmd);
         }
 
-        if (!config.csv)
+        if (!config.csv) {
             printf("\n");
+        }
     } while (config.loop);
 
     zfree(data);
     freeCliConnInfo(config.conn_info);
-    if (config.redis_config != NULL)
+    if (config.redis_config != NULL) {
         freeRedisConfig(config.redis_config);
+    }
 
     return 0;
 }

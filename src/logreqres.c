@@ -75,16 +75,19 @@
 /* ----- Helpers ----- */
 
 static int reqresShouldLog(client *c) {
-    if (!server.req_res_logfile)
+    if (!server.req_res_logfile) {
         return 0;
+    }
 
     /* Ignore client with streaming non-standard response */
-    if (c->flags & (CLIENT_PUBSUB | CLIENT_MONITOR | CLIENT_SLAVE))
+    if (c->flags & (CLIENT_PUBSUB | CLIENT_MONITOR | CLIENT_SLAVE)) {
         return 0;
+    }
 
     /* We only work on masters (didn't implement reqresAppendResponse to work on shared slave buffers) */
-    if (getClientType(c) == CLIENT_TYPE_MASTER)
+    if (getClientType(c) == CLIENT_TYPE_MASTER) {
         return 0;
+    }
 
     return 1;
 }
@@ -120,8 +123,9 @@ static size_t reqresAppendArg(client *c, char *arg, size_t arg_len) {
 /* Zero out the clientReqResInfo struct inside the client,
  * and free the buffer if needed */
 void reqresReset(client *c, int free_buf) {
-    if (free_buf && c->reqres.buf)
+    if (free_buf && c->reqres.buf) {
         zfree(c->reqres.buf);
+    }
     memset(&c->reqres, 0, sizeof(c->reqres));
 }
 
@@ -156,11 +160,13 @@ void reqresReset(client *c, int free_buf) {
  * 0, so we would miss the first 5 bytes of the reply.
  **/
 void reqresSaveClientReplyOffset(client *c) {
-    if (!reqresShouldLog(c))
+    if (!reqresShouldLog(c)) {
         return;
+    }
 
-    if (c->reqres.offset.saved)
+    if (c->reqres.offset.saved) {
         return;
+    }
 
     c->reqres.offset.saved = 1;
 
@@ -180,8 +186,9 @@ size_t reqresAppendRequest(client *c) {
 
     serverAssert(argc);
 
-    if (!reqresShouldLog(c))
+    if (!reqresShouldLog(c)) {
         return 0;
+    }
 
     /* Ignore commands that have streaming non-standard response */
     sds cmd = argv[0]->ptr;
@@ -212,14 +219,17 @@ size_t reqresAppendRequest(client *c) {
 size_t reqresAppendResponse(client *c) {
     size_t ret = 0;
 
-    if (!reqresShouldLog(c))
+    if (!reqresShouldLog(c)) {
         return 0;
+    }
 
-    if (!c->reqres.argv_logged) /* Example: UNSUBSCRIBE */
+    if (!c->reqres.argv_logged) { /* Example: UNSUBSCRIBE */
         return 0;
+    }
 
-    if (!c->reqres.offset.saved) /* Example: module client blocked on keys + CLIENT KILL */
+    if (!c->reqres.offset.saved) { /* Example: module client blocked on keys + CLIENT KILL */
         return 0;
+    }
 
     /* First append the static reply buffer */
     if (c->bufpos > c->reqres.offset.bufpos) {

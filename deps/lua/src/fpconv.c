@@ -74,15 +74,18 @@ static void fpconv_update_locale() {
 static inline int valid_number_character(char ch) {
     char lower_ch;
 
-    if ('0' <= ch && ch <= '9')
+    if ('0' <= ch && ch <= '9') {
         return 1;
-    if (ch == '-' || ch == '+' || ch == '.')
+    }
+    if (ch == '-' || ch == '+' || ch == '.') {
         return 1;
+    }
 
     /* Hex digits, exponent (e), base (p), "infinity",.. */
     lower_ch = ch | 0x20;
-    if ('a' <= lower_ch && lower_ch <= 'y')
+    if ('a' <= lower_ch && lower_ch <= 'y') {
         return 1;
+    }
 
     return 0;
 }
@@ -92,8 +95,9 @@ static inline int valid_number_character(char ch) {
 static int strtod_buffer_size(const char *s) {
     const char *p = s;
 
-    while (valid_number_character(*p))
+    while (valid_number_character(*p)) {
         p++;
+    }
 
     return p - s;
 }
@@ -107,8 +111,9 @@ double fpconv_strtod(const char *nptr, char **endptr) {
     double value;
 
     /* System strtod() is fine when decimal point is '.' */
-    if (locale_decimal_point == '.')
+    if (locale_decimal_point == '.') {
         return strtod(nptr, endptr);
+    }
 
     buflen = strtod_buffer_size(nptr);
     if (!buflen) {
@@ -134,13 +139,15 @@ double fpconv_strtod(const char *nptr, char **endptr) {
 
     /* Update decimal point character if found */
     dp = strchr(buf, '.');
-    if (dp)
+    if (dp) {
         *dp = locale_decimal_point;
+    }
 
     value = strtod(buf, &endbuf);
     *endptr = (char *)&nptr[endbuf - buf];
-    if (buflen >= FPCONV_G_FMT_BUFSIZE)
+    if (buflen >= FPCONV_G_FMT_BUFSIZE) {
         free(buf);
+    }
 
     return value;
 }
@@ -175,8 +182,9 @@ int fpconv_g_fmt(char *str, double num, int precision) {
     set_number_format(fmt, precision);
 
     /* Pass through when decimal point character is dot. */
-    if (locale_decimal_point == '.')
+    if (locale_decimal_point == '.') {
         return snprintf(str, FPCONV_G_FMT_BUFSIZE, fmt, num);
+    }
 
     /* snprintf() to a buffer then translate for other decimal point characters */
     len = snprintf(buf, FPCONV_G_FMT_BUFSIZE, fmt, num);

@@ -103,8 +103,9 @@ aofInfo *aofInfoCreate(void) {
 /* Free the aofInfo structure (pointed to by ai) and its embedded file_name. */
 void aofInfoFree(aofInfo *ai) {
     serverAssert(ai != NULL);
-    if (ai->file_name)
+    if (ai->file_name) {
         sdsfree(ai->file_name);
+    }
     zfree(ai);
 }
 
@@ -122,8 +123,9 @@ aofInfo *aofInfoDup(aofInfo *orig) {
 sds aofInfoFormat(sds buf, aofInfo *ai) {
     sds filename_repr = NULL;
 
-    if (sdsneedsrepr(ai->file_name))
+    if (sdsneedsrepr(ai->file_name)) {
         filename_repr = sdscatrepr(sdsempty(), ai->file_name, sdslen(ai->file_name));
+    }
 
     sds ret = sdscatprintf(
         buf, "%s %s %s %lld %s %c\n", AOF_MANIFEST_KEY_FILE_NAME, filename_repr ? filename_repr : ai->file_name, AOF_MANIFEST_KEY_FILE_SEQ,
@@ -159,12 +161,15 @@ aofManifest *aofManifestCreate(void) {
 
 /* Free the aofManifest structure (pointed to by am) and its embedded members. */
 void aofManifestFree(aofManifest *am) {
-    if (am->base_aof_info)
+    if (am->base_aof_info) {
         aofInfoFree(am->base_aof_info);
-    if (am->incr_aof_list)
+    }
+    if (am->incr_aof_list) {
         listRelease(am->incr_aof_list);
-    if (am->history_aof_list)
+    }
+    if (am->history_aof_list) {
         listRelease(am->history_aof_list);
+    }
     zfree(am);
 }
 
@@ -248,8 +253,9 @@ void aofLoadManifestFromDisk(void) {
     }
 
     aofManifest *am = aofLoadManifestFromFile(am_filepath);
-    if (am)
+    if (am) {
         aofManifestFreeAndUpdate(am);
+    }
     sdsfree(am_name);
     sdsfree(am_filepath);
 }
@@ -298,8 +304,9 @@ aofManifest *aofLoadManifestFromFile(sds am_filepath) {
         linenum++;
 
         /* Skip comments lines */
-        if (buf[0] == '#')
+        if (buf[0] == '#') {
             continue;
+        }
 
         if (strchr(buf, '\n') == NULL) {
             err = "The AOF manifest file contains too long line";
@@ -377,10 +384,12 @@ aofManifest *aofLoadManifestFromFile(sds am_filepath) {
 loaderr:
     /* Sanitizer suppression: may report a false positive if we goto loaderr
      * and exit(1) without freeing these allocations. */
-    if (argv)
+    if (argv) {
         sdsfreesplitres(argv, argc);
-    if (ai)
+    }
+    if (ai) {
         aofInfoFree(ai);
+    }
 
     serverLog(LL_WARNING, "\n*** FATAL AOF MANIFEST FILE ERROR ***\n");
     if (line) {
@@ -421,8 +430,9 @@ aofManifest *aofManifestDup(aofManifest *orig) {
  * one if we have. */
 void aofManifestFreeAndUpdate(aofManifest *am) {
     serverAssert(am != NULL);
-    if (server.aof_manifest)
+    if (server.aof_manifest) {
         aofManifestFree(server.aof_manifest);
+    }
     server.aof_manifest = am;
 }
 
@@ -552,8 +562,9 @@ int writeAofManifestFile(sds buf) {
         nwritten = write(fd, buf, len);
 
         if (nwritten < 0) {
-            if (errno == EINTR)
+            if (errno == EINTR) {
                 continue;
+            }
 
             serverLog(LL_WARNING, "Error trying to write the temporary AOF manifest file %s: %s", tmp_am_name, strerror(errno));
 
@@ -588,8 +599,9 @@ int writeAofManifestFile(sds buf) {
     }
 
 cleanup:
-    if (fd != -1)
+    if (fd != -1) {
         close(fd);
+    }
     sdsfree(am_name);
     sdsfree(am_filepath);
     sdsfree(tmp_am_name);
@@ -606,8 +618,9 @@ int persistAofManifest(aofManifest *am) {
     sds amstr = getAofManifestAsString(am);
     int ret = writeAofManifestFile(amstr);
     sdsfree(amstr);
-    if (ret == C_OK)
+    if (ret == C_OK) {
         am->dirty = 0;
+    }
     return ret;
 }
 
@@ -631,8 +644,9 @@ void aofUpgradePrepare(aofManifest *am) {
     }
 
     /* Manually construct a BASE type aofInfo and add it to aofManifest. */
-    if (am->base_aof_info)
+    if (am->base_aof_info) {
         aofInfoFree(am->base_aof_info);
+    }
     aofInfo *ai = aofInfoCreate();
     ai->file_name = sdsnew(server.aof_filename);
     ai->file_seq = 1;
@@ -787,8 +801,9 @@ int openNewIncrAofForAppend(void) {
     sds new_aof_name = NULL;
 
     /* Only open new INCR AOF when AOF enabled. */
-    if (server.aof_state == AOF_OFF)
+    if (server.aof_state == AOF_OFF) {
         return C_OK;
+    }
 
     /* Open new AOF. */
     if (server.aof_state == AOF_WAIT_REWRITE) {
@@ -834,17 +849,21 @@ int openNewIncrAofForAppend(void) {
     /* Reset the aof_last_incr_fsync_offset. */
     server.aof_last_incr_fsync_offset = 0;
     /* Update `server.aof_manifest`. */
-    if (temp_am)
+    if (temp_am) {
         aofManifestFreeAndUpdate(temp_am);
+    }
     return C_OK;
 
 cleanup:
-    if (new_aof_name)
+    if (new_aof_name) {
         sdsfree(new_aof_name);
-    if (newfd != -1)
+    }
+    if (newfd != -1) {
         close(newfd);
-    if (temp_am)
+    }
+    if (temp_am) {
         aofManifestFree(temp_am);
+    }
     return C_ERR;
 }
 
@@ -929,8 +948,9 @@ void aof_background_fsync_and_close(int fd) {
 void killAppendOnlyChild(void) {
     int statloc;
     /* No AOFRW child? return. */
-    if (server.child_type != CHILD_TYPE_AOF)
+    if (server.child_type != CHILD_TYPE_AOF) {
         return;
+    }
     /* Kill AOFRW child, wait for child exit. */
     serverLog(LL_NOTICE, "Killing running AOF rewrite child: %ld", (long)server.child_pid);
     if (kill(server.child_pid, SIGUSR1) != -1) {
@@ -1045,8 +1065,9 @@ ssize_t aofWrite(int fd, const char *buf, size_t len) {
         nwritten = write(fd, buf, len);
 
         if (nwritten < 0) {
-            if (errno == EINTR)
+            if (errno == EINTR) {
                 continue;
+            }
             return totwritten ? totwritten : -1;
         }
 
@@ -1103,8 +1124,9 @@ void flushAppendOnlyFile(int force) {
         }
     }
 
-    if (server.aof_fsync == AOF_FSYNC_EVERYSEC)
+    if (server.aof_fsync == AOF_FSYNC_EVERYSEC) {
         sync_in_progress = aofFsyncInProgress();
+    }
 
     if (server.aof_fsync == AOF_FSYNC_EVERYSEC && !force) {
         /* With this append fsync policy we do background fsyncing.
@@ -1254,8 +1276,9 @@ void flushAppendOnlyFile(int force) {
 try_fsync:
     /* Don't fsync if no-appendfsync-on-rewrite is set to yes and there are
      * children doing I/O in the background. */
-    if (server.aof_no_fsync_on_rewrite && hasActiveChildProcess())
+    if (server.aof_no_fsync_on_rewrite && hasActiveChildProcess()) {
         return;
+    }
 
     /* Perform the fsync if needed. */
     if (server.aof_fsync == AOF_FSYNC_ALWAYS) {
@@ -1458,33 +1481,38 @@ int loadSingleAppendOnlyFile(char *filename) {
     char sig[5]; /* "REDIS" */
     if (fread(sig, 1, 5, fp) != 5 || memcmp(sig, "REDIS", 5) != 0) {
         /* Not in RDB format, seek back at 0 offset. */
-        if (fseek(fp, 0, SEEK_SET) == -1)
+        if (fseek(fp, 0, SEEK_SET) == -1) {
             goto readerr;
+        }
     } else {
         /* RDB format. Pass loading the RDB functions. */
         rio rdb;
         int old_style = !strcmp(filename, server.aof_filename);
-        if (old_style)
+        if (old_style) {
             serverLog(LL_NOTICE, "Reading RDB preamble from AOF file...");
-        else
+        } else {
             serverLog(LL_NOTICE, "Reading RDB base file on AOF loading...");
+        }
 
-        if (fseek(fp, 0, SEEK_SET) == -1)
+        if (fseek(fp, 0, SEEK_SET) == -1) {
             goto readerr;
+        }
         rioInitWithFile(&rdb, fp);
         if (rdbLoadRio(&rdb, RDBFLAGS_AOF_PREAMBLE, NULL) != C_OK) {
-            if (old_style)
+            if (old_style) {
                 serverLog(LL_WARNING, "Error reading the RDB preamble of the AOF file %s, AOF loading aborted", filename);
-            else
+            } else {
                 serverLog(LL_WARNING, "Error reading the RDB base file %s, AOF loading aborted", filename);
+            }
 
             ret = AOF_FAILED;
             goto cleanup;
         } else {
             loadingAbsProgress(ftello(fp));
             last_progress_report_size = ftello(fp);
-            if (old_style)
+            if (old_style) {
                 serverLog(LL_NOTICE, "Reading the remaining AOF tail...");
+            }
         }
     }
 
@@ -1512,17 +1540,22 @@ int loadSingleAppendOnlyFile(char *filename) {
                 goto readerr;
             }
         }
-        if (buf[0] == '#')
+        if (buf[0] == '#') {
             continue; /* Skip annotations */
-        if (buf[0] != '*')
+        }
+        if (buf[0] != '*') {
             goto fmterr;
-        if (buf[1] == '\0')
+        }
+        if (buf[1] == '\0') {
             goto readerr;
+        }
         argc = atoi(buf + 1);
-        if (argc < 1)
+        if (argc < 1) {
             goto fmterr;
-        if ((size_t)argc > SIZE_MAX / sizeof(robj *))
+        }
+        if ((size_t)argc > SIZE_MAX / sizeof(robj *)) {
             goto fmterr;
+        }
 
         /* Load the next command in the AOF as our fake client
          * argv. */
@@ -1537,10 +1570,11 @@ int loadSingleAppendOnlyFile(char *filename) {
             if (readres == NULL || buf[0] != '$') {
                 fakeClient->argc = j; /* Free up to j-1. */
                 freeClientArgv(fakeClient);
-                if (readres == NULL)
+                if (readres == NULL) {
                     goto readerr;
-                else
+                } else {
                     goto fmterr;
+                }
             }
             len = strtol(buf + 1, NULL, 10);
 
@@ -1571,8 +1605,9 @@ int loadSingleAppendOnlyFile(char *filename) {
             goto cleanup;
         }
 
-        if (cmd->proc == multiCommand)
+        if (cmd->proc == multiCommand) {
             valid_before_multi = valid_up_to;
+        }
 
         /* Run the command in the context of a fake client */
         fakeClient->cmd = fakeClient->lastcmd = cmd;
@@ -1594,10 +1629,12 @@ int loadSingleAppendOnlyFile(char *filename) {
         /* Clean up. Command code may have changed argv/argc so we use the
          * argv/argc of the client instead of the local variables. */
         freeClientArgv(fakeClient);
-        if (server.aof_load_truncated)
+        if (server.aof_load_truncated) {
             valid_up_to = ftello(fp);
-        if (server.key_load_delay)
+        }
+        if (server.key_load_delay) {
             debugDelay(server.key_load_delay);
+        }
     }
 
     /* This point can only be reached when EOF is reached without errors.
@@ -1665,8 +1702,9 @@ fmterr: /* Format error. */
     /* fall through to cleanup. */
 
 cleanup:
-    if (fakeClient)
+    if (fakeClient) {
         freeClient(fakeClient);
+    }
     server.current_client = old_cur_client;
     server.executing_client = old_exec_client;
     fclose(fp);
@@ -1712,8 +1750,9 @@ int loadAppendOnlyFiles(aofManifest *am) {
     total_size = getBaseAndIncrAppendOnlyFilesSize(am, &status);
     if (status != AOF_OK) {
         /* If an AOF exists in the manifest but not on the disk, we consider this to be a fatal error. */
-        if (status == AOF_NOT_EXIST)
+        if (status == AOF_NOT_EXIST) {
             status = AOF_FAILED;
+        }
 
         return status;
     } else if (total_size == 0) {
@@ -1766,8 +1805,9 @@ int loadAppendOnlyFiles(aofManifest *am) {
 
             /* We know that (at least) one of the AOF files has data (total_size > 0),
              * so empty incr AOF file doesn't count as a AOF_EMPTY result */
-            if (ret == AOF_EMPTY)
+            if (ret == AOF_EMPTY) {
                 ret = AOF_OK;
+            }
 
             /* If the truncated file is not the last file, we consider this to be a fatal error. */
             if (ret == AOF_TRUNCATED && !last_file) {
@@ -1847,8 +1887,9 @@ int rewriteListObject(rio *r, robj *key, robj *o) {
                 return 0;
             }
         }
-        if (++count == AOF_REWRITE_ITEMS_PER_CMD)
+        if (++count == AOF_REWRITE_ITEMS_PER_CMD) {
             count = 0;
+        }
         items--;
     }
     listTypeReleaseIterator(li);
@@ -1875,8 +1916,9 @@ int rewriteSetObject(rio *r, robj *key, robj *o) {
             setTypeReleaseIterator(si);
             return 0;
         }
-        if (++count == AOF_REWRITE_ITEMS_PER_CMD)
+        if (++count == AOF_REWRITE_ITEMS_PER_CMD) {
             count = 0;
+        }
         items--;
     }
     setTypeReleaseIterator(si);
@@ -1912,18 +1954,22 @@ int rewriteSortedSetObject(rio *r, robj *key, robj *o) {
                     return 0;
                 }
             }
-            if (!rioWriteBulkDouble(r, score))
+            if (!rioWriteBulkDouble(r, score)) {
                 return 0;
+            }
             if (vstr != NULL) {
-                if (!rioWriteBulkString(r, (char *)vstr, vlen))
+                if (!rioWriteBulkString(r, (char *)vstr, vlen)) {
                     return 0;
+                }
             } else {
-                if (!rioWriteBulkLongLong(r, vll))
+                if (!rioWriteBulkLongLong(r, vll)) {
                     return 0;
+                }
             }
             zzlNext(zl, &eptr, &sptr);
-            if (++count == AOF_REWRITE_ITEMS_PER_CMD)
+            if (++count == AOF_REWRITE_ITEMS_PER_CMD) {
                 count = 0;
+            }
             items--;
         }
     } else if (o->encoding == OBJ_ENCODING_SKIPLIST) {
@@ -1947,8 +1993,9 @@ int rewriteSortedSetObject(rio *r, robj *key, robj *o) {
                 dictReleaseIterator(di);
                 return 0;
             }
-            if (++count == AOF_REWRITE_ITEMS_PER_CMD)
+            if (++count == AOF_REWRITE_ITEMS_PER_CMD) {
                 count = 0;
+            }
             items--;
         }
         dictReleaseIterator(di);
@@ -1971,10 +2018,11 @@ static int rioWriteHashIteratorCursor(rio *r, hashTypeIterator *hi, int what) {
         long long vll = LLONG_MAX;
 
         hashTypeCurrentFromListpack(hi, what, &vstr, &vlen, &vll);
-        if (vstr)
+        if (vstr) {
             return rioWriteBulkString(r, (char *)vstr, vlen);
-        else
+        } else {
             return rioWriteBulkLongLong(r, vll);
+        }
     } else if (hi->encoding == OBJ_ENCODING_HT) {
         sds value = hashTypeCurrentFromHashTable(hi, what);
         return rioWriteBulkString(r, value, sdslen(value));
@@ -2005,8 +2053,9 @@ int rewriteHashObject(rio *r, robj *key, robj *o) {
             hashTypeReleaseIterator(hi);
             return 0;
         }
-        if (++count == AOF_REWRITE_ITEMS_PER_CMD)
+        if (++count == AOF_REWRITE_ITEMS_PER_CMD) {
             count = 0;
+        }
         items--;
     }
 
@@ -2037,32 +2086,45 @@ int rioWriteStreamPendingEntry(
               RETRYCOUNT <count> JUSTID FORCE. */
     streamID id;
     streamDecodeID(rawid, &id);
-    if (rioWriteBulkCount(r, '*', 12) == 0)
+    if (rioWriteBulkCount(r, '*', 12) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "XCLAIM", 6) == 0)
+    }
+    if (rioWriteBulkString(r, "XCLAIM", 6) == 0) {
         return 0;
-    if (rioWriteBulkObject(r, key) == 0)
+    }
+    if (rioWriteBulkObject(r, key) == 0) {
         return 0;
-    if (rioWriteBulkString(r, groupname, groupname_len) == 0)
+    }
+    if (rioWriteBulkString(r, groupname, groupname_len) == 0) {
         return 0;
-    if (rioWriteBulkString(r, consumer->name, sdslen(consumer->name)) == 0)
+    }
+    if (rioWriteBulkString(r, consumer->name, sdslen(consumer->name)) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "0", 1) == 0)
+    }
+    if (rioWriteBulkString(r, "0", 1) == 0) {
         return 0;
-    if (rioWriteBulkStreamID(r, &id) == 0)
+    }
+    if (rioWriteBulkStreamID(r, &id) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "TIME", 4) == 0)
+    }
+    if (rioWriteBulkString(r, "TIME", 4) == 0) {
         return 0;
-    if (rioWriteBulkLongLong(r, nack->delivery_time) == 0)
+    }
+    if (rioWriteBulkLongLong(r, nack->delivery_time) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "RETRYCOUNT", 10) == 0)
+    }
+    if (rioWriteBulkString(r, "RETRYCOUNT", 10) == 0) {
         return 0;
-    if (rioWriteBulkLongLong(r, nack->delivery_count) == 0)
+    }
+    if (rioWriteBulkLongLong(r, nack->delivery_count) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "JUSTID", 6) == 0)
+    }
+    if (rioWriteBulkString(r, "JUSTID", 6) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "FORCE", 5) == 0)
+    }
+    if (rioWriteBulkString(r, "FORCE", 5) == 0) {
         return 0;
+    }
     return 1;
 }
 
@@ -2071,18 +2133,24 @@ int rioWriteStreamPendingEntry(
  * All this in the context of the specified key and group. */
 int rioWriteStreamEmptyConsumer(rio *r, robj *key, const char *groupname, size_t groupname_len, streamConsumer *consumer) {
     /* XGROUP CREATECONSUMER <key> <group> <consumer> */
-    if (rioWriteBulkCount(r, '*', 5) == 0)
+    if (rioWriteBulkCount(r, '*', 5) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "XGROUP", 6) == 0)
+    }
+    if (rioWriteBulkString(r, "XGROUP", 6) == 0) {
         return 0;
-    if (rioWriteBulkString(r, "CREATECONSUMER", 14) == 0)
+    }
+    if (rioWriteBulkString(r, "CREATECONSUMER", 14) == 0) {
         return 0;
-    if (rioWriteBulkObject(r, key) == 0)
+    }
+    if (rioWriteBulkObject(r, key) == 0) {
         return 0;
-    if (rioWriteBulkString(r, groupname, groupname_len) == 0)
+    }
+    if (rioWriteBulkString(r, groupname, groupname_len) == 0) {
         return 0;
-    if (rioWriteBulkString(r, consumer->name, sdslen(consumer->name)) == 0)
+    }
+    if (rioWriteBulkString(r, consumer->name, sdslen(consumer->name)) == 0) {
         return 0;
+    }
     return 1;
 }
 
@@ -2222,13 +2290,16 @@ static int rewriteFunctions(rio *aof) {
     dictEntry *entry = NULL;
     while ((entry = dictNext(iter))) {
         functionLibInfo *li = dictGetVal(entry);
-        if (rioWrite(aof, "*3\r\n", 4) == 0)
+        if (rioWrite(aof, "*3\r\n", 4) == 0) {
             goto werr;
+        }
         char function_load[] = "$8\r\nFUNCTION\r\n$4\r\nLOAD\r\n";
-        if (rioWrite(aof, function_load, sizeof(function_load) - 1) == 0)
+        if (rioWrite(aof, function_load, sizeof(function_load) - 1) == 0) {
             goto werr;
-        if (rioWriteBulkString(aof, li->code, sdslen(li->code)) == 0)
+        }
+        if (rioWriteBulkString(aof, li->code, sdslen(li->code)) == 0) {
             goto werr;
+        }
     }
     dictReleaseIterator(iter);
     return 1;
@@ -2255,22 +2326,26 @@ int rewriteAppendOnlyFileRio(rio *aof) {
         sdsfree(ts);
     }
 
-    if (rewriteFunctions(aof) == 0)
+    if (rewriteFunctions(aof) == 0) {
         goto werr;
+    }
 
     for (j = 0; j < server.dbnum; j++) {
         char selectcmd[] = "*2\r\n$6\r\nSELECT\r\n";
         redisDb *db = server.db + j;
         dict *d = db->dict;
-        if (dictSize(d) == 0)
+        if (dictSize(d) == 0) {
             continue;
+        }
         di = dictGetSafeIterator(d);
 
         /* SELECT the new DB */
-        if (rioWrite(aof, selectcmd, sizeof(selectcmd) - 1) == 0)
+        if (rioWrite(aof, selectcmd, sizeof(selectcmd) - 1) == 0) {
             goto werr;
-        if (rioWriteBulkLongLong(aof, j) == 0)
+        }
+        if (rioWriteBulkLongLong(aof, j) == 0) {
             goto werr;
+        }
 
         /* Iterate this DB writing every entry */
         while ((de = dictNext(di)) != NULL) {
@@ -2289,31 +2364,40 @@ int rewriteAppendOnlyFileRio(rio *aof) {
             if (o->type == OBJ_STRING) {
                 /* Emit a SET command */
                 char cmd[] = "*3\r\n$3\r\nSET\r\n";
-                if (rioWrite(aof, cmd, sizeof(cmd) - 1) == 0)
+                if (rioWrite(aof, cmd, sizeof(cmd) - 1) == 0) {
                     goto werr;
+                }
                 /* Key and value */
-                if (rioWriteBulkObject(aof, &key) == 0)
+                if (rioWriteBulkObject(aof, &key) == 0) {
                     goto werr;
-                if (rioWriteBulkObject(aof, o) == 0)
+                }
+                if (rioWriteBulkObject(aof, o) == 0) {
                     goto werr;
+                }
             } else if (o->type == OBJ_LIST) {
-                if (rewriteListObject(aof, &key, o) == 0)
+                if (rewriteListObject(aof, &key, o) == 0) {
                     goto werr;
+                }
             } else if (o->type == OBJ_SET) {
-                if (rewriteSetObject(aof, &key, o) == 0)
+                if (rewriteSetObject(aof, &key, o) == 0) {
                     goto werr;
+                }
             } else if (o->type == OBJ_ZSET) {
-                if (rewriteSortedSetObject(aof, &key, o) == 0)
+                if (rewriteSortedSetObject(aof, &key, o) == 0) {
                     goto werr;
+                }
             } else if (o->type == OBJ_HASH) {
-                if (rewriteHashObject(aof, &key, o) == 0)
+                if (rewriteHashObject(aof, &key, o) == 0) {
                     goto werr;
+                }
             } else if (o->type == OBJ_STREAM) {
-                if (rewriteStreamObject(aof, &key, o) == 0)
+                if (rewriteStreamObject(aof, &key, o) == 0) {
                     goto werr;
+                }
             } else if (o->type == OBJ_MODULE) {
-                if (rewriteModuleObject(aof, &key, o, j) == 0)
+                if (rewriteModuleObject(aof, &key, o, j) == 0) {
                     goto werr;
+                }
             } else {
                 serverPanic("Unknown object type");
             }
@@ -2322,18 +2406,22 @@ int rewriteAppendOnlyFileRio(rio *aof) {
              * OS and possibly avoid or decrease COW. We give the dismiss
              * mechanism a hint about an estimated size of the object we stored. */
             size_t dump_size = aof->processed_bytes - aof_bytes_before_key;
-            if (server.in_fork_child)
+            if (server.in_fork_child) {
                 dismissObject(o, dump_size);
+            }
 
             /* Save the expire time */
             if (expiretime != -1) {
                 char cmd[] = "*3\r\n$9\r\nPEXPIREAT\r\n";
-                if (rioWrite(aof, cmd, sizeof(cmd) - 1) == 0)
+                if (rioWrite(aof, cmd, sizeof(cmd) - 1) == 0) {
                     goto werr;
-                if (rioWriteBulkObject(aof, &key) == 0)
+                }
+                if (rioWriteBulkObject(aof, &key) == 0) {
                     goto werr;
-                if (rioWriteBulkLongLong(aof, expiretime) == 0)
+                }
+                if (rioWriteBulkLongLong(aof, expiretime) == 0) {
                     goto werr;
+                }
             }
 
             /* Update info every 1 second (approximately).
@@ -2348,8 +2436,9 @@ int rewriteAppendOnlyFileRio(rio *aof) {
             }
 
             /* Delay before next key if required (for testing) */
-            if (server.rdb_key_save_delay)
+            if (server.rdb_key_save_delay) {
                 debugDelay(server.rdb_key_save_delay);
+            }
         }
         dictReleaseIterator(di);
         di = NULL;
@@ -2357,8 +2446,9 @@ int rewriteAppendOnlyFileRio(rio *aof) {
     return C_OK;
 
 werr:
-    if (di)
+    if (di) {
         dictReleaseIterator(di);
+    }
     return C_ERR;
 }
 
@@ -2399,15 +2489,18 @@ int rewriteAppendOnlyFile(char *filename) {
             goto werr;
         }
     } else {
-        if (rewriteAppendOnlyFileRio(&aof) == C_ERR)
+        if (rewriteAppendOnlyFileRio(&aof) == C_ERR) {
             goto werr;
+        }
     }
 
     /* Make sure data will not remain on the OS's output buffers */
-    if (fflush(fp))
+    if (fflush(fp)) {
         goto werr;
-    if (fsync(fileno(fp)))
+    }
+    if (fsync(fileno(fp))) {
         goto werr;
+    }
     if (reclaimFilePageCache(fileno(fp), 0, 0) == -1) {
         /* A minor error. Just log to know what happens */
         serverLog(LL_NOTICE, "Unable to reclaim page cache: %s", strerror(errno));
@@ -2432,8 +2525,9 @@ int rewriteAppendOnlyFile(char *filename) {
 
 werr:
     serverLog(LL_WARNING, "Write error writing append only file on disk: %s", strerror(errno));
-    if (fp)
+    if (fp) {
         fclose(fp);
+    }
     unlink(tmpfile);
     stopSaving(0);
     return C_ERR;
@@ -2459,8 +2553,9 @@ werr:
 int rewriteAppendOnlyFileBackground(void) {
     pid_t childpid;
 
-    if (hasActiveChildProcess())
+    if (hasActiveChildProcess()) {
         return C_ERR;
+    }
 
     if (dirCreateIfMissing(server.aof_dirname) == -1) {
         serverLog(LL_WARNING, "Can't open or create append-only dir %s: %s", server.aof_dirname, strerror(errno));
@@ -2547,13 +2642,15 @@ off_t getAppendOnlyFileSize(sds filename, int *status) {
     sds aof_filepath = makePath(server.aof_dirname, filename);
     latencyStartMonitor(latency);
     if (redis_stat(aof_filepath, &sb) == -1) {
-        if (status)
+        if (status) {
             *status = errno == ENOENT ? AOF_NOT_EXIST : AOF_OPEN_ERR;
+        }
         serverLog(LL_WARNING, "Unable to obtain the AOF file %s length. stat: %s", filename, strerror(errno));
         size = 0;
     } else {
-        if (status)
+        if (status) {
             *status = AOF_OK;
+        }
         size = sb.st_size;
     }
     latencyEndMonitor(latency);
@@ -2574,8 +2671,9 @@ off_t getBaseAndIncrAppendOnlyFilesSize(aofManifest *am, int *status) {
         serverAssert(am->base_aof_info->file_type == AOF_FILE_TYPE_BASE);
 
         size += getAppendOnlyFileSize(am->base_aof_info->file_name, status);
-        if (*status != AOF_OK)
+        if (*status != AOF_OK) {
             return 0;
+        }
     }
 
     listRewind(am->incr_aof_list, &li);
@@ -2583,8 +2681,9 @@ off_t getBaseAndIncrAppendOnlyFilesSize(aofManifest *am, int *status) {
         aofInfo *ai = (aofInfo *)ln->value;
         serverAssert(ai->file_type == AOF_FILE_TYPE_INCR);
         size += getAppendOnlyFileSize(ai->file_name, status);
-        if (*status != AOF_OK)
+        if (*status != AOF_OK) {
             return 0;
+        }
     }
 
     return size;
@@ -2592,10 +2691,12 @@ off_t getBaseAndIncrAppendOnlyFilesSize(aofManifest *am, int *status) {
 
 int getBaseAndIncrAppendOnlyFilesNum(aofManifest *am) {
     int num = 0;
-    if (am->base_aof_info)
+    if (am->base_aof_info) {
         num++;
-    if (am->incr_aof_list)
+    }
+    if (am->incr_aof_list) {
         num += listLength(am->incr_aof_list);
+    }
     return num;
 }
 
@@ -2688,8 +2789,9 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal) {
             goto cleanup;
         }
         sdsfree(new_base_filepath);
-        if (new_incr_filepath)
+        if (new_incr_filepath) {
             sdsfree(new_incr_filepath);
+        }
 
         /* We can safely let `server.aof_manifest` point to 'temp_am' and free the previous one. */
         aofManifestFreeAndUpdate(temp_am);
@@ -2748,6 +2850,7 @@ cleanup:
     server.aof_rewrite_time_last = time(NULL) - server.aof_rewrite_time_start;
     server.aof_rewrite_time_start = -1;
     /* Schedule a new rewrite if we are waiting for it to switch the AOF ON. */
-    if (server.aof_state == AOF_WAIT_REWRITE)
+    if (server.aof_state == AOF_WAIT_REWRITE) {
         server.aof_rewrite_scheduled = 1;
+    }
 }

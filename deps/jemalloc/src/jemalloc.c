@@ -1910,8 +1910,9 @@ static bool malloc_init_narenas(void) {
                     "threading?).\n",
                     ncpus
                 );
-                if (opt_abort)
+                if (opt_abort) {
                     abort();
+                }
             }
             unsigned n = percpu_arena_ind_limit(percpu_arena_as_initialized(opt_percpu_arena));
             if (opt_narenas < n) {

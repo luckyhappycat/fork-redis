@@ -75,8 +75,9 @@ static void *handleOOM(std::size_t size, bool nothrow) {
             handler = std::set_new_handler(nullptr);
             std::set_new_handler(handler);
         }
-        if (handler == nullptr)
+        if (handler == nullptr) {
             break;
+        }
 
         try {
             handler();
@@ -87,8 +88,9 @@ static void *handleOOM(std::size_t size, bool nothrow) {
         ptr = je_malloc(size);
     }
 
-    if (ptr == nullptr && !nothrow)
+    if (ptr == nullptr && !nothrow) {
         std::__throw_bad_alloc();
+    }
     return ptr;
 }
 

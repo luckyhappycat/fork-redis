@@ -9,8 +9,9 @@ using namespace std;
 void getCallback(redisAsyncContext *, void *r, void *privdata) {
     redisReply *reply = static_cast<redisReply *>(r);
     ExampleQt *ex = static_cast<ExampleQt *>(privdata);
-    if (reply == nullptr || ex == nullptr)
+    if (reply == nullptr || ex == nullptr) {
         return;
+    }
 
     cout << "key: " << reply->str << endl;
 

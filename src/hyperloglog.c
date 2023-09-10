@@ -602,8 +602,9 @@ int hllSparseToDense(robj *o) {
 
     /* If the representation is already the right one return ASAP. */
     hdr = (struct hllhdr *)sparse;
-    if (hdr->encoding == HLL_DENSE)
+    if (hdr->encoding == HLL_DENSE) {
         return C_OK;
+    }
 
     /* Create a string of the right size filled with zero bytes.
      * Note that the cached cardinality is set to 0 as a side effect
@@ -628,8 +629,9 @@ int hllSparseToDense(robj *o) {
         } else {
             runlen = HLL_SPARSE_VAL_LEN(p);
             regval = HLL_SPARSE_VAL_VALUE(p);
-            if ((runlen + idx) > HLL_REGISTERS)
+            if ((runlen + idx) > HLL_REGISTERS) {
                 break; /* Overflow. */
+            }
             while (runlen--) {
                 HLL_DENSE_SET_REGISTER(hdr->registers, idx, regval);
                 idx++;
@@ -674,8 +676,9 @@ int hllSparseSet(robj *o, long index, uint8_t count) {
 
     /* If the count is too big to be representable by the sparse representation
      * switch to dense representation. */
-    if (count > HLL_SPARSE_VAL_MAX_VALUE)
+    if (count > HLL_SPARSE_VAL_MAX_VALUE) {
         goto promote;
+    }
 
     /* When updating a sparse representation, sometimes we may need to enlarge the
      * buffer for up to 3 bytes in the worst case (XZERO split into XZERO-VAL-XZERO),
@@ -689,8 +692,9 @@ int hllSparseSet(robj *o, long index, uint8_t count) {
     if (sdsalloc(o->ptr) < server.hll_sparse_max_bytes && sdsavail(o->ptr) < 3) {
         size_t newlen = sdslen(o->ptr) + 3;
         newlen += min(newlen, 300); /* Greediness: double 'newlen' if it is smaller than 300, or add 300 to it when it exceeds 300 */
-        if (newlen > server.hll_sparse_max_bytes)
+        if (newlen > server.hll_sparse_max_bytes) {
             newlen = server.hll_sparse_max_bytes;
+        }
         o->ptr = sdsResize(o->ptr, newlen, 1);
     }
 
@@ -721,18 +725,21 @@ int hllSparseSet(robj *o, long index, uint8_t count) {
             oplen = 2;
         }
         /* Break if this opcode covers the register as 'index'. */
-        if (index <= first + span - 1)
+        if (index <= first + span - 1) {
             break;
+        }
         prev = p;
         p += oplen;
         first += span;
     }
-    if (span == 0 || p >= end)
+    if (span == 0 || p >= end) {
         return -1; /* Invalid format. */
+    }
 
     next = HLL_SPARSE_IS_XZERO(p) ? p + 2 : p + 1;
-    if (next >= end)
+    if (next >= end) {
         next = NULL;
+    }
 
     /* Cache current opcode type to avoid using the macro again and
      * again for something that will not change.
@@ -772,8 +779,9 @@ int hllSparseSet(robj *o, long index, uint8_t count) {
     if (is_val) {
         oldcount = HLL_SPARSE_VAL_VALUE(p);
         /* Case A. */
-        if (oldcount >= count)
+        if (oldcount >= count) {
             return 0;
+        }
 
         /* Case B. */
         if (runlen == 1) {
@@ -858,11 +866,13 @@ int hllSparseSet(robj *o, long index, uint8_t count) {
     int oldlen = is_xzero ? 2 : 1;
     int deltalen = seqlen - oldlen;
 
-    if (deltalen > 0 && sdslen(o->ptr) + deltalen > server.hll_sparse_max_bytes)
+    if (deltalen > 0 && sdslen(o->ptr) + deltalen > server.hll_sparse_max_bytes) {
         goto promote;
+    }
     serverAssert(sdslen(o->ptr) + deltalen <= sdsalloc(o->ptr));
-    if (deltalen && next)
+    if (deltalen && next) {
         memmove(next + deltalen, next, end - next);
+    }
     sdsIncrLen(o->ptr, deltalen);
     memcpy(p, seq, seqlen);
     end += deltalen;
@@ -911,8 +921,9 @@ updated:
     return 1;
 
 promote: /* Promote to dense representation. */
-    if (hllSparseToDense(o) == C_ERR)
+    if (hllSparseToDense(o) == C_ERR) {
         return -1; /* Corrupted HLL. */
+    }
     hdr = o->ptr;
 
     /* We need to call hllDenseAdd() to perform the operation after the
@@ -964,8 +975,9 @@ void hllSparseRegHisto(uint8_t *sparse, int sparselen, int *invalid, int *reghis
             p++;
         }
     }
-    if (idx != HLL_REGISTERS && invalid)
+    if (idx != HLL_REGISTERS && invalid) {
         *invalid = 1;
+    }
 }
 
 /* ========================= HyperLogLog Count ==============================
@@ -1003,8 +1015,9 @@ void hllRawRegHisto(uint8_t *registers, int *reghisto) {
  * "New cardinality estimation algorithms for HyperLogLog sketches"
  * Otmar Ertl, arXiv:1702.01284 */
 double hllSigma(double x) {
-    if (x == 1.)
+    if (x == 1.) {
         return INFINITY;
+    }
     double zPrime;
     double y = 1;
     double z = x;
@@ -1021,8 +1034,9 @@ double hllSigma(double x) {
  * "New cardinality estimation algorithms for HyperLogLog sketches"
  * Otmar Ertl, arXiv:1702.01284 */
 double hllTau(double x) {
-    if (x == 0. || x == 1.)
+    if (x == 0. || x == 1.) {
         return 0.;
+    }
     double zPrime;
     double y = 1.0;
     double z = 1 - x;
@@ -1112,8 +1126,9 @@ int hllMerge(uint8_t *max, robj *hll) {
 
         for (i = 0; i < HLL_REGISTERS; i++) {
             HLL_DENSE_GET_REGISTER(val, hdr->registers, i);
-            if (val > max[i])
+            if (val > max[i]) {
                 max[i] = val;
+            }
         }
     } else {
         uint8_t *p = hll->ptr, *end = p + sdslen(hll->ptr);
@@ -1133,18 +1148,21 @@ int hllMerge(uint8_t *max, robj *hll) {
             } else {
                 runlen = HLL_SPARSE_VAL_LEN(p);
                 regval = HLL_SPARSE_VAL_VALUE(p);
-                if ((runlen + i) > HLL_REGISTERS)
+                if ((runlen + i) > HLL_REGISTERS) {
                     break; /* Overflow. */
+                }
                 while (runlen--) {
-                    if (regval > max[i])
+                    if (regval > max[i]) {
                         max[i] = regval;
+                    }
                     i++;
                 }
                 p++;
             }
         }
-        if (i != HLL_REGISTERS)
+        if (i != HLL_REGISTERS) {
             return C_ERR;
+        }
     }
     return C_OK;
 }
@@ -1168,8 +1186,9 @@ robj *createHLLObject(void) {
     p = (uint8_t *)s + HLL_HDR_SIZE;
     while (aux) {
         int xzero = HLL_SPARSE_XZERO_MAX_LEN;
-        if (xzero > aux)
+        if (xzero > aux) {
             xzero = aux;
+        }
         HLL_SPARSE_XZERO_SET(p, xzero);
         p += 2;
         aux -= xzero;
@@ -1191,25 +1210,31 @@ int isHLLObjectOrReply(client *c, robj *o) {
     struct hllhdr *hdr;
 
     /* Key exists, check type */
-    if (checkType(c, o, OBJ_STRING))
+    if (checkType(c, o, OBJ_STRING)) {
         return C_ERR; /* Error already sent. */
+    }
 
-    if (!sdsEncodedObject(o))
+    if (!sdsEncodedObject(o)) {
         goto invalid;
-    if (stringObjectLen(o) < sizeof(*hdr))
+    }
+    if (stringObjectLen(o) < sizeof(*hdr)) {
         goto invalid;
+    }
     hdr = o->ptr;
 
     /* Magic should be "HYLL". */
-    if (hdr->magic[0] != 'H' || hdr->magic[1] != 'Y' || hdr->magic[2] != 'L' || hdr->magic[3] != 'L')
+    if (hdr->magic[0] != 'H' || hdr->magic[1] != 'Y' || hdr->magic[2] != 'L' || hdr->magic[3] != 'L') {
         goto invalid;
+    }
 
-    if (hdr->encoding > HLL_MAX_ENCODING)
+    if (hdr->encoding > HLL_MAX_ENCODING) {
         goto invalid;
+    }
 
     /* Dense representation string length should match exactly. */
-    if (hdr->encoding == HLL_DENSE && stringObjectLen(o) != HLL_DENSE_SIZE)
+    if (hdr->encoding == HLL_DENSE && stringObjectLen(o) != HLL_DENSE_SIZE) {
         goto invalid;
+    }
 
     /* All tests passed. */
     return C_OK;
@@ -1237,8 +1262,9 @@ void pfaddCommand(client *c) {
         dbAdd(c->db, c->argv[1], o);
         updated++;
     } else {
-        if (isHLLObjectOrReply(c, o) != C_OK)
+        if (isHLLObjectOrReply(c, o) != C_OK) {
             return;
+        }
         o = dbUnshareStringValue(c->db, c->argv[1], o);
     }
     /* Perform the low level ADD operation for every element. */
@@ -1285,10 +1311,12 @@ void pfcountCommand(client *c) {
         for (j = 1; j < c->argc; j++) {
             /* Check type and size. */
             robj *o = lookupKeyRead(c->db, c->argv[j]);
-            if (o == NULL)
+            if (o == NULL) {
                 continue; /* Assume empty HLL for non existing var.*/
-            if (isHLLObjectOrReply(c, o) != C_OK)
+            }
+            if (isHLLObjectOrReply(c, o) != C_OK) {
                 return;
+            }
 
             /* Merge with this HLL with our 'max' HLL by setting max[i]
              * to MAX(max[i],hll[i]). */
@@ -1320,8 +1348,9 @@ void pfcountCommand(client *c) {
          * we would have a key as HLLADD creates it as a side effect. */
         addReply(c, shared.czero);
     } else {
-        if (isHLLObjectOrReply(c, o) != C_OK)
+        if (isHLLObjectOrReply(c, o) != C_OK) {
             return;
+        }
         o = dbUnshareStringValue(c->db, c->argv[1], o);
 
         /* Check if the cached cardinality is valid. */
@@ -1376,16 +1405,19 @@ void pfmergeCommand(client *c) {
     for (j = 1; j < c->argc; j++) {
         /* Check type and size. */
         robj *o = lookupKeyRead(c->db, c->argv[j]);
-        if (o == NULL)
+        if (o == NULL) {
             continue; /* Assume empty HLL for non existing var. */
-        if (isHLLObjectOrReply(c, o) != C_OK)
+        }
+        if (isHLLObjectOrReply(c, o) != C_OK) {
             return;
+        }
 
         /* If at least one involved HLL is dense, use the dense representation
          * as target ASAP to save time and avoid the conversion step. */
         hdr = o->ptr;
-        if (hdr->encoding == HLL_DENSE)
+        if (hdr->encoding == HLL_DENSE) {
             use_dense = 1;
+        }
 
         /* Merge with this HLL with our 'max' HLL by setting max[i]
          * to MAX(max[i],hll[i]). */
@@ -1420,8 +1452,9 @@ void pfmergeCommand(client *c) {
     /* Write the resulting HLL to the destination HLL registers and
      * invalidate the cached value. */
     for (j = 0; j < HLL_REGISTERS; j++) {
-        if (max[j] == 0)
+        if (max[j] == 0) {
             continue;
+        }
         hdr = o->ptr;
         switch (hdr->encoding) {
             case HLL_DENSE:
@@ -1528,11 +1561,13 @@ void pfselftestCommand(client *c) {
              * since from time to time it is statistically likely to get
              * much higher error due to collision, resulting into a false
              * positive. */
-            if (j == 10)
+            if (j == 10) {
                 maxerr = 1;
+            }
 
-            if (abserr < 0)
+            if (abserr < 0) {
                 abserr = -abserr;
+            }
             if (abserr > (int64_t)maxerr) {
                 addReplyErrorFormat(c, "TESTFAILED Too big error. card:%llu abserr:%llu", (unsigned long long)checkpoint, (unsigned long long)abserr);
                 goto cleanup;
@@ -1546,8 +1581,9 @@ void pfselftestCommand(client *c) {
 
 cleanup:
     sdsfree(bitcounters);
-    if (o)
+    if (o) {
         decrRefCount(o);
+    }
 }
 
 /* Different debugging related operations about the HLL implementation.
@@ -1568,15 +1604,17 @@ void pfdebugCommand(client *c) {
         addReplyError(c, "The specified key does not exist");
         return;
     }
-    if (isHLLObjectOrReply(c, o) != C_OK)
+    if (isHLLObjectOrReply(c, o) != C_OK) {
         return;
+    }
     o = dbUnshareStringValue(c->db, c->argv[2], o);
     hdr = o->ptr;
 
     /* PFDEBUG GETREG <key> */
     if (!strcasecmp(cmd, "getreg")) {
-        if (c->argc != 3)
+        if (c->argc != 3) {
             goto arityerr;
+        }
 
         if (hdr->encoding == HLL_SPARSE) {
             if (hllSparseToDense(o) == C_ERR) {
@@ -1597,8 +1635,9 @@ void pfdebugCommand(client *c) {
     }
     /* PFDEBUG DECODE <key> */
     else if (!strcasecmp(cmd, "decode")) {
-        if (c->argc != 3)
+        if (c->argc != 3) {
             goto arityerr;
+        }
 
         uint8_t *p = o->ptr, *end = p + sdslen(o->ptr);
         sds decoded = sdsempty();
@@ -1635,16 +1674,18 @@ void pfdebugCommand(client *c) {
     /* PFDEBUG ENCODING <key> */
     else if (!strcasecmp(cmd, "encoding")) {
         char *encodingstr[2] = {"dense", "sparse"};
-        if (c->argc != 3)
+        if (c->argc != 3) {
             goto arityerr;
+        }
 
         addReplyStatus(c, encodingstr[hdr->encoding]);
     }
     /* PFDEBUG TODENSE <key> */
     else if (!strcasecmp(cmd, "todense")) {
         int conv = 0;
-        if (c->argc != 3)
+        if (c->argc != 3) {
             goto arityerr;
+        }
 
         if (hdr->encoding == HLL_SPARSE) {
             if (hllSparseToDense(o) == C_ERR) {

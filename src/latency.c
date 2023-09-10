@@ -94,15 +94,17 @@ void latencyAddSample(const char *event, mstime_t latency) {
         dictAdd(server.latency_events, zstrdup(event), ts);
     }
 
-    if (latency > ts->max)
+    if (latency > ts->max) {
         ts->max = latency;
+    }
 
     /* If the previous sample is in the same second, we update our old sample
      * if this latency is > of the old one, or just return. */
     prev = (ts->idx + LATENCY_TS_LEN - 1) % LATENCY_TS_LEN;
     if (ts->samples[prev].time == now) {
-        if (latency > ts->samples[prev].latency)
+        if (latency > ts->samples[prev].latency) {
             ts->samples[prev].latency = latency;
+        }
         return;
     }
 
@@ -110,8 +112,9 @@ void latencyAddSample(const char *event, mstime_t latency) {
     ts->samples[ts->idx].latency = latency;
 
     ts->idx++;
-    if (ts->idx == LATENCY_TS_LEN)
+    if (ts->idx == LATENCY_TS_LEN) {
         ts->idx = 0;
+    }
 }
 
 /* Reset data for the specified event, or all the events data if 'event' is
@@ -156,28 +159,33 @@ void analyzeLatencyForEvent(char *event, struct latencyStats *ls) {
     ls->mad = 0;
     ls->samples = 0;
     ls->period = 0;
-    if (!ts)
+    if (!ts) {
         return;
+    }
 
     /* First pass, populate everything but the MAD. */
     sum = 0;
     for (j = 0; j < LATENCY_TS_LEN; j++) {
-        if (ts->samples[j].time == 0)
+        if (ts->samples[j].time == 0) {
             continue;
+        }
         ls->samples++;
         if (ls->samples == 1) {
             ls->min = ls->max = ts->samples[j].latency;
         } else {
-            if (ls->min > ts->samples[j].latency)
+            if (ls->min > ts->samples[j].latency) {
                 ls->min = ts->samples[j].latency;
-            if (ls->max < ts->samples[j].latency)
+            }
+            if (ls->max < ts->samples[j].latency) {
                 ls->max = ts->samples[j].latency;
+            }
         }
         sum += ts->samples[j].latency;
 
         /* Track the oldest event time in ls->period. */
-        if (ls->period == 0 || ts->samples[j].time < ls->period)
+        if (ls->period == 0 || ts->samples[j].time < ls->period) {
             ls->period = ts->samples[j].time;
+        }
     }
 
     /* So far avg is actually the sum of the latencies, and period is
@@ -186,8 +194,9 @@ void analyzeLatencyForEvent(char *event, struct latencyStats *ls) {
     if (ls->samples) {
         ls->avg = sum / ls->samples;
         ls->period = time(NULL) - ls->period;
-        if (ls->period == 0)
+        if (ls->period == 0) {
             ls->period = 1;
+        }
     }
 
     /* Second pass, compute MAD. */
@@ -195,15 +204,18 @@ void analyzeLatencyForEvent(char *event, struct latencyStats *ls) {
     for (j = 0; j < LATENCY_TS_LEN; j++) {
         int64_t delta;
 
-        if (ts->samples[j].time == 0)
+        if (ts->samples[j].time == 0) {
             continue;
+        }
         delta = (int64_t)ls->avg - ts->samples[j].latency;
-        if (delta < 0)
+        if (delta < 0) {
             delta = -delta;
+        }
         sum += delta;
     }
-    if (ls->samples)
+    if (ls->samples) {
         ls->mad = sum / ls->samples;
+    }
 }
 
 /* Create a human readable report of latency events for this Redis instance. */
@@ -251,8 +263,9 @@ sds createLatencyReport(void) {
         struct latencyTimeSeries *ts = dictGetVal(de);
         struct latencyStats ls;
 
-        if (ts == NULL)
+        if (ts == NULL) {
             continue;
+        }
         eventnum++;
         if (eventnum == 1) {
             report = sdscat(report, "Dave, I have observed latency spikes in this Redis instance. You don't mind talking about it, do you Dave?\n\n");
@@ -641,8 +654,9 @@ void latencyCommandReplyWithSamples(client *c, struct latencyTimeSeries *ts) {
     for (j = 0; j < LATENCY_TS_LEN; j++) {
         int i = (ts->idx + j) % LATENCY_TS_LEN;
 
-        if (ts->samples[i].time == 0)
+        if (ts->samples[i].time == 0) {
             continue;
+        }
         addReplyArrayLen(c, 2);
         addReplyLongLong(c, ts->samples[i].time);
         addReplyLongLong(c, ts->samples[i].latency);
@@ -685,36 +699,41 @@ sds latencyCommandGenSparkeline(char *event, struct latencyTimeSeries *ts) {
         int elapsed;
         char buf[64];
 
-        if (ts->samples[i].time == 0)
+        if (ts->samples[i].time == 0) {
             continue;
+        }
         /* Update min and max. */
         if (seq->length == 0) {
             min = max = ts->samples[i].latency;
         } else {
-            if (ts->samples[i].latency > max)
+            if (ts->samples[i].latency > max) {
                 max = ts->samples[i].latency;
-            if (ts->samples[i].latency < min)
+            }
+            if (ts->samples[i].latency < min) {
                 min = ts->samples[i].latency;
+            }
         }
         /* Use as label the number of seconds / minutes / hours / days
          * ago the event happened. */
         elapsed = time(NULL) - ts->samples[i].time;
-        if (elapsed < 60)
+        if (elapsed < 60) {
             snprintf(buf, sizeof(buf), "%ds", elapsed);
-        else if (elapsed < 3600)
+        } else if (elapsed < 3600) {
             snprintf(buf, sizeof(buf), "%dm", elapsed / 60);
-        else if (elapsed < 3600 * 24)
+        } else if (elapsed < 3600 * 24) {
             snprintf(buf, sizeof(buf), "%dh", elapsed / 3600);
-        else
+        } else {
             snprintf(buf, sizeof(buf), "%dd", elapsed / (3600 * 24));
+        }
         sparklineSequenceAddSample(seq, ts->samples[i].latency, buf);
     }
 
     graph = sdscatprintf(
         graph, "%s - high %lu ms, low %lu ms (all time high %lu ms)\n", event, (unsigned long)max, (unsigned long)min, (unsigned long)ts->max
     );
-    for (j = 0; j < LATENCY_GRAPH_COLS; j++)
+    for (j = 0; j < LATENCY_GRAPH_COLS; j++) {
         graph = sdscatlen(graph, "-", 1);
+    }
     graph = sdscatlen(graph, "\n", 1);
     graph = sparklineRender(graph, seq, LATENCY_GRAPH_COLS, 4, SPARKLINE_FILL);
     freeSparklineSequence(seq);
@@ -748,8 +767,9 @@ void latencyCommand(client *c) {
         char *event;
 
         de = dictFind(server.latency_events, c->argv[2]->ptr);
-        if (de == NULL)
+        if (de == NULL) {
             goto nodataerr;
+        }
         ts = dictGetVal(de);
         event = dictGetKey(de);
 
@@ -772,8 +792,9 @@ void latencyCommand(client *c) {
         } else {
             int j, resets = 0;
 
-            for (j = 2; j < c->argc; j++)
+            for (j = 2; j < c->argc; j++) {
                 resets += latencyResetEvent(c->argv[j]->ptr);
+            }
             addReplyLongLong(c, resets);
         }
     } else if (!strcasecmp(c->argv[1]->ptr, "histogram") && c->argc >= 2) {

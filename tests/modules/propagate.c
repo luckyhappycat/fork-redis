@@ -66,10 +66,11 @@ void timerHandler(RedisModuleCtx *ctx, void *data) {
     RedisModule_Replicate(ctx, "INCR", "c", "timer");
     times++;
 
-    if (times < 3)
+    if (times < 3) {
         RedisModule_CreateTimer(ctx, 100, timerHandler, NULL);
-    else
+    } else {
         times = 0;
+    }
 }
 
 int propagateTestTimerCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -193,8 +194,9 @@ int propagateTestThreadCommand(RedisModuleCtx *ctx, RedisModuleString **argv, in
     REDISMODULE_NOT_USED(argc);
 
     pthread_t tid;
-    if (pthread_create(&tid, NULL, threadMain, NULL) != 0)
+    if (pthread_create(&tid, NULL, threadMain, NULL) != 0) {
         return RedisModule_ReplyWithError(ctx, "-ERR Can't start thread");
+    }
     REDISMODULE_NOT_USED(tid);
 
     RedisModule_ReplyWithSimpleString(ctx, "OK");
@@ -223,8 +225,9 @@ int propagateTestDetachedThreadCommand(RedisModuleCtx *ctx, RedisModuleString **
     REDISMODULE_NOT_USED(argc);
 
     pthread_t tid;
-    if (pthread_create(&tid, NULL, threadDetachedMain, NULL) != 0)
+    if (pthread_create(&tid, NULL, threadDetachedMain, NULL) != 0) {
         return RedisModule_ReplyWithError(ctx, "-ERR Can't start thread");
+    }
     REDISMODULE_NOT_USED(tid);
 
     RedisModule_ReplyWithSimpleString(ctx, "OK");
@@ -311,46 +314,59 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
 
-    if (RedisModule_Init(ctx, "propagate-test", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "propagate-test", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     detached_ctx = RedisModule_GetDetachedThreadSafeContext(ctx);
 
-    if (RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_ALL, KeySpace_NotificationGeneric) == REDISMODULE_ERR)
+    if (RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_ALL, KeySpace_NotificationGeneric) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.timer", propagateTestTimerCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.timer", propagateTestTimerCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-nested", propagateTestTimerNestedCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-nested", propagateTestTimerNestedCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-nested-repl", propagateTestTimerNestedReplCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-nested-repl", propagateTestTimerNestedReplCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-maxmemory", propagateTestTimerMaxmemoryCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-maxmemory", propagateTestTimerMaxmemoryCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-eval", propagateTestTimerEvalCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.timer-eval", propagateTestTimerEvalCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.thread", propagateTestThreadCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.thread", propagateTestThreadCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.detached-thread", propagateTestDetachedThreadCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.detached-thread", propagateTestDetachedThreadCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.simple", propagateTestSimpleCommand, "", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.simple", propagateTestSimpleCommand, "", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.mixed", propagateTestMixedCommand, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.mixed", propagateTestMixedCommand, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.nested", propagateTestNestedCommand, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.nested", propagateTestNestedCommand, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "propagate-test.incr", propagateTestIncr, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "propagate-test.incr", propagateTestIncr, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }
@@ -358,8 +374,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 int RedisModule_OnUnload(RedisModuleCtx *ctx) {
     UNUSED(ctx);
 
-    if (detached_ctx)
+    if (detached_ctx) {
         RedisModule_FreeThreadSafeContext(detached_ctx);
+    }
 
     return REDISMODULE_OK;
 }

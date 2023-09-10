@@ -8,16 +8,18 @@
  * number of removed elements (0 or 1).
  */
 int zset_rem(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 3)
+    if (argc != 3) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModule_AutoMemory(ctx);
     int keymode = REDISMODULE_READ | REDISMODULE_WRITE;
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], keymode);
     int deleted;
-    if (RedisModule_ZsetRem(key, argv[2], &deleted) == REDISMODULE_OK)
+    if (RedisModule_ZsetRem(key, argv[2], &deleted) == REDISMODULE_OK) {
         return RedisModule_ReplyWithLongLong(ctx, deleted);
-    else
+    } else {
         return RedisModule_ReplyWithError(ctx, "ERR ZsetRem failed");
+    }
 }
 
 /* ZSET.ADD key score member
@@ -26,8 +28,9 @@ int zset_rem(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
  * set stored at key.
  */
 int zset_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModule_AutoMemory(ctx);
     int keymode = REDISMODULE_READ | REDISMODULE_WRITE;
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], keymode);
@@ -37,13 +40,15 @@ int zset_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     char *endptr;
     const char *str = RedisModule_StringPtrLen(argv[2], &len);
     score = strtod(str, &endptr);
-    if (*endptr != '\0' || errno == ERANGE)
+    if (*endptr != '\0' || errno == ERANGE) {
         return RedisModule_ReplyWithError(ctx, "value is not a valid float");
+    }
 
-    if (RedisModule_ZsetAdd(key, score, argv[3], NULL) == REDISMODULE_OK)
+    if (RedisModule_ZsetAdd(key, score, argv[3], NULL) == REDISMODULE_OK) {
         return RedisModule_ReplyWithSimpleString(ctx, "OK");
-    else
+    } else {
         return RedisModule_ReplyWithError(ctx, "ERR ZsetAdd failed");
+    }
 }
 
 /* ZSET.INCRBY key member increment
@@ -52,8 +57,9 @@ int zset_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
  * Replies with the new score of this element.
  */
 int zset_incrby(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc != 4)
+    if (argc != 4) {
         return RedisModule_WrongArity(ctx);
+    }
     RedisModule_AutoMemory(ctx);
     int keymode = REDISMODULE_READ | REDISMODULE_WRITE;
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], keymode);
@@ -63,29 +69,35 @@ int zset_incrby(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     char *endptr;
     const char *str = RedisModule_StringPtrLen(argv[3], &len);
     score = strtod(str, &endptr);
-    if (*endptr != '\0' || errno == ERANGE)
+    if (*endptr != '\0' || errno == ERANGE) {
         return RedisModule_ReplyWithError(ctx, "value is not a valid float");
+    }
 
-    if (RedisModule_ZsetIncrby(key, score, argv[2], NULL, &newscore) == REDISMODULE_OK)
+    if (RedisModule_ZsetIncrby(key, score, argv[2], NULL, &newscore) == REDISMODULE_OK) {
         return RedisModule_ReplyWithDouble(ctx, newscore);
-    else
+    } else {
         return RedisModule_ReplyWithError(ctx, "ERR ZsetIncrby failed");
+    }
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     REDISMODULE_NOT_USED(argv);
     REDISMODULE_NOT_USED(argc);
-    if (RedisModule_Init(ctx, "zset", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "zset", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "zset.rem", zset_rem, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "zset.rem", zset_rem, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "zset.add", zset_add, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "zset.add", zset_add, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
-    if (RedisModule_CreateCommand(ctx, "zset.incrby", zset_incrby, "write", 1, 1, 1) == REDISMODULE_ERR)
+    if (RedisModule_CreateCommand(ctx, "zset.incrby", zset_incrby, "write", 1, 1, 1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

@@ -67,8 +67,9 @@ int clientsCronHandleTimeout(client *c, mstime_t now_ms) {
         /* Cluster: handle unblock & redirect of clients blocked
          * into keys no longer served by this server. */
         if (server.cluster_enabled) {
-            if (clusterRedirectBlockedClientIfNeeded(c))
+            if (clusterRedirectBlockedClientIfNeeded(c)) {
                 unblockClientOnError(c, NULL);
+            }
         }
     }
     return 0;
@@ -94,8 +95,9 @@ void encodeTimeoutKey(unsigned char *buf, uint64_t timeout, client *c) {
     timeout = htonu64(timeout);
     memcpy(buf, &timeout, sizeof(timeout));
     memcpy(buf + 8, &c, sizeof(c));
-    if (sizeof(c) == 4)
+    if (sizeof(c) == 4) {
         memset(buf + 12, 0, 4); /* Zero padding for 32bit target. */
+    }
 }
 
 /* Given a key encoded with encodeTimeoutKey(), resolve the fields and write
@@ -110,20 +112,23 @@ void decodeTimeoutKey(unsigned char *buf, uint64_t *toptr, client **cptr) {
  * to handle blocked clients timeouts. The client is not added to the list
  * if its timeout is zero (block forever). */
 void addClientToTimeoutTable(client *c) {
-    if (c->bstate.timeout == 0)
+    if (c->bstate.timeout == 0) {
         return;
+    }
     uint64_t timeout = c->bstate.timeout;
     unsigned char buf[CLIENT_ST_KEYLEN];
     encodeTimeoutKey(buf, timeout, c);
-    if (raxTryInsert(server.clients_timeout_table, buf, sizeof(buf), NULL, NULL))
+    if (raxTryInsert(server.clients_timeout_table, buf, sizeof(buf), NULL, NULL)) {
         c->flags |= CLIENT_IN_TO_TABLE;
+    }
 }
 
 /* Remove the client from the table when it is unblocked for reasons
  * different than timing out. */
 void removeClientFromTimeoutTable(client *c) {
-    if (!(c->flags & CLIENT_IN_TO_TABLE))
+    if (!(c->flags & CLIENT_IN_TO_TABLE)) {
         return;
+    }
     c->flags &= ~CLIENT_IN_TO_TABLE;
     uint64_t timeout = c->bstate.timeout;
     unsigned char buf[CLIENT_ST_KEYLEN];
@@ -134,8 +139,9 @@ void removeClientFromTimeoutTable(client *c) {
 /* This function is called in beforeSleep() in order to unblock clients
  * that are waiting in blocking operations with a timeout set. */
 void handleBlockedClientsTimeout(void) {
-    if (raxSize(server.clients_timeout_table) == 0)
+    if (raxSize(server.clients_timeout_table) == 0) {
         return;
+    }
     uint64_t now = mstime();
     raxIterator ri;
     raxStart(&ri, server.clients_timeout_table);
@@ -145,8 +151,9 @@ void handleBlockedClientsTimeout(void) {
         uint64_t timeout;
         client *c;
         decodeTimeoutKey(ri.key, &timeout, &c);
-        if (timeout >= now)
+        if (timeout >= now) {
             break; /* All the timeouts are in the future. */
+        }
         c->flags &= ~CLIENT_IN_TO_TABLE;
         checkBlockedClientTimeout(c, now);
         raxRemove(server.clients_timeout_table, ri.key, ri.key_len, NULL);
@@ -169,8 +176,9 @@ int getTimeoutFromObjectOrReply(client *c, robj *object, mstime_t *timeout, int 
     mstime_t now = commandTimeSnapshot();
 
     if (unit == UNIT_SECONDS) {
-        if (getLongDoubleFromObjectOrReply(c, object, &ftval, "timeout is not a float or out of range") != C_OK)
+        if (getLongDoubleFromObjectOrReply(c, object, &ftval, "timeout is not a float or out of range") != C_OK) {
             return C_ERR;
+        }
 
         ftval *= 1000.0; /* seconds => millisec */
         if (ftval > LLONG_MAX) {
@@ -179,8 +187,9 @@ int getTimeoutFromObjectOrReply(client *c, robj *object, mstime_t *timeout, int 
         }
         tval = (long long)ceill(ftval);
     } else {
-        if (getLongLongFromObjectOrReply(c, object, &tval, "timeout is not an integer or out of range") != C_OK)
+        if (getLongLongFromObjectOrReply(c, object, &tval, "timeout is not an integer or out of range") != C_OK) {
             return C_ERR;
+        }
     }
 
     if (tval < 0) {

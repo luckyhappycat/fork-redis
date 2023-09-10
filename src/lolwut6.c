@@ -73,8 +73,9 @@ static sds renderCanvas(lwCanvas *canvas) {
             }
             text = sdscatprintf(text, "\033[%s \033[0m", ce);
         }
-        if (y != canvas->height - 1)
+        if (y != canvas->height - 1) {
             text = sdscatlen(text, "\n", 1);
+        }
     }
     return text;
 }
@@ -96,8 +97,9 @@ void generateSkyscraper(lwCanvas *canvas, struct skyscraper *si) {
     for (int y = starty; y >= endy; y--) {
         for (int x = si->xoff; x < si->xoff + si->width; x++) {
             /* The roof is four pixels less wide. */
-            if (y == endy && (x <= si->xoff + 1 || x >= si->xoff + si->width - 2))
+            if (y == endy && (x <= si->xoff + 1 || x >= si->xoff + si->width - 2)) {
                 continue;
+            }
             int color = si->color;
             /* Alter the color if this is a place where we want to
              * draw a window. We check that we are in the inner part of the
@@ -117,8 +119,9 @@ void generateSkyscraper(lwCanvas *canvas, struct skyscraper *si) {
                     } while (color == si->color);
                     /* Except we want adjacent pixels creating the same
                      * window to be the same color. */
-                    if (relx % 2)
+                    if (relx % 2) {
                         color = lwGetPixel(canvas, x - 1, y);
+                    }
                 }
             }
             lwDrawPixel(canvas, x, y, color);
@@ -139,16 +142,18 @@ void generateSkyline(lwCanvas *canvas) {
             offset += rand() % 8;
             si.xoff = offset;
             si.width = 10 + rand() % 9;
-            if (color == 2)
+            if (color == 2) {
                 si.height = canvas->height / 2 + rand() % canvas->height / 2;
-            else
+            } else {
                 si.height = canvas->height / 2 + rand() % canvas->height / 3;
+            }
             si.windows = 0;
             generateSkyscraper(canvas, &si);
-            if (color == 2)
+            if (color == 2) {
                 offset += si.width / 2;
-            else
+            } else {
                 offset += si.width + 1;
+            }
         }
     }
 
@@ -158,8 +163,9 @@ void generateSkyline(lwCanvas *canvas) {
         offset += rand() % 8;
         si.xoff = offset;
         si.width = 5 + rand() % 14;
-        if (si.width % 4)
+        if (si.width % 4) {
             si.width += (si.width % 3);
+        }
         si.height = canvas->height / 3 + rand() % canvas->height / 2;
         si.windows = 1;
         generateSkyscraper(canvas, &si);
@@ -179,22 +185,28 @@ void lolwut6Command(client *c) {
     long rows = 20;
 
     /* Parse the optional arguments if any. */
-    if (c->argc > 1 && getLongFromObjectOrReply(c, c->argv[1], &cols, NULL) != C_OK)
+    if (c->argc > 1 && getLongFromObjectOrReply(c, c->argv[1], &cols, NULL) != C_OK) {
         return;
+    }
 
-    if (c->argc > 2 && getLongFromObjectOrReply(c, c->argv[2], &rows, NULL) != C_OK)
+    if (c->argc > 2 && getLongFromObjectOrReply(c, c->argv[2], &rows, NULL) != C_OK) {
         return;
+    }
 
     /* Limits. We want LOLWUT to be always reasonably fast and cheap to execute
      * so we have maximum number of columns, rows, and output resolution. */
-    if (cols < 1)
+    if (cols < 1) {
         cols = 1;
-    if (cols > 1000)
+    }
+    if (cols > 1000) {
         cols = 1000;
-    if (rows < 1)
+    }
+    if (rows < 1) {
         rows = 1;
-    if (rows > 1000)
+    }
+    if (rows > 1000) {
         rows = 1000;
+    }
 
     /* Generate the city skyline and reply. */
     lwCanvas *canvas = lwCreateCanvas(cols, rows, 3);

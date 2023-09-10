@@ -65,8 +65,9 @@ static int parseProtocolsConfig(const char *str) {
     int i, count = 0;
     int protocols = 0;
 
-    if (!str)
+    if (!str) {
         return REDIS_TLS_PROTO_DEFAULT;
+    }
     sds *tokens = sdssplitlen(str, strlen(str), " ", 1, &count);
 
     if (!tokens) {
@@ -74,13 +75,13 @@ static int parseProtocolsConfig(const char *str) {
         return -1;
     }
     for (i = 0; i < count; i++) {
-        if (!strcasecmp(tokens[i], "tlsv1"))
+        if (!strcasecmp(tokens[i], "tlsv1")) {
             protocols |= REDIS_TLS_PROTO_TLSv1;
-        else if (!strcasecmp(tokens[i], "tlsv1.1"))
+        } else if (!strcasecmp(tokens[i], "tlsv1.1")) {
             protocols |= REDIS_TLS_PROTO_TLSv1_1;
-        else if (!strcasecmp(tokens[i], "tlsv1.2"))
+        } else if (!strcasecmp(tokens[i], "tlsv1.2")) {
             protocols |= REDIS_TLS_PROTO_TLSv1_2;
-        else if (!strcasecmp(tokens[i], "tlsv1.3")) {
+        } else if (!strcasecmp(tokens[i], "tlsv1.3")) {
 #ifdef TLS1_3_VERSION
             protocols |= REDIS_TLS_PROTO_TLSv1_3;
 #else
@@ -199,11 +200,13 @@ static int tlsPasswordCallback(char *buf, int size, int rwflag, void *u) {
     const char *pass = u;
     size_t pass_len;
 
-    if (!pass)
+    if (!pass) {
         return -1;
+    }
     pass_len = strlen(pass);
-    if (pass_len > (size_t)size)
+    if (pass_len > (size_t)size) {
         return -1;
+    }
     memcpy(buf, pass, pass_len);
 
     return (int)pass_len;
@@ -220,8 +223,9 @@ static SSL_CTX *createSSLContext(redisTLSContextConfig *ctx_config, int protocol
     SSL_CTX *ctx = NULL;
 
     ctx = SSL_CTX_new(SSLv23_method());
-    if (!ctx)
+    if (!ctx) {
         goto error;
+    }
 
     SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
@@ -229,17 +233,21 @@ static SSL_CTX *createSSLContext(redisTLSContextConfig *ctx_config, int protocol
     SSL_CTX_set_options(ctx, SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
 #endif
 
-    if (!(protocols & REDIS_TLS_PROTO_TLSv1))
+    if (!(protocols & REDIS_TLS_PROTO_TLSv1)) {
         SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
-    if (!(protocols & REDIS_TLS_PROTO_TLSv1_1))
+    }
+    if (!(protocols & REDIS_TLS_PROTO_TLSv1_1)) {
         SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
+    }
 #ifdef SSL_OP_NO_TLSv1_2
-    if (!(protocols & REDIS_TLS_PROTO_TLSv1_2))
+    if (!(protocols & REDIS_TLS_PROTO_TLSv1_2)) {
         SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_2);
+    }
 #endif
 #ifdef SSL_OP_NO_TLSv1_3
-    if (!(protocols & REDIS_TLS_PROTO_TLSv1_3))
+    if (!(protocols & REDIS_TLS_PROTO_TLSv1_3)) {
         SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_3);
+    }
 #endif
 
 #ifdef SSL_OP_NO_COMPRESSION
@@ -286,8 +294,9 @@ static SSL_CTX *createSSLContext(redisTLSContextConfig *ctx_config, int protocol
     return ctx;
 
 error:
-    if (ctx)
+    if (ctx) {
         SSL_CTX_free(ctx);
+    }
     return NULL;
 }
 
@@ -327,13 +336,15 @@ static int tlsConfigure(void *priv, int reconfigure) {
     }
 
     int protocols = parseProtocolsConfig(ctx_config->protocols);
-    if (protocols == -1)
+    if (protocols == -1) {
         goto error;
+    }
 
     /* Create server side/general context */
     ctx = createSSLContext(ctx_config, protocols, 0);
-    if (!ctx)
+    if (!ctx) {
         goto error;
+    }
 
     if (ctx_config->session_caching) {
         SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
@@ -348,8 +359,9 @@ static int tlsConfigure(void *priv, int reconfigure) {
     SSL_CTX_set_options(ctx, SSL_OP_NO_CLIENT_RENEGOTIATION);
 #endif
 
-    if (ctx_config->prefer_server_ciphers)
+    if (ctx_config->prefer_server_ciphers) {
         SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+    }
 
 #if ((OPENSSL_VERSION_NUMBER < 0x30000000L) && defined(SSL_CTX_set_ecdh_auto))
     SSL_CTX_set_ecdh_auto(ctx, 1);
@@ -414,8 +426,9 @@ static int tlsConfigure(void *priv, int reconfigure) {
     /* If a client-side certificate is configured, create an explicit client context */
     if (ctx_config->client_cert_file && ctx_config->client_key_file) {
         client_ctx = createSSLContext(ctx_config, protocols, 1);
-        if (!client_ctx)
+        if (!client_ctx) {
             goto error;
+        }
     }
 
     SSL_CTX_free(redis_tls_ctx);
@@ -426,10 +439,12 @@ static int tlsConfigure(void *priv, int reconfigure) {
     return C_OK;
 
 error:
-    if (ctx)
+    if (ctx) {
         SSL_CTX_free(ctx);
-    if (client_ctx)
+    }
+    if (client_ctx) {
         SSL_CTX_free(client_ctx);
+    }
     return C_ERR;
 }
 
@@ -475,8 +490,9 @@ typedef struct tls_connection {
 
 static connection *createTLSConnection(int client_side) {
     SSL_CTX *ctx = redis_tls_ctx;
-    if (client_side && redis_tls_client_ctx)
+    if (client_side && redis_tls_client_ctx) {
         ctx = redis_tls_client_ctx;
+    }
     tls_connection *conn = zcalloc(sizeof(tls_connection));
     conn->c.type = &CT_TLS;
     conn->c.fd = -1;
@@ -492,8 +508,9 @@ static connection *connCreateTLS(void) {
 /* Fetch the latest OpenSSL error and store it in the connection */
 static void updateTLSError(tls_connection *conn) {
     conn->c.last_errno = 0;
-    if (conn->ssl_error)
+    if (conn->ssl_error) {
         zfree(conn->ssl_error);
+    }
     conn->ssl_error = zmalloc(512);
     ERR_error_string_n(ERR_get_error(), conn->ssl_error, 512);
 }
@@ -557,8 +574,9 @@ static int handleSSLReturnCode(tls_connection *conn, int ret_value, WantIOType *
                 return 0;
             case SSL_ERROR_SYSCALL:
                 conn->c.last_errno = errno;
-                if (conn->ssl_error)
+                if (conn->ssl_error) {
                     zfree(conn->ssl_error);
+                }
                 conn->ssl_error = errno ? zstrdup(strerror(errno)) : NULL;
                 break;
             default:
@@ -594,12 +612,15 @@ static int updateStateAfterSSLIO(tls_connection *conn, int ret_value, int update
         WantIOType want = 0;
         int ssl_err;
         if (!(ssl_err = handleSSLReturnCode(conn, ret_value, &want))) {
-            if (want == WANT_READ)
+            if (want == WANT_READ) {
                 conn->flags |= TLS_CONN_FLAG_WRITE_WANT_READ;
-            if (want == WANT_WRITE)
+            }
+            if (want == WANT_WRITE) {
                 conn->flags |= TLS_CONN_FLAG_READ_WANT_WRITE;
-            if (update_event)
+            }
+            if (update_event) {
                 updateSSLEvent(conn);
+            }
             errno = EAGAIN;
             return -1;
         } else {
@@ -621,16 +642,20 @@ static void registerSSLEvent(tls_connection *conn, WantIOType want) {
 
     switch (want) {
         case WANT_READ:
-            if (mask & AE_WRITABLE)
+            if (mask & AE_WRITABLE) {
                 aeDeleteFileEvent(server.el, conn->c.fd, AE_WRITABLE);
-            if (!(mask & AE_READABLE))
+            }
+            if (!(mask & AE_READABLE)) {
                 aeCreateFileEvent(server.el, conn->c.fd, AE_READABLE, tlsEventHandler, conn);
+            }
             break;
         case WANT_WRITE:
-            if (mask & AE_READABLE)
+            if (mask & AE_READABLE) {
                 aeDeleteFileEvent(server.el, conn->c.fd, AE_READABLE);
-            if (!(mask & AE_WRITABLE))
+            }
+            if (!(mask & AE_WRITABLE)) {
                 aeCreateFileEvent(server.el, conn->c.fd, AE_WRITABLE, tlsEventHandler, conn);
+            }
             break;
         default:
             serverAssert(0);
@@ -643,15 +668,19 @@ static void updateSSLEvent(tls_connection *conn) {
     int need_read = conn->c.read_handler || (conn->flags & TLS_CONN_FLAG_WRITE_WANT_READ);
     int need_write = conn->c.write_handler || (conn->flags & TLS_CONN_FLAG_READ_WANT_WRITE);
 
-    if (need_read && !(mask & AE_READABLE))
+    if (need_read && !(mask & AE_READABLE)) {
         aeCreateFileEvent(server.el, conn->c.fd, AE_READABLE, tlsEventHandler, conn);
-    if (!need_read && (mask & AE_READABLE))
+    }
+    if (!need_read && (mask & AE_READABLE)) {
         aeDeleteFileEvent(server.el, conn->c.fd, AE_READABLE);
+    }
 
-    if (need_write && !(mask & AE_WRITABLE))
+    if (need_write && !(mask & AE_WRITABLE)) {
         aeCreateFileEvent(server.el, conn->c.fd, AE_WRITABLE, tlsEventHandler, conn);
-    if (!need_write && (mask & AE_WRITABLE))
+    }
+    if (!need_write && (mask & AE_WRITABLE)) {
         aeDeleteFileEvent(server.el, conn->c.fd, AE_WRITABLE);
+    }
 }
 
 static void tlsHandleEvent(tls_connection *conn, int mask) {
@@ -695,8 +724,9 @@ static void tlsHandleEvent(tls_connection *conn, int mask) {
                 }
             }
 
-            if (!callHandler((connection *)conn, conn->c.conn_handler))
+            if (!callHandler((connection *)conn, conn->c.conn_handler)) {
                 return;
+            }
             conn->c.conn_handler = NULL;
             break;
         case CONN_STATE_ACCEPTING:
@@ -718,8 +748,9 @@ static void tlsHandleEvent(tls_connection *conn, int mask) {
                 conn->c.state = CONN_STATE_CONNECTED;
             }
 
-            if (!callHandler((connection *)conn, conn->c.conn_handler))
+            if (!callHandler((connection *)conn, conn->c.conn_handler)) {
                 return;
+            }
             conn->c.conn_handler = NULL;
             break;
         case CONN_STATE_CONNECTED: {
@@ -742,23 +773,26 @@ static void tlsHandleEvent(tls_connection *conn, int mask) {
 
             if (!invert && call_read) {
                 conn->flags &= ~TLS_CONN_FLAG_READ_WANT_WRITE;
-                if (!callHandler((connection *)conn, conn->c.read_handler))
+                if (!callHandler((connection *)conn, conn->c.read_handler)) {
                     return;
+                }
             }
 
             /* Fire the writable event. */
             if (call_write) {
                 conn->flags &= ~TLS_CONN_FLAG_WRITE_WANT_READ;
-                if (!callHandler((connection *)conn, conn->c.write_handler))
+                if (!callHandler((connection *)conn, conn->c.write_handler)) {
                     return;
+                }
             }
 
             /* If we have to invert the call, fire the readable event now
              * after the writable one. */
             if (invert && call_read) {
                 conn->flags &= ~TLS_CONN_FLAG_READ_WANT_WRITE;
-                if (!callHandler((connection *)conn, conn->c.read_handler))
+                if (!callHandler((connection *)conn, conn->c.read_handler)) {
                     return;
+                }
             }
 
             /* If SSL has pending that, already read from the socket, we're at
@@ -802,8 +836,9 @@ static void tlsAcceptHandler(aeEventLoop *el, int fd, void *privdata, int mask) 
     while (max--) {
         cfd = anetTcpAccept(server.neterr, fd, cip, sizeof(cip), &cport);
         if (cfd == ANET_ERR) {
-            if (errno != EWOULDBLOCK)
+            if (errno != EWOULDBLOCK) {
                 serverLog(LL_WARNING, "Accepting client connection: %s", server.neterr);
+            }
             return;
         }
         serverLog(LL_VERBOSE, "Accepted %s:%d", cip, cport);
@@ -827,8 +862,9 @@ static void connTLSShutdown(connection *conn_) {
     tls_connection *conn = (tls_connection *)conn_;
 
     if (conn->ssl) {
-        if (conn->c.state == CONN_STATE_CONNECTED)
+        if (conn->c.state == CONN_STATE_CONNECTED) {
             SSL_shutdown(conn->ssl);
+        }
         SSL_free(conn->ssl);
         conn->ssl = NULL;
     }
@@ -840,8 +876,9 @@ static void connTLSClose(connection *conn_) {
     tls_connection *conn = (tls_connection *)conn_;
 
     if (conn->ssl) {
-        if (conn->c.state == CONN_STATE_CONNECTED)
+        if (conn->c.state == CONN_STATE_CONNECTED) {
             SSL_shutdown(conn->ssl);
+        }
         SSL_free(conn->ssl);
         conn->ssl = NULL;
     }
@@ -863,8 +900,9 @@ static int connTLSAccept(connection *_conn, ConnectionCallbackFunc accept_handle
     tls_connection *conn = (tls_connection *)_conn;
     int ret;
 
-    if (conn->c.state != CONN_STATE_ACCEPTING)
+    if (conn->c.state != CONN_STATE_ACCEPTING) {
         return C_ERR;
+    }
     ERR_clear_error();
 
     /* Try to accept */
@@ -883,8 +921,9 @@ static int connTLSAccept(connection *_conn, ConnectionCallbackFunc accept_handle
     }
 
     conn->c.state = CONN_STATE_CONNECTED;
-    if (!callHandler((connection *)conn, conn->c.conn_handler))
+    if (!callHandler((connection *)conn, conn->c.conn_handler)) {
         return C_OK;
+    }
     conn->c.conn_handler = NULL;
 
     return C_OK;
@@ -894,8 +933,9 @@ static int connTLSConnect(connection *conn_, const char *addr, int port, const c
     tls_connection *conn = (tls_connection *)conn_;
     unsigned char addr_buf[sizeof(struct in6_addr)];
 
-    if (conn->c.state != CONN_STATE_NONE)
+    if (conn->c.state != CONN_STATE_NONE) {
         return C_ERR;
+    }
     ERR_clear_error();
 
     /* Check whether addr is an IP address, if not, use the value for Server Name Indication */
@@ -904,8 +944,9 @@ static int connTLSConnect(connection *conn_, const char *addr, int port, const c
     }
 
     /* Initiate Socket connection first */
-    if (connectionTypeTcp()->connect(conn_, addr, port, src_addr, connect_handler) == C_ERR)
+    if (connectionTypeTcp()->connect(conn_, addr, port, src_addr, connect_handler) == C_ERR) {
         return C_ERR;
+    }
 
     /* Return now, once the socket is connected we'll initiate
      * TLS connection from the event handler.
@@ -917,23 +958,26 @@ static int connTLSWrite(connection *conn_, const void *data, size_t data_len) {
     tls_connection *conn = (tls_connection *)conn_;
     int ret;
 
-    if (conn->c.state != CONN_STATE_CONNECTED)
+    if (conn->c.state != CONN_STATE_CONNECTED) {
         return -1;
+    }
     ERR_clear_error();
     ret = SSL_write(conn->ssl, data, data_len);
     return updateStateAfterSSLIO(conn, ret, 1);
 }
 
 static int connTLSWritev(connection *conn_, const struct iovec *iov, int iovcnt) {
-    if (iovcnt == 1)
+    if (iovcnt == 1) {
         return connTLSWrite(conn_, iov[0].iov_base, iov[0].iov_len);
+    }
 
     /* Accumulate the amount of bytes of each buffer and check if it exceeds NET_MAX_WRITES_PER_EVENT. */
     size_t iov_bytes_len = 0;
     for (int i = 0; i < iovcnt; i++) {
         iov_bytes_len += iov[i].iov_len;
-        if (iov_bytes_len > NET_MAX_WRITES_PER_EVENT)
+        if (iov_bytes_len > NET_MAX_WRITES_PER_EVENT) {
             break;
+        }
     }
 
     /* The amount of all buffers is greater than NET_MAX_WRITES_PER_EVENT,
@@ -943,11 +987,13 @@ static int connTLSWritev(connection *conn_, const struct iovec *iov, int iovcnt)
         ssize_t tot_sent = 0;
         for (int i = 0; i < iovcnt; i++) {
             ssize_t sent = connTLSWrite(conn_, iov[i].iov_base, iov[i].iov_len);
-            if (sent <= 0)
+            if (sent <= 0) {
                 return tot_sent > 0 ? tot_sent : sent;
+            }
             tot_sent += sent;
-            if ((size_t)sent != iov[i].iov_len)
+            if ((size_t)sent != iov[i].iov_len) {
                 break;
+            }
         }
         return tot_sent;
     }
@@ -969,8 +1015,9 @@ static int connTLSRead(connection *conn_, void *buf, size_t buf_len) {
     tls_connection *conn = (tls_connection *)conn_;
     int ret;
 
-    if (conn->c.state != CONN_STATE_CONNECTED)
+    if (conn->c.state != CONN_STATE_CONNECTED) {
         return -1;
+    }
     ERR_clear_error();
     ret = SSL_read(conn->ssl, buf, buf_len);
     return updateStateAfterSSLIO(conn, ret, 1);
@@ -979,17 +1026,19 @@ static int connTLSRead(connection *conn_, void *buf, size_t buf_len) {
 static const char *connTLSGetLastError(connection *conn_) {
     tls_connection *conn = (tls_connection *)conn_;
 
-    if (conn->ssl_error)
+    if (conn->ssl_error) {
         return conn->ssl_error;
+    }
     return NULL;
 }
 
 static int connTLSSetWriteHandler(connection *conn, ConnectionCallbackFunc func, int barrier) {
     conn->write_handler = func;
-    if (barrier)
+    if (barrier) {
         conn->flags |= CONN_FLAG_WRITE_BARRIER;
-    else
+    } else {
         conn->flags &= ~CONN_FLAG_WRITE_BARRIER;
+    }
     updateSSLEvent((tls_connection *)conn);
     return C_OK;
 }
@@ -1016,12 +1065,14 @@ static int connTLSBlockingConnect(connection *conn_, const char *addr, int port,
     tls_connection *conn = (tls_connection *)conn_;
     int ret;
 
-    if (conn->c.state != CONN_STATE_NONE)
+    if (conn->c.state != CONN_STATE_NONE) {
         return C_ERR;
+    }
 
     /* Initiate socket blocking connect first */
-    if (connectionTypeTcp()->blocking_connect(conn_, addr, port, timeout) == C_ERR)
+    if (connectionTypeTcp()->blocking_connect(conn_, addr, port, timeout) == C_ERR) {
         return C_ERR;
+    }
 
     /* Initiate TLS connection now.  We set up a send/recv timeout on the socket,
      * which means the specified timeout will not be enforced accurately. */
@@ -1083,8 +1134,9 @@ static ssize_t connTLSSyncReadLine(connection *conn_, char *ptr, ssize_t size, l
         }
         if (c == '\n') {
             *ptr = '\0';
-            if (nread && *(ptr - 1) == '\r')
+            if (nread && *(ptr - 1) == '\r') {
                 *(ptr - 1) = '\0';
+            }
             goto exit;
         } else {
             *ptr++ = c;
@@ -1105,8 +1157,9 @@ static const char *connTLSGetType(connection *conn_) {
 }
 
 static int tlsHasPendingData(void) {
-    if (!pending_list)
+    if (!pending_list) {
         return 0;
+    }
     return listLength(pending_list) > 0;
 }
 
@@ -1128,17 +1181,20 @@ static int tlsProcessPendingData(void) {
  */
 static sds connTLSGetPeerCert(connection *conn_) {
     tls_connection *conn = (tls_connection *)conn_;
-    if ((conn_->type != connectionTypeTls()) || !conn->ssl)
+    if ((conn_->type != connectionTypeTls()) || !conn->ssl) {
         return NULL;
+    }
 
     X509 *cert = SSL_get_peer_certificate(conn->ssl);
-    if (!cert)
+    if (!cert) {
         return NULL;
+    }
 
     BIO *bio = BIO_new(BIO_s_mem());
     if (bio == NULL || !PEM_write_bio_X509(bio, cert)) {
-        if (bio != NULL)
+        if (bio != NULL) {
             BIO_free(bio);
+        }
         return NULL;
     }
 
@@ -1223,8 +1279,9 @@ int RedisModule_OnLoad(void *ctx, RedisModuleString **argv, int argc) {
         return REDISMODULE_ERR;
     }
 
-    if (RedisModule_Init(ctx, "tls", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR)
+    if (RedisModule_Init(ctx, "tls", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
         return REDISMODULE_ERR;
+    }
 
     /* Connection modules is available only bootup. */
     if ((RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_SERVER_STARTUP) == 0) {
@@ -1234,8 +1291,9 @@ int RedisModule_OnLoad(void *ctx, RedisModuleString **argv, int argc) {
 
     RedisModule_SetModuleOptions(ctx, REDISMODULE_OPTIONS_HANDLE_REPL_ASYNC_LOAD);
 
-    if (connTypeRegister(&CT_TLS) != C_OK)
+    if (connTypeRegister(&CT_TLS) != C_OK) {
         return REDISMODULE_ERR;
+    }
 
     return REDISMODULE_OK;
 }

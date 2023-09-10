@@ -64,8 +64,9 @@ static inline double rad_deg(double ang) {
 /* This function is used in order to estimate the step (bits precision)
  * of the 9 search area boxes during radius queries. */
 uint8_t geohashEstimateStepsByRadius(double range_meters, double lat) {
-    if (range_meters == 0)
+    if (range_meters == 0) {
         return 26;
+    }
     int step = 1;
     while (range_meters < MERCATOR_MAX) {
         range_meters *= 2;
@@ -78,15 +79,18 @@ uint8_t geohashEstimateStepsByRadius(double range_meters, double lat) {
      * at this latitude, but this does the trick for now. */
     if (lat > 66 || lat < -66) {
         step--;
-        if (lat > 80 || lat < -80)
+        if (lat > 80 || lat < -80) {
             step--;
+        }
     }
 
     /* Frame to valid range. */
-    if (step < 1)
+    if (step < 1) {
         step = 1;
-    if (step > 26)
+    }
+    if (step > 26) {
         step = 26;
+    }
     return step;
 }
 
@@ -104,8 +108,9 @@ uint8_t geohashEstimateStepsByRadius(double range_meters, double lat) {
  *  Northern Hemisphere       Southern Hemisphere         Around the equator
  */
 int geohashBoundingBox(GeoShape *shape, double *bounds) {
-    if (!bounds)
+    if (!bounds) {
         return 0;
+    }
     double longitude = shape->xy[0];
     double latitude = shape->xy[1];
     double height = shape->conversion * (shape->type == CIRCULAR_TYPE ? shape->t.radius : shape->t.r.height / 2);
@@ -174,14 +179,18 @@ GeoHashRadius geohashCalculateAreasByShapeWGS84(GeoShape *shape) {
         geohashDecode(long_range, lat_range, neighbors.east, &east);
         geohashDecode(long_range, lat_range, neighbors.west, &west);
 
-        if (north.latitude.max < max_lat)
+        if (north.latitude.max < max_lat) {
             decrease_step = 1;
-        if (south.latitude.min > min_lat)
+        }
+        if (south.latitude.min > min_lat) {
             decrease_step = 1;
-        if (east.longitude.max < max_lon)
+        }
+        if (east.longitude.max < max_lon) {
             decrease_step = 1;
-        if (west.longitude.min > min_lon)
+        }
+        if (west.longitude.min > min_lon) {
             decrease_step = 1;
+        }
     }
 
     if (steps > 1 && decrease_step) {
@@ -242,8 +251,9 @@ double geohashGetDistance(double lon1d, double lat1d, double lon2d, double lat2d
     lon2r = deg_rad(lon2d);
     v = sin((lon2r - lon1r) / 2);
     /* if v == 0 we can avoid doing expensive math when lons are practically the same */
-    if (v == 0.0)
+    if (v == 0.0) {
         return geohashGetLatDistance(lat1d, lat2d);
+    }
     lat1r = deg_rad(lat1d);
     lat2r = deg_rad(lat2d);
     u = sin((lat2r - lat1r) / 2);
@@ -253,8 +263,9 @@ double geohashGetDistance(double lon1d, double lat1d, double lon2d, double lat2d
 
 int geohashGetDistanceIfInRadius(double x1, double y1, double x2, double y2, double radius, double *distance) {
     *distance = geohashGetDistance(x1, y1, x2, y2);
-    if (*distance > radius)
+    if (*distance > radius) {
         return 0;
+    }
     return 1;
 }
 

@@ -49,8 +49,9 @@ void freeClientMultiState(client *c) {
         int i;
         multiCmd *mc = c->mstate.commands + j;
 
-        for (i = 0; i < mc->argc; i++)
+        for (i = 0; i < mc->argc; i++) {
             decrRefCount(mc->argv[i]);
+        }
         zfree(mc->argv);
     }
     zfree(c->mstate.commands);
@@ -64,8 +65,9 @@ void queueMultiCommand(client *c, uint64_t cmd_flags) {
      * this is useful in case client sends these in a pipeline, or doesn't
      * bother to read previous responses and didn't notice the multi was already
      * aborted. */
-    if (c->flags & (CLIENT_DIRTY_CAS | CLIENT_DIRTY_EXEC))
+    if (c->flags & (CLIENT_DIRTY_CAS | CLIENT_DIRTY_EXEC)) {
         return;
+    }
     if (c->mstate.count == 0) {
         /* If a client is using multi/exec, assuming it is used to execute at least
          * two commands. Hence, creating by default size of 2. */
@@ -105,8 +107,9 @@ void discardTransaction(client *c) {
 /* Flag the transaction as DIRTY_EXEC so that EXEC will fail.
  * Should be called every time there is an error while queueing a command. */
 void flagTransaction(client *c) {
-    if (c->flags & CLIENT_MULTI)
+    if (c->flags & CLIENT_MULTI) {
         c->flags |= CLIENT_DIRTY_EXEC;
+    }
 }
 
 void multiCommand(client *c) {
@@ -136,8 +139,9 @@ void discardCommand(client *c) {
 void execCommandAbort(client *c, sds error) {
     discardTransaction(c);
 
-    if (error[0] == '-')
+    if (error[0] == '-') {
         error++;
+    }
     addReplyErrorFormat(c, "-EXECABORT Transaction discarded because of: %s", error);
 
     /* Send EXEC to clients waiting data from MONITOR. We did send a MULTI
@@ -232,10 +236,11 @@ void execCommand(client *c) {
                 reason
             );
         } else {
-            if (c->id == CLIENT_ID_AOF)
+            if (c->id == CLIENT_ID_AOF) {
                 call(c, CMD_CALL_NONE);
-            else
+            } else {
                 call(c, CMD_CALL_FULL);
+            }
 
             serverAssert((c->flags & CLIENT_BLOCKED) == 0);
         }
@@ -248,8 +253,9 @@ void execCommand(client *c) {
     }
 
     // restore old DENY_BLOCKING value
-    if (!(old_flags & CLIENT_DENY_BLOCKING))
+    if (!(old_flags & CLIENT_DENY_BLOCKING)) {
         c->flags &= ~CLIENT_DENY_BLOCKING;
+    }
 
     c->argv = orig_argv;
     c->argv_len = orig_argv_len;
@@ -312,8 +318,9 @@ void watchForKey(client *c, robj *key) {
     listRewind(c->watched_keys, &li);
     while ((ln = listNext(&li))) {
         wk = listNodeValue(ln);
-        if (wk->db == c->db && equalStringObjects(key, wk->key))
+        if (wk->db == c->db && equalStringObjects(key, wk->key)) {
             return; /* Key already watched */
+        }
     }
     /* This key is not already watched in this DB. Let's add it */
     clients = dictFetchValue(c->db->watched_keys, key);
@@ -339,8 +346,9 @@ void unwatchAllKeys(client *c) {
     listIter li;
     listNode *ln;
 
-    if (listLength(c->watched_keys) == 0)
+    if (listLength(c->watched_keys) == 0) {
         return;
+    }
     listRewind(c->watched_keys, &li);
     while ((ln = listNext(&li))) {
         list *clients;
@@ -352,8 +360,9 @@ void unwatchAllKeys(client *c) {
         serverAssertWithInfo(c, NULL, clients != NULL);
         listUnlinkNode(clients, watchedKeyGetClientNode(wk));
         /* Kill the entry at all if this was the only client */
-        if (listLength(clients) == 0)
+        if (listLength(clients) == 0) {
             dictDelete(wk->db->watched_keys, wk->key);
+        }
         /* Remove this watched key from the client->watched list */
         listDelNode(c->watched_keys, ln);
         decrRefCount(wk->key);
@@ -367,15 +376,18 @@ int isWatchedKeyExpired(client *c) {
     listIter li;
     listNode *ln;
     watchedKey *wk;
-    if (listLength(c->watched_keys) == 0)
+    if (listLength(c->watched_keys) == 0) {
         return 0;
+    }
     listRewind(c->watched_keys, &li);
     while ((ln = listNext(&li))) {
         wk = listNodeValue(ln);
-        if (wk->expired)
+        if (wk->expired) {
             continue; /* was expired when WATCH was called */
-        if (keyIsExpired(wk->db, wk->key))
+        }
+        if (keyIsExpired(wk->db, wk->key)) {
             return 1;
+        }
     }
 
     return 0;
@@ -388,11 +400,13 @@ void touchWatchedKey(redisDb *db, robj *key) {
     listIter li;
     listNode *ln;
 
-    if (dictSize(db->watched_keys) == 0)
+    if (dictSize(db->watched_keys) == 0) {
         return;
+    }
     clients = dictFetchValue(db->watched_keys, key);
-    if (!clients)
+    if (!clients) {
         return;
+    }
 
     /* Mark all the clients watching this key as CLIENT_DIRTY_CAS */
     /* Check if we are already watching for this key */
@@ -435,8 +449,9 @@ void touchAllWatchedKeysInDb(redisDb *emptied, redisDb *replaced_with) {
     listNode *ln;
     dictEntry *de;
 
-    if (dictSize(emptied->watched_keys) == 0)
+    if (dictSize(emptied->watched_keys) == 0) {
         return;
+    }
 
     dictIterator *di = dictGetSafeIterator(emptied->watched_keys);
     while ((de = dictNext(di)) != NULL) {
@@ -444,8 +459,9 @@ void touchAllWatchedKeysInDb(redisDb *emptied, redisDb *replaced_with) {
         int exists_in_emptied = dictFind(emptied->dict, key->ptr) != NULL;
         if (exists_in_emptied || (replaced_with && dictFind(replaced_with->dict, key->ptr))) {
             list *clients = dictGetVal(de);
-            if (!clients)
+            if (!clients) {
                 continue;
+            }
             listRewind(clients, &li);
             while ((ln = listNext(&li))) {
                 watchedKey *wk = redis_member2struct(watchedKey, node, ln);
@@ -487,8 +503,9 @@ void watchCommand(client *c) {
         addReply(c, shared.ok);
         return;
     }
-    for (j = 1; j < c->argc; j++)
+    for (j = 1; j < c->argc; j++) {
         watchForKey(c, c->argv[j]);
+    }
     addReply(c, shared.ok);
 }
 

@@ -59,14 +59,16 @@ ssize_t syncWrite(int fd, char *ptr, ssize_t size, long long timeout) {
          * is actually writable. At worst we get EAGAIN. */
         nwritten = write(fd, ptr, size);
         if (nwritten == -1) {
-            if (errno != EAGAIN)
+            if (errno != EAGAIN) {
                 return -1;
+            }
         } else {
             ptr += nwritten;
             size -= nwritten;
         }
-        if (size == 0)
+        if (size == 0) {
             return ret;
+        }
 
         /* Wait */
         aeWait(fd, AE_WRITABLE, wait);
@@ -88,8 +90,9 @@ ssize_t syncRead(int fd, char *ptr, ssize_t size, long long timeout) {
     long long start = mstime();
     long long remaining = timeout;
 
-    if (size == 0)
+    if (size == 0) {
         return 0;
+    }
     while (1) {
         long long wait = (remaining > SYNCIO__RESOLUTION) ? remaining : SYNCIO__RESOLUTION;
         long long elapsed;
@@ -97,18 +100,21 @@ ssize_t syncRead(int fd, char *ptr, ssize_t size, long long timeout) {
         /* Optimistically try to read before checking if the file descriptor
          * is actually readable. At worst we get EAGAIN. */
         nread = read(fd, ptr, size);
-        if (nread == 0)
+        if (nread == 0) {
             return -1; /* short read. */
+        }
         if (nread == -1) {
-            if (errno != EAGAIN)
+            if (errno != EAGAIN) {
                 return -1;
+            }
         } else {
             ptr += nread;
             size -= nread;
             totread += nread;
         }
-        if (size == 0)
+        if (size == 0) {
             return totread;
+        }
 
         /* Wait */
         aeWait(fd, AE_READABLE, wait);
@@ -133,12 +139,14 @@ ssize_t syncReadLine(int fd, char *ptr, ssize_t size, long long timeout) {
     while (size) {
         char c;
 
-        if (syncRead(fd, &c, 1, timeout) == -1)
+        if (syncRead(fd, &c, 1, timeout) == -1) {
             return -1;
+        }
         if (c == '\n') {
             *ptr = '\0';
-            if (nread && *(ptr - 1) == '\r')
+            if (nread && *(ptr - 1) == '\r') {
                 *(ptr - 1) = '\0';
+            }
             return nread;
         } else {
             *ptr++ = c;

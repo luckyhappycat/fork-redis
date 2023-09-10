@@ -6,10 +6,11 @@
 /* If a string is ":deleted:", the special value for deleted hash fields is
  * returned; otherwise the input string is returned. */
 static RedisModuleString *value_or_delete(RedisModuleString *s) {
-    if (!strcasecmp(RedisModule_StringPtrLen(s, NULL), ":delete:"))
+    if (!strcasecmp(RedisModule_StringPtrLen(s, NULL), ":delete:")) {
         return REDISMODULE_HASH_DELETE;
-    else
+    } else {
         return s;
+    }
 }
 
 /* HASH.SET key flags field1 value1 [field2 value2 ..]
@@ -19,8 +20,9 @@ static RedisModuleString *value_or_delete(RedisModuleString *s) {
  * To delete a field, use the value ":delete:".
  */
 int hash_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    if (argc < 5 || argc % 2 == 0 || argc > 11)
+    if (argc < 5 || argc % 2 == 0 || argc > 11) {
         return RedisModule_WrongArity(ctx);
+    }
 
     RedisModule_AutoMemory(ctx);
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_WRITE);
@@ -64,10 +66,11 @@ int hash_set(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
     /* Check errno */
     if (result == 0) {
-        if (errno == ENOTSUP)
+        if (errno == ENOTSUP) {
             return RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
-        else
+        } else {
             RedisModule_Assert(errno == ENOENT);
+        }
     }
 
     return RedisModule_ReplyWithLongLong(ctx, result);

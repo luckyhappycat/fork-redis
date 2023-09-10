@@ -57,14 +57,18 @@ static inline int hi_sdsHdrSize(char type) {
 }
 
 static inline char hi_sdsReqType(size_t string_size) {
-    if (string_size < 32)
+    if (string_size < 32) {
         return HI_SDS_TYPE_5;
-    if (string_size < 0xff)
+    }
+    if (string_size < 0xff) {
         return HI_SDS_TYPE_8;
-    if (string_size < 0xffff)
+    }
+    if (string_size < 0xffff) {
         return HI_SDS_TYPE_16;
-    if (string_size < 0xffffffff)
+    }
+    if (string_size < 0xffffffff) {
         return HI_SDS_TYPE_32;
+    }
     return HI_SDS_TYPE_64;
 }
 
@@ -86,18 +90,22 @@ hisds hi_sdsnewlen(const void *init, size_t initlen) {
     char type = hi_sdsReqType(initlen);
     /* Empty strings are usually created in order to append. Use type 8
      * since type 5 is not good at this. */
-    if (type == HI_SDS_TYPE_5 && initlen == 0)
+    if (type == HI_SDS_TYPE_5 && initlen == 0) {
         type = HI_SDS_TYPE_8;
+    }
     int hdrlen = hi_sdsHdrSize(type);
     unsigned char *fp; /* flags pointer. */
 
-    if (hdrlen + initlen + 1 <= initlen)
+    if (hdrlen + initlen + 1 <= initlen) {
         return NULL; /* Catch size_t overflow */
+    }
     sh = hi_s_malloc(hdrlen + initlen + 1);
-    if (sh == NULL)
+    if (sh == NULL) {
         return NULL;
-    if (!init)
+    }
+    if (!init) {
         memset(sh, 0, hdrlen + initlen + 1);
+    }
     s = (char *)sh + hdrlen;
     fp = ((unsigned char *)s) - 1;
     switch (type) {
@@ -134,8 +142,9 @@ hisds hi_sdsnewlen(const void *init, size_t initlen) {
             break;
         }
     }
-    if (initlen && init)
+    if (initlen && init) {
         memcpy(s, init, initlen);
+    }
     s[initlen] = '\0';
     return s;
 }
@@ -159,8 +168,9 @@ hisds hi_sdsdup(const hisds s) {
 
 /* Free an hisds string. No operation is performed if 's' is NULL. */
 void hi_sdsfree(hisds s) {
-    if (s == NULL)
+    if (s == NULL) {
         return;
+    }
     hi_s_free((char *)s - hi_sdsHdrSize(s[-1]));
 }
 
@@ -206,41 +216,48 @@ hisds hi_sdsMakeRoomFor(hisds s, size_t addlen) {
     int hdrlen;
 
     /* Return ASAP if there is enough space left. */
-    if (avail >= addlen)
+    if (avail >= addlen) {
         return s;
+    }
 
     len = hi_sdslen(s);
     sh = (char *)s - hi_sdsHdrSize(oldtype);
     reqlen = newlen = (len + addlen);
-    if (newlen <= len)
+    if (newlen <= len) {
         return NULL; /* Catch size_t overflow */
-    if (newlen < HI_SDS_MAX_PREALLOC)
+    }
+    if (newlen < HI_SDS_MAX_PREALLOC) {
         newlen *= 2;
-    else
+    } else {
         newlen += HI_SDS_MAX_PREALLOC;
+    }
 
     type = hi_sdsReqType(newlen);
 
     /* Don't use type 5: the user is appending to the string and type 5 is
      * not able to remember empty space, so hi_sdsMakeRoomFor() must be called
      * at every appending operation. */
-    if (type == HI_SDS_TYPE_5)
+    if (type == HI_SDS_TYPE_5) {
         type = HI_SDS_TYPE_8;
+    }
 
     hdrlen = hi_sdsHdrSize(type);
-    if (hdrlen + newlen + 1 <= reqlen)
+    if (hdrlen + newlen + 1 <= reqlen) {
         return NULL; /* Catch size_t overflow */
+    }
     if (oldtype == type) {
         newsh = hi_s_realloc(sh, hdrlen + newlen + 1);
-        if (newsh == NULL)
+        if (newsh == NULL) {
             return NULL;
+        }
         s = (char *)newsh + hdrlen;
     } else {
         /* Since the header size changes, need to move the string forward,
          * and can't use realloc */
         newsh = hi_s_malloc(hdrlen + newlen + 1);
-        if (newsh == NULL)
+        if (newsh == NULL) {
             return NULL;
+        }
         memcpy((char *)newsh + hdrlen, s, len + 1);
         hi_s_free(sh);
         s = (char *)newsh + hdrlen;
@@ -268,13 +285,15 @@ hisds hi_sdsRemoveFreeSpace(hisds s) {
     hdrlen = hi_sdsHdrSize(type);
     if (oldtype == type) {
         newsh = hi_s_realloc(sh, hdrlen + len + 1);
-        if (newsh == NULL)
+        if (newsh == NULL) {
             return NULL;
+        }
         s = (char *)newsh + hdrlen;
     } else {
         newsh = hi_s_malloc(hdrlen + len + 1);
-        if (newsh == NULL)
+        if (newsh == NULL) {
             return NULL;
+        }
         memcpy((char *)newsh + hdrlen, s, len + 1);
         hi_s_free(sh);
         s = (char *)newsh + hdrlen;
@@ -376,11 +395,13 @@ void hi_sdsIncrLen(hisds s, int incr) {
 hisds hi_sdsgrowzero(hisds s, size_t len) {
     size_t curlen = hi_sdslen(s);
 
-    if (len <= curlen)
+    if (len <= curlen) {
         return s;
+    }
     s = hi_sdsMakeRoomFor(s, len - curlen);
-    if (s == NULL)
+    if (s == NULL) {
         return NULL;
+    }
 
     /* Make sure added region doesn't contain garbage */
     memset(s + curlen, 0, (len - curlen + 1)); /* also set trailing \0 byte */
@@ -397,8 +418,9 @@ hisds hi_sdscatlen(hisds s, const void *t, size_t len) {
     size_t curlen = hi_sdslen(s);
 
     s = hi_sdsMakeRoomFor(s, len);
-    if (s == NULL)
+    if (s == NULL) {
         return NULL;
+    }
     memcpy(s + curlen, t, len);
     hi_sdssetlen(s, curlen + len);
     s[curlen + len] = '\0';
@@ -426,8 +448,9 @@ hisds hi_sdscatsds(hisds s, const hisds t) {
 hisds hi_sdscpylen(hisds s, const char *t, size_t len) {
     if (hi_sdsalloc(s) < len) {
         s = hi_sdsMakeRoomFor(s, len - hi_sdslen(s));
-        if (s == NULL)
+        if (s == NULL) {
             return NULL;
+        }
     }
     memcpy(s, t, len);
     s[len] = '\0';
@@ -461,8 +484,9 @@ int hi_sdsll2str(char *s, long long value) {
         *p++ = '0' + (v % 10);
         v /= 10;
     } while (v);
-    if (value < 0)
+    if (value < 0) {
         *p++ = '-';
+    }
 
     /* Compute length and add null term. */
     l = p - s;
@@ -530,8 +554,9 @@ hisds hi_sdscatvprintf(hisds s, const char *fmt, va_list ap) {
      * If not possible we revert to heap allocation. */
     if (buflen > sizeof(staticbuf)) {
         buf = hi_s_malloc(buflen);
-        if (buf == NULL)
+        if (buf == NULL) {
             return NULL;
+        }
     } else {
         buflen = sizeof(staticbuf);
     }
@@ -544,12 +569,14 @@ hisds hi_sdscatvprintf(hisds s, const char *fmt, va_list ap) {
         vsnprintf(buf, buflen, fmt, cpy);
         va_end(cpy);
         if (buf[buflen - 2] != '\0') {
-            if (buf != staticbuf)
+            if (buf != staticbuf) {
                 hi_s_free(buf);
+            }
             buflen *= 2;
             buf = hi_s_malloc(buflen);
-            if (buf == NULL)
+            if (buf == NULL) {
                 return NULL;
+            }
             continue;
         }
         break;
@@ -557,8 +584,9 @@ hisds hi_sdscatvprintf(hisds s, const char *fmt, va_list ap) {
 
     /* Finally concat the obtained string to the SDS string and return it. */
     t = hi_sdscat(s, buf);
-    if (buf != staticbuf)
+    if (buf != staticbuf) {
         hi_s_free(buf);
+    }
     return t;
 }
 
@@ -619,8 +647,9 @@ hisds hi_sdscatfmt(hisds s, char const *fmt, ...) {
         /* Make sure there is always space for at least 1 char. */
         if (hi_sdsavail(s) == 0) {
             s = hi_sdsMakeRoomFor(s, 1);
-            if (s == NULL)
+            if (s == NULL) {
                 goto fmt_error;
+            }
         }
 
         switch (*f) {
@@ -634,8 +663,9 @@ hisds hi_sdscatfmt(hisds s, char const *fmt, ...) {
                         l = (next == 's') ? strlen(str) : hi_sdslen(str);
                         if (hi_sdsavail(s) < l) {
                             s = hi_sdsMakeRoomFor(s, l);
-                            if (s == NULL)
+                            if (s == NULL) {
                                 goto fmt_error;
+                            }
                         }
                         memcpy(s + i, str, l);
                         hi_sdsinclen(s, l);
@@ -643,17 +673,19 @@ hisds hi_sdscatfmt(hisds s, char const *fmt, ...) {
                         break;
                     case 'i':
                     case 'I':
-                        if (next == 'i')
+                        if (next == 'i') {
                             num = va_arg(ap, int);
-                        else
+                        } else {
                             num = va_arg(ap, long long);
+                        }
                         {
                             char buf[HI_SDS_LLSTR_SIZE];
                             l = hi_sdsll2str(buf, num);
                             if (hi_sdsavail(s) < l) {
                                 s = hi_sdsMakeRoomFor(s, l);
-                                if (s == NULL)
+                                if (s == NULL) {
                                     goto fmt_error;
+                                }
                             }
                             memcpy(s + i, buf, l);
                             hi_sdsinclen(s, l);
@@ -662,17 +694,19 @@ hisds hi_sdscatfmt(hisds s, char const *fmt, ...) {
                         break;
                     case 'u':
                     case 'U':
-                        if (next == 'u')
+                        if (next == 'u') {
                             unum = va_arg(ap, unsigned int);
-                        else
+                        } else {
                             unum = va_arg(ap, unsigned long long);
+                        }
                         {
                             char buf[HI_SDS_LLSTR_SIZE];
                             l = hi_sdsull2str(buf, unum);
                             if (hi_sdsavail(s) < l) {
                                 s = hi_sdsMakeRoomFor(s, l);
-                                if (s == NULL)
+                                if (s == NULL) {
                                     goto fmt_error;
+                                }
                             }
                             memcpy(s + i, buf, l);
                             hi_sdsinclen(s, l);
@@ -723,13 +757,16 @@ hisds hi_sdstrim(hisds s, const char *cset) {
 
     sp = start = s;
     ep = end = s + hi_sdslen(s) - 1;
-    while (sp <= end && strchr(cset, *sp))
+    while (sp <= end && strchr(cset, *sp)) {
         sp++;
-    while (ep > sp && strchr(cset, *ep))
+    }
+    while (ep > sp && strchr(cset, *ep)) {
         ep--;
+    }
     len = (sp > ep) ? 0 : ((ep - sp) + 1);
-    if (s != sp)
+    if (s != sp) {
         memmove(s, sp, len);
+    }
     s[len] = '\0';
     hi_sdssetlen(s, len);
     return s;
@@ -757,20 +794,24 @@ hisds hi_sdstrim(hisds s, const char *cset) {
  */
 int hi_sdsrange(hisds s, ssize_t start, ssize_t end) {
     size_t newlen, len = hi_sdslen(s);
-    if (len > SSIZE_MAX)
+    if (len > SSIZE_MAX) {
         return -1;
+    }
 
-    if (len == 0)
+    if (len == 0) {
         return 0;
+    }
     if (start < 0) {
         start = len + start;
-        if (start < 0)
+        if (start < 0) {
             start = 0;
+        }
     }
     if (end < 0) {
         end = len + end;
-        if (end < 0)
+        if (end < 0) {
             end = 0;
+        }
     }
     newlen = (start > end) ? 0 : (end - start) + 1;
     if (newlen != 0) {
@@ -783,8 +824,9 @@ int hi_sdsrange(hisds s, ssize_t start, ssize_t end) {
     } else {
         start = 0;
     }
-    if (start && newlen)
+    if (start && newlen) {
         memmove(s, s + start, newlen);
+    }
     s[newlen] = 0;
     hi_sdssetlen(s, newlen);
     return 0;
@@ -794,16 +836,18 @@ int hi_sdsrange(hisds s, ssize_t start, ssize_t end) {
 void hi_sdstolower(hisds s) {
     size_t len = hi_sdslen(s), j;
 
-    for (j = 0; j < len; j++)
+    for (j = 0; j < len; j++) {
         s[j] = tolower(s[j]);
+    }
 }
 
 /* Apply toupper() to every character of the sds string 's'. */
 void hi_sdstoupper(hisds s) {
     size_t len = hi_sdslen(s), j;
 
-    for (j = 0; j < len; j++)
+    for (j = 0; j < len; j++) {
         s[j] = toupper(s[j]);
+    }
 }
 
 /* Compare two hisds strings s1 and s2 with memcmp().
@@ -825,8 +869,9 @@ int hi_sdscmp(const hisds s1, const hisds s2) {
     l2 = hi_sdslen(s2);
     minlen = (l1 < l2) ? l1 : l2;
     cmp = memcmp(s1, s2, minlen);
-    if (cmp == 0)
+    if (cmp == 0) {
         return l1 - l2;
+    }
     return cmp;
 }
 
@@ -850,12 +895,14 @@ hisds *hi_sdssplitlen(const char *s, int len, const char *sep, int seplen, int *
     int elements = 0, slots = 5, start = 0, j;
     hisds *tokens;
 
-    if (seplen < 1 || len < 0)
+    if (seplen < 1 || len < 0) {
         return NULL;
+    }
 
     tokens = hi_s_malloc(sizeof(hisds) * slots);
-    if (tokens == NULL)
+    if (tokens == NULL) {
         return NULL;
+    }
 
     if (len == 0) {
         *count = 0;
@@ -868,15 +915,17 @@ hisds *hi_sdssplitlen(const char *s, int len, const char *sep, int seplen, int *
 
             slots *= 2;
             newtokens = hi_s_realloc(tokens, sizeof(hisds) * slots);
-            if (newtokens == NULL)
+            if (newtokens == NULL) {
                 goto cleanup;
+            }
             tokens = newtokens;
         }
         /* search the separator */
         if ((seplen == 1 && *(s + j) == sep[0]) || (memcmp(s + j, sep, seplen) == 0)) {
             tokens[elements] = hi_sdsnewlen(s + start, j - start);
-            if (tokens[elements] == NULL)
+            if (tokens[elements] == NULL) {
                 goto cleanup;
+            }
             elements++;
             start = j + seplen;
             j = j + seplen - 1; /* skip the separator */
@@ -884,16 +933,18 @@ hisds *hi_sdssplitlen(const char *s, int len, const char *sep, int seplen, int *
     }
     /* Add the final element. We are sure there is room in the tokens array. */
     tokens[elements] = hi_sdsnewlen(s + start, len - start);
-    if (tokens[elements] == NULL)
+    if (tokens[elements] == NULL) {
         goto cleanup;
+    }
     elements++;
     *count = elements;
     return tokens;
 
 cleanup : {
     int i;
-    for (i = 0; i < elements; i++)
+    for (i = 0; i < elements; i++) {
         hi_sdsfree(tokens[i]);
+    }
     hi_s_free(tokens);
     *count = 0;
     return NULL;
@@ -902,10 +953,12 @@ cleanup : {
 
 /* Free the result returned by hi_sdssplitlen(), or do nothing if 'tokens' is NULL. */
 void hi_sdsfreesplitres(hisds *tokens, int count) {
-    if (!tokens)
+    if (!tokens) {
         return;
-    while (count--)
+    }
+    while (count--) {
         hi_sdsfree(tokens[count]);
+    }
     hi_s_free(tokens);
 }
 
@@ -939,10 +992,11 @@ hisds hi_sdscatrepr(hisds s, const char *p, size_t len) {
                 s = hi_sdscatlen(s, "\\b", 2);
                 break;
             default:
-                if (isprint(*p))
+                if (isprint(*p)) {
                     s = hi_sdscatprintf(s, "%c", *p);
-                else
+                } else {
                     s = hi_sdscatprintf(s, "\\x%02x", (unsigned char)*p);
+                }
                 break;
         }
         p++;
@@ -1024,16 +1078,18 @@ hisds *hi_sdssplitargs(const char *line, int *argc) {
     *argc = 0;
     while (1) {
         /* skip blanks */
-        while (*p && isspace((int)*p))
+        while (*p && isspace((int)*p)) {
             p++;
+        }
         if (*p) {
             /* get a token */
             int inq = 0;  /* set to 1 if we are in "quotes" */
             int insq = 0; /* set to 1 if we are in 'single quotes' */
             int done = 0;
 
-            if (current == NULL)
+            if (current == NULL) {
                 current = hi_sdsempty();
+            }
             while (!done) {
                 if (inq) {
                     if (*p == '\\' && *(p + 1) == 'x' && isxdigit((int)*(p + 2)) && isxdigit((int)*(p + 3))) {
@@ -1070,8 +1126,9 @@ hisds *hi_sdssplitargs(const char *line, int *argc) {
                     } else if (*p == '"') {
                         /* closing quote must be followed by a space or
                          * nothing at all. */
-                        if (*(p + 1) && !isspace((int)*(p + 1)))
+                        if (*(p + 1) && !isspace((int)*(p + 1))) {
                             goto err;
+                        }
                         done = 1;
                     } else if (!*p) {
                         /* unterminated quotes */
@@ -1086,8 +1143,9 @@ hisds *hi_sdssplitargs(const char *line, int *argc) {
                     } else if (*p == '\'') {
                         /* closing quote must be followed by a space or
                          * nothing at all. */
-                        if (*(p + 1) && !isspace((int)*(p + 1)))
+                        if (*(p + 1) && !isspace((int)*(p + 1))) {
                             goto err;
+                        }
                         done = 1;
                     } else if (!*p) {
                         /* unterminated quotes */
@@ -1115,8 +1173,9 @@ hisds *hi_sdssplitargs(const char *line, int *argc) {
                             break;
                     }
                 }
-                if (*p)
+                if (*p) {
                     p++;
+                }
             }
             /* add the token to the vector */
             {
@@ -1133,18 +1192,21 @@ hisds *hi_sdssplitargs(const char *line, int *argc) {
             }
         } else {
             /* Even on empty input string return something not NULL. */
-            if (vector == NULL)
+            if (vector == NULL) {
                 vector = hi_s_malloc(sizeof(void *));
+            }
             return vector;
         }
     }
 
 err:
-    while ((*argc)--)
+    while ((*argc)--) {
         hi_sdsfree(vector[*argc]);
+    }
     hi_s_free(vector);
-    if (current)
+    if (current) {
         hi_sdsfree(current);
+    }
     *argc = 0;
     return NULL;
 }
@@ -1180,8 +1242,9 @@ hisds hi_sdsjoin(char **argv, int argc, char *sep) {
 
     for (j = 0; j < argc; j++) {
         join = hi_sdscat(join, argv[j]);
-        if (j != argc - 1)
+        if (j != argc - 1) {
             join = hi_sdscat(join, sep);
+        }
     }
     return join;
 }
@@ -1193,8 +1256,9 @@ hisds hi_sdsjoinsds(hisds *argv, int argc, const char *sep, size_t seplen) {
 
     for (j = 0; j < argc; j++) {
         join = hi_sdscatsds(join, argv[j]);
-        if (j != argc - 1)
+        if (j != argc - 1) {
             join = hi_sdscatlen(join, sep, seplen);
+        }
     }
     return join;
 }

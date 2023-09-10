@@ -49,8 +49,9 @@ static void exitScriptTimedoutMode(scriptRunCtx *run_ctx) {
     run_ctx->flags &= ~SCRIPT_TIMEDOUT;
     blockingOperationEnds();
     /* if we are a replica and we have an active master, set it for continue processing */
-    if (server.masterhost && server.master)
+    if (server.masterhost && server.master) {
         queueClientForReprocessing(server.master);
+    }
 }
 
 static void enterScriptTimedoutMode(scriptRunCtx *run_ctx) {
@@ -116,12 +117,15 @@ uint64_t scriptFlagsToCmdFlags(uint64_t cmd_flags, uint64_t script_flags) {
     cmd_flags &= ~(CMD_STALE | CMD_DENYOOM | CMD_WRITE);
 
     /* NO_WRITES implies ALLOW_OOM */
-    if (!(script_flags & (SCRIPT_FLAG_ALLOW_OOM | SCRIPT_FLAG_NO_WRITES)))
+    if (!(script_flags & (SCRIPT_FLAG_ALLOW_OOM | SCRIPT_FLAG_NO_WRITES))) {
         cmd_flags |= CMD_DENYOOM;
-    if (!(script_flags & SCRIPT_FLAG_NO_WRITES))
+    }
+    if (!(script_flags & SCRIPT_FLAG_NO_WRITES)) {
         cmd_flags |= CMD_WRITE;
-    if (script_flags & SCRIPT_FLAG_ALLOW_STALE)
+    }
+    if (script_flags & SCRIPT_FLAG_ALLOW_STALE) {
         cmd_flags |= CMD_STALE;
+    }
 
     /* In addition the MAY_REPLICATE flag is set for these commands, but
      * if we have flags we know if it's gonna do any writes or not. */
@@ -167,14 +171,14 @@ int scriptPrepareForRun(scriptRunCtx *run_ctx, client *engine_client, client *ca
             /* Deny writes if we're unable to persist. */
             int deny_write_type = writeCommandsDeniedByDiskError();
             if (deny_write_type != DISK_ERROR_TYPE_NONE && !obey_client) {
-                if (deny_write_type == DISK_ERROR_TYPE_RDB)
+                if (deny_write_type == DISK_ERROR_TYPE_RDB) {
                     addReplyError(
                         caller,
                         "-MISCONF Redis is configured to save RDB snapshots, "
                         "but it's currently unable to persist to disk. "
                         "Writable scripts are blocked. Use 'no-writes' flag for read only scripts."
                     );
-                else
+                } else {
                     addReplyErrorFormat(
                         caller,
                         "-MISCONF Redis is configured to persist data to AOF, "
@@ -183,6 +187,7 @@ int scriptPrepareForRun(scriptRunCtx *run_ctx, client *engine_client, client *ca
                         "AOF error: %s",
                         strerror(server.aof_last_write_errno)
                     );
+                }
                 return C_ERR;
             }
 
@@ -332,10 +337,11 @@ void scriptKill(client *c, int is_eval) {
 
 static int scriptVerifyCommandArity(struct redisCommand *cmd, int argc, sds *err) {
     if (!cmd || ((cmd->arity > 0 && cmd->arity != argc) || (argc < -cmd->arity))) {
-        if (cmd)
+        if (cmd) {
             *err = sdsnew("Wrong number of args calling Redis command from script");
-        else
+        } else {
             *err = sdsnew("Unknown Redis command called from script");
+        }
         return C_ERR;
     }
     return C_OK;
@@ -367,13 +373,15 @@ static int scriptVerifyWriteCommandAllow(scriptRunCtx *run_ctx, char **err) {
 
     /* The other checks below are on the server state and are only relevant for
      *  write commands, return if this is not a write command. */
-    if (!(run_ctx->c->cmd->flags & CMD_WRITE))
+    if (!(run_ctx->c->cmd->flags & CMD_WRITE)) {
         return C_OK;
+    }
 
     /* If the script already made a modification to the dataset, we can't
      * fail it on unpredictable error state. */
-    if ((run_ctx->flags & SCRIPT_WRITE_DIRTY))
+    if ((run_ctx->flags & SCRIPT_WRITE_DIRTY)) {
         return C_OK;
+    }
 
     /* Write commands are forbidden against read-only slaves, or if a
      * command marked as non-deterministic was already called in the context

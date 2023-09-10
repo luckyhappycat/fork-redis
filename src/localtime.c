@@ -50,14 +50,15 @@
  * designed to work with what time(NULL) may return, and to support Redis
  * logging of the dates, it's not really a complete implementation. */
 static int is_leap_year(time_t year) {
-    if (year % 4)
+    if (year % 4) {
         return 0; /* A year not divisible by 4 is not leap. */
-    else if (year % 100)
+    } else if (year % 100) {
         return 1; /* If div by 4 and not 100 is surely leap. */
-    else if (year % 400)
+    } else if (year % 400) {
         return 0; /* If div by 100 *and* not by 400 is not leap. */
-    else
+    } else {
         return 1; /* If div by 100 and 400 is leap. */
+    }
 }
 
 void nolocks_localtime(struct tm *tmp, time_t t, time_t tz, int dst) {
@@ -85,8 +86,9 @@ void nolocks_localtime(struct tm *tmp, time_t t, time_t tz, int dst) {
     while (1) {
         /* Leap years have one day more. */
         time_t days_this_year = 365 + is_leap_year(tmp->tm_year);
-        if (days_this_year > days)
+        if (days_this_year > days) {
             break;
+        }
         days -= days_this_year;
         tmp->tm_year++;
     }
